@@ -19,9 +19,6 @@ parser = argparse.ArgumentParser(description="Visualize output for depth or surf
 parser.add_argument("--omnidata_path", dest="omnidata_path", help="path to omnidata model")
 parser.set_defaults(omnidata_path="/home/yuzh/Projects/omnidata/omnidata_tools/torch/")
 
-parser.add_argument("--pretrained_models", dest="pretrained_models", help="path to pretrained models")
-parser.set_defaults(pretrained_models="/home/yuzh/Projects/omnidata/omnidata_tools/torch/pretrained_models/")
-
 parser.add_argument("--task", dest="task", help="normal or depth")
 parser.set_defaults(task="NONE")
 
@@ -33,14 +30,11 @@ parser.set_defaults(store_name="NONE")
 
 args = parser.parse_args()
 
-root_dir = args.pretrained_models
 omnidata_path = args.omnidata_path
 
 sys.path.append(args.omnidata_path)
 print(sys.path)
 from data.transforms import get_transform
-from modules.midas.dpt_depth import DPTDepthModel
-from modules.unet import UNet
 
 trans_topil = transforms.ToPILImage()
 os.system(f"mkdir -p {args.output_path}")
@@ -63,7 +57,7 @@ if args.task == "normal":
     #         state_dict[k.replace('model.', '')] = v
     # else:
     #     state_dict = checkpoint
-
+    """
     pretrained_weights_path = os.path.join(root_dir, "omnidata_dpt_normal_v2.ckpt")
     model = DPTDepthModel(backbone="vitb_rn50_384", num_channels=3)  # DPT Hybrid
     checkpoint = torch.load(pretrained_weights_path, map_location=map_location)
@@ -76,6 +70,8 @@ if args.task == "normal":
 
     model.load_state_dict(state_dict)
     model.to(device)
+    """
+    model = torch.hub.load('alexsax/omnidata_models', 'surface_normal_dpt_hybrid_384').to(device)
     trans_totensor = transforms.Compose(
         [
             transforms.Resize(image_size, interpolation=PIL.Image.BILINEAR),
@@ -86,7 +82,8 @@ if args.task == "normal":
 
 elif args.task == "depth":
     image_size = 384
-    pretrained_weights_path = os.path.join(root_dir, "omnidata_dpt_depth_v2.ckpt")  # 'omnidata_dpt_depth_v1.ckpt'
+    """
+    pretrained_weights_path = os.path.join(root_dir, "omnidata_dpt_depth_v1.ckpt")  # 'omnidata_dpt_depth_v1.ckpt'
     # model = DPTDepthModel(backbone='vitl16_384') # DPT Large
     model = DPTDepthModel(backbone="vitb_rn50_384")  # DPT Hybrid
     checkpoint = torch.load(pretrained_weights_path, map_location=map_location)
@@ -98,6 +95,8 @@ elif args.task == "depth":
         state_dict = checkpoint
     model.load_state_dict(state_dict)
     model.to(device)
+    """
+    model = torch.hub.load('alexsax/omnidata_models', 'depth_dpt_hybrid_384').to(device)
     trans_totensor = transforms.Compose(
         [
             transforms.Resize(image_size, interpolation=PIL.Image.BILINEAR),
