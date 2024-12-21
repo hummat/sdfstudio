@@ -19,8 +19,7 @@ from enum import Enum
 from typing import Callable, Optional, Union
 
 import torch
-from torch import nn
-from torchtyping import TensorType
+from torch import nn, Tensor as TensorType
 
 from nerfstudio.field_components.base_field_component import FieldComponent
 
@@ -79,7 +78,7 @@ class FieldHead(FieldComponent):
     def _construct_net(self):
         self.net = nn.Linear(self.in_dim, self.out_dim)
 
-    def forward(self, in_tensor: TensorType["bs":..., "in_dim"]) -> TensorType["bs":..., "out_dim"]:
+    def forward(self, in_tensor: TensorType) -> TensorType:
         """Process network output for renderer
 
         Args:
@@ -200,7 +199,7 @@ class PredNormalsFieldHead(FieldHead):
     def __init__(self, in_dim: Optional[int] = None, activation: Optional[nn.Module] = nn.Tanh()) -> None:
         super().__init__(in_dim=in_dim, out_dim=3, field_head_name=FieldHeadNames.PRED_NORMALS, activation=activation)
 
-    def forward(self, in_tensor: TensorType["bs":..., "in_dim"]) -> TensorType["bs":..., "out_dim"]:
+    def forward(self, in_tensor: TensorType) -> TensorType:
         """Needed to normalize the output into valid normals."""
         out_tensor = super().forward(in_tensor)
         out_tensor = torch.nn.functional.normalize(out_tensor, dim=-1)

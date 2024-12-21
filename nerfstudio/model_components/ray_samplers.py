@@ -24,7 +24,7 @@ import nerfacc
 import torch
 from nerfacc import OccupancyGrid
 from torch import nn
-from torchtyping import TensorType
+from torch import Tensor as TensorType
 
 from nerfstudio.cameras.rays import Frustums, RayBundle, RaySamples
 
@@ -276,7 +276,7 @@ class PDFSampler(Sampler):
         self,
         ray_bundle: Optional[RayBundle] = None,
         ray_samples: Optional[RaySamples] = None,
-        weights: TensorType[..., "num_samples", 1] = None,
+        weights: TensorType = None,
         num_samples: Optional[int] = None,
         eps: float = 1e-5,
     ) -> RaySamples:
@@ -383,8 +383,8 @@ class VolumetricSampler(Sampler):
     def __init__(
         self,
         occupancy_grid: Optional[OccupancyGrid] = None,
-        density_fn: Optional[Callable[[TensorType[..., 3]], TensorType[..., 1]]] = None,
-        scene_aabb: Optional[TensorType[2, 3]] = None,
+        density_fn: Optional[Callable[[TensorType], TensorType]] = None,
+        scene_aabb: Optional[TensorType] = None,
     ) -> None:
 
         super().__init__()
@@ -431,7 +431,7 @@ class VolumetricSampler(Sampler):
         far_plane: Optional[float] = None,
         cone_angle: float = 0.0,
         alpha_thre: float = 1e-2,
-    ) -> Tuple[RaySamples, TensorType["total_samples",]]:
+    ) -> Tuple[RaySamples, TensorType]:
         """Generate ray samples in a bounding box.
         Args:
             ray_bundle: Rays to generate samples for

@@ -17,13 +17,13 @@
 from typing import Optional
 
 import torch
+from torch import Tensor as TensorType
 from matplotlib import cm
-from torchtyping import TensorType
 
 from nerfstudio.utils import colors
 
 
-def apply_colormap(image: TensorType["bs":..., 1], cmap="viridis") -> TensorType["bs":..., "rgb":3]:
+def apply_colormap(image: TensorType, cmap="viridis") -> TensorType:
     """Convert single channel to a color image.
 
     Args:
@@ -45,12 +45,12 @@ def apply_colormap(image: TensorType["bs":..., 1], cmap="viridis") -> TensorType
 
 
 def apply_depth_colormap(
-    depth: TensorType["bs":..., 1],
-    accumulation: Optional[TensorType["bs":..., 1]] = None,
+    depth: TensorType,
+    accumulation: Optional[TensorType] = None,
     near_plane: Optional[float] = None,
     far_plane: Optional[float] = None,
     cmap="turbo",
-) -> TensorType["bs":..., "rgb":3]:
+) -> TensorType:
     """Converts a depth image to color for easier analysis.
 
     Args:
@@ -80,10 +80,10 @@ def apply_depth_colormap(
 
 
 def apply_boolean_colormap(
-    image: TensorType["bs":..., 1, bool],
-    true_color: TensorType["bs":..., "rgb":3] = colors.WHITE,
-    false_color: TensorType["bs":..., "rgb":3] = colors.BLACK,
-) -> TensorType["bs":..., "rgb":3]:
+    image: TensorType,
+    true_color: TensorType = colors.WHITE,
+    false_color: TensorType = colors.BLACK,
+) -> TensorType:
     """Converts a depth image to color for easier analysis.
 
     Args:

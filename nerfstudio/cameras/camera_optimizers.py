@@ -24,8 +24,7 @@ from typing import Type, Union
 
 import torch
 import tyro
-from torch import nn
-from torchtyping import TensorType
+from torch import nn, Tensor
 from typing_extensions import Literal, assert_never
 
 from nerfstudio.cameras.lie_groups import exp_map_SE3, exp_map_SO3xR3
@@ -98,8 +97,8 @@ class CameraOptimizer(nn.Module):
 
     def forward(
         self,
-        indices: TensorType["num_cameras"],
-    ) -> TensorType["num_cameras", 3, 4]:
+        indices: Tensor,
+    ) -> Tensor:
         """Indexing into camera adjustments.
         Args:
             indices: indices of Cameras to optimize.

@@ -25,7 +25,7 @@ import cv2
 import torch
 import torchvision
 from torch.nn.functional import normalize
-from torchtyping import TensorType
+from torch import Tensor as TensorType
 
 import nerfstudio.utils.poses as pose_utils
 from nerfstudio.cameras import camera_utils
@@ -75,42 +75,42 @@ class Cameras(TensorDataclass):
         times: Timestamps for each camera
     """
 
-    camera_to_worlds: TensorType["num_cameras":..., 3, 4]
-    fx: TensorType["num_cameras":..., 1]
-    fy: TensorType["num_cameras":..., 1]
-    cx: TensorType["num_cameras":..., 1]
-    cy: TensorType["num_cameras":..., 1]
-    width: TensorType["num_cameras":..., 1]
-    height: TensorType["num_cameras":..., 1]
-    distortion_params: Optional[TensorType["num_cameras":..., 6]]
-    camera_type: TensorType["num_cameras":..., 1]
-    times: Optional[TensorType["num_cameras", 1]]
+    camera_to_worlds: TensorType
+    fx: TensorType
+    fy: TensorType
+    cx: TensorType
+    cy: TensorType
+    width: TensorType
+    height: TensorType
+    distortion_params: Optional[TensorType]
+    camera_type: TensorType
+    times: Optional[TensorType]
 
     def __init__(
         self,
-        camera_to_worlds: TensorType["batch_c2ws":..., 3, 4],
-        fx: Union[TensorType["batch_fxs":..., 1], float],
-        fy: Union[TensorType["batch_fys":..., 1], float],
-        cx: Union[TensorType["batch_cxs":..., 1], float],
-        cy: Union[TensorType["batch_cys":..., 1], float],
-        width: Optional[Union[TensorType["batch_ws":..., 1], int]] = None,
-        height: Optional[Union[TensorType["batch_hs":..., 1], int]] = None,
-        distortion_params: Optional[TensorType["batch_dist_params":..., 6]] = None,
+        camera_to_worlds: TensorType,
+        fx: Union[TensorType, float],
+        fy: Union[TensorType, float],
+        cx: Union[TensorType, float],
+        cy: Union[TensorType, float],
+        width: Optional[Union[TensorType, int]] = None,
+        height: Optional[Union[TensorType, int]] = None,
+        distortion_params: Optional[TensorType] = None,
         camera_type: Optional[
             Union[
-                TensorType["batch_cam_types":..., 1],
+                TensorType,
                 int,
                 List[CameraType],
                 CameraType,
             ]
         ] = CameraType.PERSPECTIVE,
-        times: Optional[TensorType["num_cameras"]] = None,
+        times: Optional[TensorType] = None,
     ):
         """Initializes the Cameras object.
 
-        Note on Input Tensor Dimensions: All of these tensors have items of dimensions TensorType[3, 4]
-        (in the case of the c2w matrices), TensorType[6] (in the case of distortion params), or
-        TensorType[1] (in the case of the rest of the elements). The dimensions before that are
+        Note on Input Tensor Dimensions: All of these tensors have items of dimensions TensorType
+        (in the case of the c2w matrices), TensorType (in the case of distortion params), or
+        TensorType (in the case of the rest of the elements). The dimensions before that are
         considered the batch dimension of that tensor (batch_c2ws, batch_fxs, etc.). We will broadcast
         all the tensors to be the same batch dimension. This means you can use any combination of the
         input types in the function signature and it won't break. Your batch size for all tensors
@@ -166,9 +166,9 @@ class Cameras(TensorDataclass):
     def _init_get_camera_type(
         self,
         camera_type: Union[
-            TensorType["batch_cam_types":..., 1], TensorType["batch_cam_types":...], int, List[CameraType], CameraType
+            TensorType, TensorType, int, List[CameraType], CameraType
         ],
-    ) -> TensorType["num_cameras":..., 1]:
+    ) -> TensorType:
         """
         Parses the __init__() argument camera_type
 
@@ -207,9 +207,9 @@ class Cameras(TensorDataclass):
 
     def _init_get_height_width(
         self,
-        h_w: Union[TensorType["batch_hws":..., 1], TensorType["batch_hws":...], int, None],
-        c_x_y: TensorType["batch_cxys":...],
-    ) -> TensorType["num_cameras":..., 1]:
+        h_w: Union[TensorType, TensorType, int, None],
+        c_x_y: TensorType,
+    ) -> TensorType:
         """
         Parses the __init__() argument for height or width
 
@@ -254,12 +254,12 @@ class Cameras(TensorDataclass):
         return self.camera_to_worlds.device
 
     @property
-    def image_height(self) -> TensorType["num_cameras":..., 1]:
+    def image_height(self) -> TensorType:
         """Returns the height of the images."""
         return self.height
 
     @property
-    def image_width(self) -> TensorType["num_cameras":..., 1]:
+    def image_width(self) -> TensorType:
         """Returns the height of the images."""
         return self.width
 
@@ -275,7 +275,7 @@ class Cameras(TensorDataclass):
 
     def get_image_coords(
         self, pixel_offset: float = 0.5, index: Optional[Tuple] = None
-    ) -> TensorType["height", "width", 2]:
+    ) -> TensorType:
         """This gets the image coordinates of one of the cameras in this object.
 
         If no index is specified, it will return the maximum possible sized height / width image coordinate map,
@@ -303,10 +303,10 @@ class Cameras(TensorDataclass):
 
     def generate_rays(  # pylint: disable=too-many-statements
         self,
-        camera_indices: Union[TensorType["num_rays":..., "num_cameras_batch_dims"], int],
-        coords: Optional[TensorType["num_rays":..., 2]] = None,
-        camera_opt_to_camera: Optional[TensorType["num_rays":..., 3, 4]] = None,
-        distortion_params_delta: Optional[TensorType["num_rays":..., 6]] = None,
+        camera_indices: Union[TensorType, int],
+        coords: Optional[TensorType] = None,
+        camera_opt_to_camera: Optional[TensorType] = None,
+        distortion_params_delta: Optional[TensorType] = None,
         keep_shape: Optional[bool] = None,
         disable_distortion: bool = False,
     ) -> RayBundle:
@@ -458,10 +458,10 @@ class Cameras(TensorDataclass):
     # pylint: disable=too-many-statements
     def _generate_rays_from_coords(
         self,
-        camera_indices: TensorType["num_rays":..., "num_cameras_batch_dims"],
-        coords: TensorType["num_rays":..., 2],
-        camera_opt_to_camera: Optional[TensorType["num_rays":..., 3, 4]] = None,
-        distortion_params_delta: Optional[TensorType["num_rays":..., 6]] = None,
+        camera_indices: TensorType,
+        coords: TensorType,
+        camera_opt_to_camera: Optional[TensorType] = None,
+        distortion_params_delta: Optional[TensorType] = None,
         disable_distortion: bool = False,
     ) -> RayBundle:
         """Generates rays for the given camera indices and coords where self isn't jagged
@@ -696,7 +696,7 @@ class Cameras(TensorDataclass):
         )
 
     def to_json(
-        self, camera_idx: int, image: Optional[TensorType["height", "width", 2]] = None, max_size: Optional[int] = None
+        self, camera_idx: int, image: Optional[TensorType] = None, max_size: Optional[int] = None
     ) -> Dict:
         """Convert a camera to a json dictionary.
 
@@ -730,7 +730,7 @@ class Cameras(TensorDataclass):
             json_["image"] = str("data:image/jpeg;base64," + base64.b64encode(data).decode("ascii"))
         return json_
 
-    def get_intrinsics_matrices(self) -> TensorType["num_cameras":..., 3, 3]:
+    def get_intrinsics_matrices(self) -> TensorType:
         """Returns the intrinsic matrices for each camera.
 
         Returns:
@@ -745,7 +745,7 @@ class Cameras(TensorDataclass):
         return K
 
     def rescale_output_resolution(
-        self, scaling_factor: Union[TensorType["num_cameras":...], TensorType["num_cameras":..., 1], float, int]
+        self, scaling_factor: Union[TensorType, TensorType, float, int]
     ) -> None:
         """Rescale the output resolution of the cameras.
 

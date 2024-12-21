@@ -20,9 +20,9 @@ Instant-NGP field implementations using tiny-cuda-nn, torch, ....
 from typing import Optional
 
 import torch
+from torch import Tensor as TensorType
 from nerfacc import ContractionType, contract
 from torch.nn.parameter import Parameter
-from torchtyping import TensorType
 
 from nerfstudio.cameras.rays import RaySamples
 from nerfstudio.data.scene_box import SceneBox
@@ -38,7 +38,7 @@ except ImportError:
     pass
 
 
-def get_normalized_directions(directions: TensorType["bs":..., 3]):
+def get_normalized_directions(directions: TensorType):
     """SH encoding must be in the range [0, 1]
 
     Args:
@@ -174,7 +174,7 @@ class TCNNInstantNGPField(Field):
         rgb = self.mlp_head(h).view(*ray_samples.frustums.directions.shape[:-1], -1).to(directions)
         return {FieldHeadNames.RGB: rgb}
 
-    def get_opacity(self, positions: TensorType["bs":..., 3], step_size) -> TensorType["bs":..., 1]:
+    def get_opacity(self, positions: TensorType, step_size) -> TensorType:
         """Returns the opacity for a position. Used primarily by the occupancy grid.
 
         Args:

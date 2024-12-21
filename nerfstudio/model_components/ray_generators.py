@@ -15,8 +15,7 @@
 """
 Ray generator.
 """
-from torch import nn
-from torchtyping import TensorType
+from torch import nn, Tensor
 
 from nerfstudio.cameras.camera_optimizers import CameraOptimizer
 from nerfstudio.cameras.cameras import Cameras
@@ -38,7 +37,7 @@ class RayGenerator(nn.Module):
         self.pose_optimizer = pose_optimizer
         self.image_coords = nn.Parameter(cameras.get_image_coords(), requires_grad=False)
 
-    def forward(self, ray_indices: TensorType["num_rays", 3]) -> RayBundle:
+    def forward(self, ray_indices: Tensor) -> RayBundle:
         """Index into the cameras to generate the rays.
 
         Args:

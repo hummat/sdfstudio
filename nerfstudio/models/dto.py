@@ -25,7 +25,7 @@ import nerfacc
 import torch
 import torch.nn.functional as F
 from torch.nn import Parameter
-from torchtyping import TensorType
+from torch import Tensor as TensorType
 
 from nerfstudio.cameras.rays import RayBundle
 from nerfstudio.engine.callbacks import (

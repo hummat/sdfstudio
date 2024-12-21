@@ -23,9 +23,8 @@ from typing import Optional, Type, Union
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import nn, Tensor as TensorType
 from torch.nn.parameter import Parameter
-from torchtyping import TensorType
 from typing_extensions import Literal
 
 from nerfstudio.cameras.rays import RaySamples
@@ -55,8 +54,8 @@ class LaplaceDensity(nn.Module):  # alpha * Laplace(loc=0, scale=beta).cdf(-sdf)
         self.register_parameter("beta", nn.Parameter(init_val * torch.ones(1), requires_grad=True))
 
     def forward(
-        self, sdf: TensorType["bs":...], beta: Union[TensorType["bs":...], None] = None
-    ) -> TensorType["bs":...]:
+        self, sdf: TensorType, beta: Union[TensorType, None] = None
+    ) -> TensorType:
         """convert sdf value to density value with beta, if beta is missing, then use learable beta"""
 
         if beta is None:
@@ -80,8 +79,8 @@ class SigmoidDensity(nn.Module):  # alpha * Laplace(loc=0, scale=beta).cdf(-sdf)
         self.register_parameter("beta", nn.Parameter(init_val * torch.ones(1), requires_grad=True))
 
     def forward(
-        self, sdf: TensorType["bs":...], beta: Union[TensorType["bs":...], None] = None
-    ) -> TensorType["bs":...]:
+        self, sdf: TensorType, beta: Union[TensorType, None] = None
+    ) -> TensorType:
         """convert sdf value to density value with beta, if beta is missing, then use learable beta"""
 
         if beta is None:

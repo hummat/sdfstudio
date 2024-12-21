@@ -17,10 +17,10 @@
 from dataclasses import dataclass
 
 import torch
-from torchtyping import TensorType
+from torch import Tensor as TensorType
 
 
-def components_from_spherical_harmonics(levels: int, directions: TensorType[..., 3]) -> TensorType[..., "components"]:
+def components_from_spherical_harmonics(levels: int, directions: TensorType) -> TensorType:
     """
     Returns value for each component of spherical harmonics.
 
@@ -93,15 +93,15 @@ class Gaussians:
         cov: Covariance of multivariate Gaussian.
     """
 
-    mean: TensorType[..., "dim"]
-    cov: TensorType[..., "dim", "dim"]
+    mean: TensorType
+    cov: TensorType
 
 
 def compute_3d_gaussian(
-    directions: TensorType[..., 3],
-    means: TensorType[..., 3],
-    dir_variance: TensorType[..., 1],
-    radius_variance: TensorType[..., 1],
+    directions: TensorType,
+    means: TensorType,
+    dir_variance: TensorType,
+    radius_variance: TensorType,
 ) -> Gaussians:
     """Compute guassian along ray.
 
@@ -126,11 +126,11 @@ def compute_3d_gaussian(
 
 
 def cylinder_to_gaussian(
-    origins: TensorType[..., 3],
-    directions: TensorType[..., 3],
-    starts: TensorType[..., 1],
-    ends: TensorType[..., 1],
-    radius: TensorType[..., 1],
+    origins: TensorType,
+    directions: TensorType,
+    starts: TensorType,
+    ends: TensorType,
+    radius: TensorType,
 ) -> Gaussians:
     """Approximates cylinders with a Gaussian distributions.
 
@@ -151,11 +151,11 @@ def cylinder_to_gaussian(
 
 
 def conical_frustum_to_gaussian(
-    origins: TensorType[..., 3],
-    directions: TensorType[..., 3],
-    starts: TensorType[..., 1],
-    ends: TensorType[..., 1],
-    radius: TensorType[..., 1],
+    origins: TensorType,
+    directions: TensorType,
+    starts: TensorType,
+    ends: TensorType,
+    radius: TensorType,
 ) -> Gaussians:
     """Approximates conical frustums with a Gaussian distributions.
 

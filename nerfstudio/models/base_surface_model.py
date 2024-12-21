@@ -25,10 +25,10 @@ from typing import Dict, List, Tuple, Type
 import torch
 import torch.nn.functional as F
 from torch.nn import Parameter
+from torch import Tensor as TensorType
 from torchmetrics.image import PeakSignalNoiseRatio
 from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-from torchtyping import TensorType
 from typing_extensions import Literal
 from nerfstudio.cameras.rays import RayBundle, RaySamples
 from nerfstudio.field_components.encodings import NeRFEncoding

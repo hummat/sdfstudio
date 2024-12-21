@@ -18,8 +18,7 @@
 from typing import Dict, Optional, Tuple
 
 import torch
-from torch import nn
-from torchtyping import TensorType
+from torch import nn, Tensor as TensorType
 
 from nerfstudio.cameras.rays import RaySamples
 from nerfstudio.field_components.encodings import Encoding, Identity

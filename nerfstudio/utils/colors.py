@@ -16,7 +16,6 @@
 from typing import Union
 
 import torch
-from torchtyping import TensorType
 
 WHITE = torch.tensor([1.0, 1.0, 1.0])
 BLACK = torch.tensor([0.0, 0.0, 0.0])
@@ -33,7 +32,7 @@ COLORS_DICT = {
 }
 
 
-def get_color(color: Union[str, list]) -> TensorType[3]:
+def get_color(color: Union[str, list]) -> torch.Tensor:
     """
     Args:
         color (Union[str, list]): Color as a string or a rgb list

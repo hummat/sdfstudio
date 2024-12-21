@@ -18,8 +18,7 @@ Collection of Losses.
 
 import torch
 import torch.nn.functional as F
-from torch import nn
-from torchtyping import TensorType
+from torch import nn, Tensor as TensorType
 from torch.autograd import Variable
 import numpy as np
 from math import exp
@@ -36,12 +35,12 @@ EPS = 1.0e-7
 
 
 def outer(
-    t0_starts: TensorType[..., "num_samples_0"],
-    t0_ends: TensorType[..., "num_samples_0"],
-    t1_starts: TensorType[..., "num_samples_1"],
-    t1_ends: TensorType[..., "num_samples_1"],
-    y1: TensorType[..., "num_samples_1"],
-) -> TensorType[..., "num_samples_0"]:
+    t0_starts: TensorType,
+    t0_ends: TensorType,
+    t1_starts: TensorType,
+    t1_ends: TensorType,
+    y1: TensorType,
+) -> TensorType:
     """Faster version of
 
     https://github.com/kakaobrain/NeRF-Factory/blob/f61bb8744a5cb4820a4d968fb3bfbed777550f4a/src/model/mipnerf360/helper.py#L117
@@ -68,10 +67,10 @@ def outer(
 
 
 def lossfun_outer(
-    t: TensorType[..., "num_samples+1"],
-    w: TensorType[..., "num_samples"],
-    t_env: TensorType[..., "num_samples+1"],
-    w_env: TensorType[..., "num_samples"],
+    t: TensorType,
+    w: TensorType,
+    t_env: TensorType,
+    w_env: TensorType,
 ):
     """
     https://github.com/kakaobrain/NeRF-Factory/blob/f61bb8744a5cb4820a4d968fb3bfbed777550f4a/src/model/mipnerf360/helper.py#L136
@@ -197,9 +196,9 @@ def distortion_loss(weights_list, ray_samples_list):
 
 def nerfstudio_distortion_loss(
     ray_samples: RaySamples,
-    densities: TensorType["bs":..., "num_samples", 1] = None,
-    weights: TensorType["bs":..., "num_samples", 1] = None,
-) -> TensorType["bs":..., 1]:
+    densities: TensorType = None,
+    weights: TensorType = None,
+) -> TensorType:
     """Ray based distortion loss proposed in MipNeRF-360. Returns distortion Loss.
 
     .. math::
@@ -238,9 +237,9 @@ def nerfstudio_distortion_loss(
 
 
 def orientation_loss(
-    weights: TensorType["bs":..., "num_samples", 1],
-    normals: TensorType["bs":..., "num_samples", 3],
-    viewdirs: TensorType["bs":..., 3],
+    weights: TensorType,
+    normals: TensorType,
+    viewdirs: TensorType,
 ):
     """Orientation loss proposed in Ref-NeRF.
     Loss that encourages that all visible normals are facing towards the camera.
@@ -253,9 +252,9 @@ def orientation_loss(
 
 
 def pred_normal_loss(
-    weights: TensorType["bs":..., "num_samples", 1],
-    normals: TensorType["bs":..., "num_samples", 3],
-    pred_normals: TensorType["bs":..., "num_samples", 3],
+    weights: TensorType,
+    normals: TensorType,
+    pred_normals: TensorType,
 ):
     """Loss between normals calculated from density and normals from prediction network."""
     return (weights[..., 0] * (1.0 - torch.sum(normals * pred_normals, dim=-1))).sum(dim=-1)

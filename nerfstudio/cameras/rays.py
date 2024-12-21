@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Tuple
 
 import torch
-from torchtyping import TensorType
+from torch import Tensor as TensorType
 
 from nerfstudio.utils.math import Gaussians, conical_frustum_to_gaussian
 from nerfstudio.utils.tensor_dataclass import TensorDataclass
@@ -30,20 +30,20 @@ from nerfstudio.utils.tensor_dataclass import TensorDataclass
 class Frustums(TensorDataclass):
     """Describes region of space as a frustum."""
 
-    origins: TensorType["bs":..., 3]
+    origins: TensorType
     """xyz coordinate for ray origin."""
-    directions: TensorType["bs":..., 3]
+    directions: TensorType
     """Direction of ray."""
-    starts: TensorType["bs":..., 1]
+    starts: TensorType
     """Where the frustum starts along a ray."""
-    ends: TensorType["bs":..., 1]
+    ends: TensorType
     """Where the frustum ends along a ray."""
-    pixel_area: TensorType["bs":..., 1]
+    pixel_area: TensorType
     """Projected area of pixel a distance 1 away from origin."""
-    offsets: Optional[TensorType["bs":..., 3]] = None
+    offsets: Optional[TensorType] = None
     """Offsets for each sample position"""
 
-    def get_positions(self) -> TensorType[..., 3]:
+    def get_positions(self) -> TensorType:
         """Calulates "center" position of frustum. Not weighted by mass.
 
         Returns:
@@ -58,7 +58,7 @@ class Frustums(TensorDataclass):
         """Sets offsets for this frustum for computing positions"""
         self.offsets = offsets
 
-    def get_start_positions(self) -> TensorType[..., 3]:
+    def get_start_positions(self) -> TensorType:
         """Calulates "start" position of frustum. We use start positions for MonoSDF
         because when we use error bounded sampling, we need to upsample many times.
         It's hard to merge two set of ray samples while keeping the mid points fixed.
@@ -112,23 +112,23 @@ class RaySamples(TensorDataclass):
 
     frustums: Frustums
     """Frustums along ray."""
-    camera_indices: Optional[TensorType["bs":..., 1]] = None
+    camera_indices: Optional[TensorType] = None
     """Camera index."""
-    deltas: Optional[TensorType["bs":..., 1]] = None
+    deltas: Optional[TensorType] = None
     """"width" of each sample."""
-    spacing_starts: Optional[TensorType["bs":..., "num_samples", 1]] = None
+    spacing_starts: Optional[TensorType] = None
     """Start of normalized bin edges along ray [0,1], before warping is applied, ie. linear in disparity sampling."""
-    spacing_ends: Optional[TensorType["bs":..., "num_samples", 1]] = None
+    spacing_ends: Optional[TensorType] = None
     """Start of normalized bin edges along ray [0,1], before warping is applied, ie. linear in disparity sampling."""
     spacing_to_euclidean_fn: Optional[Callable] = None
     """Function to convert bins to euclidean distance."""
-    metadata: Optional[Dict[str, TensorType["bs":..., "latent_dims"]]] = None
+    metadata: Optional[Dict[str, TensorType]] = None
     """addtional information relevant to generating ray samples"""
 
-    times: Optional[TensorType[..., 1]] = None
+    times: Optional[TensorType] = None
     """Times at which rays are sampled"""
 
-    def get_alphas(self, densities: TensorType[..., "num_samples", 1]) -> TensorType[..., "num_samples", 1]:
+    def get_alphas(self, densities: TensorType) -> TensorType:
         """Return weights based on predicted densities
 
         Args:
@@ -143,7 +143,7 @@ class RaySamples(TensorDataclass):
 
         return alphas
 
-    def get_weights(self, densities: TensorType[..., "num_samples", 1]) -> TensorType[..., "num_samples", 1]:
+    def get_weights(self, densities: TensorType) -> TensorType:
         """Return weights based on predicted densities
 
         Args:
@@ -167,8 +167,8 @@ class RaySamples(TensorDataclass):
         return weights
 
     def get_weights_and_transmittance(
-        self, densities: TensorType[..., "num_samples", 1]
-    ) -> Tuple[TensorType[..., "num_samples", 1], TensorType[..., "num_samples", 1]]:
+        self, densities: TensorType
+    ) -> Tuple[TensorType, TensorType]:
         """Return weights and transmittance based on predicted densities
 
         Args:
@@ -191,7 +191,7 @@ class RaySamples(TensorDataclass):
 
         return weights, transmittance
 
-    def get_weights_from_alphas(self, alphas: TensorType[..., "num_samples", 1]) -> TensorType[..., "num_samples", 1]:
+    def get_weights_from_alphas(self, alphas: TensorType) -> TensorType:
         """Return weights based on predicted alphas
 
         Args:
@@ -210,8 +210,8 @@ class RaySamples(TensorDataclass):
         return weights
 
     def get_weights_and_transmittance_from_alphas(
-        self, alphas: TensorType[..., "num_samples", 1]
-    ) -> TensorType[..., "num_samples", 1]:
+        self, alphas: TensorType
+    ) -> TensorType:
         """Return weights based on predicted alphas
 
         Args:
@@ -235,23 +235,23 @@ class RayBundle(TensorDataclass):
     """A bundle of ray parameters."""
 
     # TODO(ethan): make sure the sizes with ... are correct
-    origins: TensorType[..., 3]
+    origins: TensorType
     """Ray origins (XYZ)"""
-    directions: TensorType[..., 3]
+    directions: TensorType
     """Unit ray direction vector"""
-    pixel_area: TensorType[..., 1]
+    pixel_area: TensorType
     """Projected area of pixel a distance 1 away from origin"""
-    directions_norm: Optional[TensorType[..., 1]] = None
+    directions_norm: Optional[TensorType] = None
     """Norm of ray direction vector before normalization"""
-    camera_indices: Optional[TensorType[..., 1]] = None
+    camera_indices: Optional[TensorType] = None
     """Camera indices"""
-    nears: Optional[TensorType[..., 1]] = None
+    nears: Optional[TensorType] = None
     """Distance along ray to start sampling"""
-    fars: Optional[TensorType[..., 1]] = None
+    fars: Optional[TensorType] = None
     """Rays Distance along ray to stop sampling"""
-    metadata: Optional[Dict[str, TensorType["num_rays", "latent_dims"]]] = None
+    metadata: Optional[Dict[str, TensorType]] = None
     """Additional metadata or data needed for interpolation, will mimic shape of rays"""
-    times: Optional[TensorType[..., 1]] = None
+    times: Optional[TensorType] = None
     """Times at which rays are sampled"""
 
     def set_camera_indices(self, camera_index: int) -> None:
@@ -294,10 +294,10 @@ class RayBundle(TensorDataclass):
 
     def get_ray_samples(
         self,
-        bin_starts: TensorType["bs":..., "num_samples", 1],
-        bin_ends: TensorType["bs":..., "num_samples", 1],
-        spacing_starts: Optional[TensorType["bs":..., "num_samples", 1]] = None,
-        spacing_ends: Optional[TensorType["bs":..., "num_samples", 1]] = None,
+        bin_starts: TensorType,
+        bin_ends: TensorType,
+        spacing_starts: Optional[TensorType] = None,
+        spacing_ends: Optional[TensorType] = None,
         spacing_to_euclidean_fn: Optional[Callable] = None,
     ) -> RaySamples:
         """Produces samples for each ray by projection points along the ray direction. Currently samples uniformly.

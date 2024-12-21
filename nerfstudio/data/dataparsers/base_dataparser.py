@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
 import torch
-from torchtyping import TensorType
+from torch import Tensor as TensorType
 
 import nerfstudio.configs.base_config as cfg
 from nerfstudio.cameras.cameras import Cameras
@@ -53,7 +53,7 @@ class DataparserOutputs:
     """Filenames for the images."""
     cameras: Cameras
     """Camera object storing collection of camera information in dataset."""
-    alpha_color: Optional[TensorType[3]] = None
+    alpha_color: Optional[TensorType] = None
     """Color of dataset background."""
     scene_box: SceneBox = SceneBox()
     """Scene box of dataset. Used to bound the scene or provide the scene scale depending on model."""

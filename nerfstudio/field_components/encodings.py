@@ -22,8 +22,7 @@ from typing import Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import nn
-from torchtyping import TensorType
+from torch import nn, Tensor as TensorType
 from typing_extensions import Literal
 
 from nerfstudio.field_components.base_field_component import FieldComponent
@@ -51,7 +50,7 @@ class Encoding(FieldComponent):
         super().__init__(in_dim=in_dim)
 
     @abstractmethod
-    def forward(self, in_tensor: TensorType["bs":..., "input_dim"]) -> TensorType["bs":..., "output_dim"]:
+    def forward(self, in_tensor: TensorType) -> TensorType:
         """Call forward and returns and processed tensor
 
         Args:
@@ -68,7 +67,7 @@ class Identity(Encoding):
             raise ValueError("Input dimension has not been set")
         return self.in_dim
 
-    def forward(self, in_tensor: TensorType["bs":..., "input_dim"]) -> TensorType["bs":..., "output_dim"]:
+    def forward(self, in_tensor: TensorType) -> TensorType:
         return in_tensor
 
 
@@ -92,7 +91,7 @@ class ScalingAndOffset(Encoding):
             raise ValueError("Input dimension has not been set")
         return self.in_dim
 
-    def forward(self, in_tensor: TensorType["bs":..., "input_dim"]) -> TensorType["bs":..., "output_dim"]:
+    def forward(self, in_tensor: TensorType) -> TensorType:
         return self.scaling * in_tensor + self.offset
 
 
@@ -166,9 +165,9 @@ class NeRFEncoding(Encoding):
 
     def forward(
         self,
-        in_tensor: TensorType["bs":..., "input_dim"],
-        covs: Optional[TensorType["bs":..., "input_dim", "input_dim"]] = None,
-    ) -> TensorType["bs":..., "output_dim"]:
+        in_tensor: TensorType,
+        covs: Optional[TensorType] = None,
+    ) -> TensorType:
         """Calculates NeRF encoding. If covariances are provided the encodings will be integrated as proposed
             in mip-NeRF.
 
@@ -236,9 +235,9 @@ class RFFEncoding(Encoding):
 
     def forward(
         self,
-        in_tensor: TensorType["bs":..., "input_dim"],
-        covs: Optional[TensorType["bs":..., "input_dim", "input_dim"]] = None,
-    ) -> TensorType["bs":..., "output_dim"]:
+        in_tensor: TensorType,
+        covs: Optional[TensorType] = None,
+    ) -> TensorType:
         """Calculates RFF encoding. If covariances are provided the encodings will be integrated as proposed
             in mip-NeRF.
 
@@ -335,7 +334,7 @@ class HashEncoding(Encoding):
     def get_out_dim(self) -> int:
         return self.num_levels * self.features_per_level
 
-    def hash_fn(self, in_tensor: TensorType["bs":..., "num_levels", 3]) -> TensorType["bs":..., "num_levels"]:
+    def hash_fn(self, in_tensor: TensorType) -> TensorType:
         """Returns hash tensor using method described in Instant-NGP
 
         Args:
@@ -354,7 +353,7 @@ class HashEncoding(Encoding):
         x += self.hash_offset.to(x.device)
         return x
 
-    def pytorch_fwd(self, in_tensor: TensorType["bs":..., "input_dim"]) -> TensorType["bs":..., "output_dim"]:
+    def pytorch_fwd(self, in_tensor: TensorType) -> TensorType:
         """Forward pass using pytorch. Significantly slower than TCNN implementation."""
 
         assert in_tensor.shape[-1] == 3
@@ -397,7 +396,7 @@ class HashEncoding(Encoding):
 
         return torch.flatten(encoded_value, start_dim=-2, end_dim=-1)  # [..., num_levels * features_per_level]
 
-    def forward(self, in_tensor: TensorType["bs":..., "input_dim"]) -> TensorType["bs":..., "output_dim"]:
+    def forward(self, in_tensor: TensorType) -> TensorType:
         if TCNN_EXISTS and self.tcnn_encoding is not None:
             return self.tcnn_encoding(in_tensor)
         return self.pytorch_fwd(in_tensor)
@@ -424,7 +423,7 @@ class TensorCPEncoding(Encoding):
     def get_out_dim(self) -> int:
         return self.num_components
 
-    def forward(self, in_tensor: TensorType["bs":..., "input_dim"]) -> TensorType["bs":..., "output_dim"]:
+    def forward(self, in_tensor: TensorType) -> TensorType:
         line_coord = torch.stack([in_tensor[..., 2], in_tensor[..., 1], in_tensor[..., 0]])  # [3, ...]
         line_coord = torch.stack([torch.zeros_like(line_coord), line_coord], dim=-1)  # [3, ...., 2]
 
@@ -462,8 +461,8 @@ class TensorVMEncoding(Encoding):
         init_scale: Initialization scale.
     """
 
-    plane_coef: TensorType[3, "num_components", "resolution", "resolution"]
-    line_coef: TensorType[3, "num_components", "resolution", 1]
+    plane_coef: TensorType
+    line_coef: TensorType
 
     def __init__(
         self,
@@ -542,7 +541,7 @@ class TensorVMEncoding(Encoding):
             f_02 = f_0 * offset[..., 0:1] + f_2 * (1 - offset[..., 0:1])
             return f_02
 
-    def forward(self, in_tensor: TensorType["bs":..., "input_dim"]) -> TensorType["bs":..., "output_dim"]:
+    def forward(self, in_tensor: TensorType) -> TensorType:
         """Compute encoding for each position in in_positions
 
         Args:
@@ -610,7 +609,7 @@ class SHEncoding(Encoding):
         return self.levels**2
 
     @torch.no_grad()
-    def forward(self, in_tensor: TensorType["bs":..., "input_dim"]) -> TensorType["bs":..., "output_dim"]:
+    def forward(self, in_tensor: TensorType) -> TensorType:
         return components_from_spherical_harmonics(levels=self.levels, directions=in_tensor)
 
 
@@ -665,7 +664,7 @@ class PeriodicVolumeEncoding(Encoding):
     def get_out_dim(self) -> int:
         return self.num_levels * self.features_per_level
 
-    def hash_fn(self, in_tensor: TensorType["bs":..., "num_levels", 3]) -> TensorType["bs":..., "num_levels"]:
+    def hash_fn(self, in_tensor: TensorType) -> TensorType:
         """Returns hash tensor using method described in Instant-NGP
 
         Args:
@@ -686,7 +685,7 @@ class PeriodicVolumeEncoding(Encoding):
 
         return x.long()
 
-    def pytorch_fwd(self, in_tensor: TensorType["bs":..., "input_dim"]) -> TensorType["bs":..., "output_dim"]:
+    def pytorch_fwd(self, in_tensor: TensorType) -> TensorType:
         """Forward pass using pytorch. Significantly slower than TCNN implementation."""
 
         assert in_tensor.shape[-1] == 3
@@ -732,7 +731,7 @@ class PeriodicVolumeEncoding(Encoding):
 
         return torch.flatten(encoded_value, start_dim=-2, end_dim=-1)  # [..., num_levels * features_per_level]
 
-    def forward(self, in_tensor: TensorType["bs":..., "input_dim"]) -> TensorType["bs":..., "output_dim"]:
+    def forward(self, in_tensor: TensorType) -> TensorType:
         return self.pytorch_fwd(in_tensor)
 
     def get_total_variation_loss(self):

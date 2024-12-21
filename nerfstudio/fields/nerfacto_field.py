@@ -21,9 +21,8 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 import torch
-from torch import nn
+from torch import nn, Tensor as TensorType
 from torch.nn.parameter import Parameter
-from torchtyping import TensorType
 
 from nerfstudio.cameras.rays import RaySamples
 from nerfstudio.data.scene_box import SceneBox
@@ -55,7 +54,7 @@ except ImportError:
     pass
 
 
-def get_normalized_directions(directions: TensorType["bs":..., 3]):
+def get_normalized_directions(directions: TensorType):
     """SH encoding must be in the range [0, 1]
 
     Args:

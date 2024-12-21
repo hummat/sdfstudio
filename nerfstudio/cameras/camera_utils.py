@@ -21,7 +21,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
-from torchtyping import TensorType
+from torch import Tensor
 from typing_extensions import Literal
 
 _EPS = np.finfo(float).eps * 4.0
@@ -182,7 +182,7 @@ def get_interpolated_poses(pose_a, pose_b, steps: int = 10) -> List[float]:
     return poses_ab
 
 
-def get_interpolated_k(k_a, k_b, steps: int = 10) -> TensorType[3, 4]:
+def get_interpolated_k(k_a, k_b, steps: int = 10) -> Tensor:
     """
     Returns interpolated path between two camera poses with specified number of steps.
 
@@ -200,10 +200,10 @@ def get_interpolated_k(k_a, k_b, steps: int = 10) -> TensorType[3, 4]:
 
 
 def get_interpolated_poses_many(
-    poses: TensorType["num_poses", 3, 4],
-    Ks: TensorType["num_poses", 3, 3],
+    poses: Tensor,
+    Ks: Tensor,
     steps_per_transition=10,
-) -> Tuple[TensorType["num_poses", 3, 4], TensorType["num_poses", 3, 3]]:
+) -> Tuple[Tensor, Tensor]:
     """Return interpolated poses for many camera poses.
 
     Args:
@@ -225,12 +225,12 @@ def get_interpolated_poses_many(
     return torch.stack(traj, dim=0), torch.stack(Ks, dim=0)
 
 
-def normalize(x) -> TensorType[...]:
+def normalize(x) -> Tensor:
     """Returns a normalized vector."""
     return x / torch.linalg.norm(x)
 
 
-def viewmatrix(lookat, up, pos) -> TensorType[...]:
+def viewmatrix(lookat, up, pos) -> Tensor:
     """Returns a camera transformation matrix.
 
     Args:
@@ -256,7 +256,7 @@ def get_distortion_params(
     k4: float = 0.0,
     p1: float = 0.0,
     p2: float = 0.0,
-) -> TensorType[...]:
+) -> Tensor:
     """Returns a distortion parameters matrix.
 
     Args:
@@ -379,7 +379,7 @@ def radial_and_tangential_undistort(
     return torch.stack([x, y], dim=-1)
 
 
-def rotation_matrix(a: TensorType[3], b: TensorType[3]) -> TensorType[3, 3]:
+def rotation_matrix(a: Tensor, b: Tensor) -> Tensor:
     """Compute the rotation matrix that rotates vector a to vector b.
 
     Args:
@@ -408,8 +408,8 @@ def rotation_matrix(a: TensorType[3], b: TensorType[3]) -> TensorType[3, 3]:
 
 
 def auto_orient_and_center_poses(
-    poses: TensorType["num_poses":..., 4, 4], method: Literal["pca", "up", "none"] = "up", center_poses: bool = True
-) -> TensorType["num_poses":..., 3, 4]:
+    poses: Tensor, method: Literal["pca", "up", "none"] = "up", center_poses: bool = True
+) -> Tensor:
     """Orients and centers the poses. We provide two methods for orientation: pca and up.
 
     pca: Orient the poses so that the principal component of the points is aligned with the axes.

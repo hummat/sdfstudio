@@ -21,8 +21,7 @@ from typing import Dict, Optional, Tuple, Type
 from dataclasses import dataclass, field
 
 import torch
-from torch import nn
-from torchtyping import TensorType
+from torch import nn, Tensor as TensorType
 
 from nerfstudio.configs.base_config import InstantiateConfig
 from nerfstudio.cameras.rays import Frustums, RaySamples
@@ -45,7 +44,7 @@ class Field(nn.Module):
         self._sample_locations = None
         self._density_before_activation = None
 
-    def density_fn(self, positions: TensorType["bs":..., 3]) -> TensorType["bs":..., 1]:
+    def density_fn(self, positions: TensorType) -> TensorType:
         """Returns only the density. Used primarily with the density grid.
 
         Args:
@@ -65,14 +64,14 @@ class Field(nn.Module):
         return density
 
     @abstractmethod
-    def get_density(self, ray_samples: RaySamples) -> Tuple[TensorType[..., 1], TensorType[..., "num_features"]]:
+    def get_density(self, ray_samples: RaySamples) -> Tuple[TensorType, TensorType]:
         """Computes and returns the densities. Returns a tensor of densities and a tensor of features.
 
         Args:
             ray_samples: Samples locations to compute density.
         """
 
-    def get_normals(self) -> TensorType[..., 3]:
+    def get_normals(self) -> TensorType:
         """Computes and returns a tensor of normals.
 
         Args:

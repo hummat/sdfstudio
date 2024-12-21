@@ -18,9 +18,8 @@
 from typing import Optional
 
 import torch
-from torch import nn
+from torch import nn, Tensor as TensorType
 from torch.nn.parameter import Parameter
-from torchtyping import TensorType
 
 from nerfstudio.cameras.rays import RaySamples
 from nerfstudio.data.scene_box import SceneBox

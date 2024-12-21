@@ -18,8 +18,7 @@ from enum import Enum
 from typing import Any, Dict, Optional, Tuple
 
 import torch
-from torch import nn
-from torchtyping import TensorType
+from torch import nn, Tensor as TensorType
 
 from nerfstudio.field_components.encodings import Encoding, NeRFEncoding
 from nerfstudio.field_components.mlp import MLP
@@ -28,7 +27,7 @@ from nerfstudio.field_components.mlp import MLP
 class TemporalDistortion(nn.Module):
     """Apply spatial distortions as a function of time"""
 
-    def forward(self, positions: TensorType["bs":..., 3], times: Optional[TensorType[1]]) -> TensorType["bs":..., 3]:
+    def forward(self, positions: TensorType, times: Optional[TensorType]) -> TensorType:
         """
         Args:
             positions: Samples to translate as a function of time

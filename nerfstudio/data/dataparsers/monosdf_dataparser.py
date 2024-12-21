@@ -25,7 +25,7 @@ import numpy as np
 import torch
 from PIL import Image
 from rich.console import Console
-from torchtyping import TensorType
+from torch import Tensor as TensorType
 
 from nerfstudio.cameras.cameras import Cameras, CameraType
 from nerfstudio.data.dataparsers.base_dataparser import (
@@ -60,7 +60,7 @@ def get_src_from_pairs(
     return {"src_imgs": all_imgs[src_idx], "src_idxs": src_idx}
 
 
-def get_image(image_filename, alpha_color=None) -> TensorType["image_height", "image_width", "num_channels"]:
+def get_image(image_filename, alpha_color=None) -> TensorType:
     """Returns a 3 channel image.
 
     Args:

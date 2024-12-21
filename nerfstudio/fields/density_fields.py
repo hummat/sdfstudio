@@ -21,8 +21,8 @@ from typing import Optional
 
 import numpy as np
 import torch
+from torch import Tensor as TensorType
 from torch.nn.parameter import Parameter
-from torchtyping import TensorType
 
 from nerfstudio.cameras.rays import RaySamples
 from nerfstudio.data.scene_box import SceneBox
