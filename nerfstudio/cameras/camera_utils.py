@@ -443,10 +443,9 @@ def focus_of_attention(poses: Tensor, initial_focus: Tensor) -> Tensor:
     return focus_pt
 
 
-def auto_orient_and_center_poses(
-    poses: Tensor, method: Literal["pca", "up", "vertical", "none"] = "vertical",
-    center_method: Literal["poses", "focus", "none"] = "poses",
-) -> Tensor:
+def auto_orient_and_center_poses(poses: Tensor,
+                                 method: Literal["pca", "up", "vertical", "none"] = "up",
+                                 center_method: Literal["poses", "focus", "none"] = "poses") -> Tensor:
     """Orients and centers the poses. We provide two methods for orientation: pca and up.
 
     pca: Orient the poses so that the principal directions of the camera centers are aligned

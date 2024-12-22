@@ -28,6 +28,7 @@ import numpy as np
 import open3d as o3d
 import pymeshlab
 import torch
+from torch import Tensor as TensorType
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -36,7 +37,6 @@ from rich.progress import (
     TextColumn,
     TimeRemainingColumn,
 )
-from torchtyping import TensorType
 
 from nerfstudio.cameras.cameras import Cameras
 from nerfstudio.configs.base_config import Config  # pylint: disable=unused-import
@@ -50,13 +50,13 @@ CONSOLE = Console(width=120)
 class Mesh:
     """Class for a mesh."""
 
-    vertices: TensorType["num_verts", 3]
+    vertices: TensorType
     """Vertices of the mesh."""
-    faces: TensorType["num_faces", 3]
+    faces: TensorType
     """Faces of the mesh."""
-    normals: TensorType["num_verts", 3]
+    normals: TensorType
     """Normals of the mesh."""
-    colors: Optional[TensorType["num_verts", 3]] = None
+    colors: Optional[TensorType] = None
     """Colors of the mesh."""
 
 

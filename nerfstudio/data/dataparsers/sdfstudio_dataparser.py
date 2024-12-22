@@ -309,8 +309,7 @@ class SDFStudio(DataParser):
 
             camera_to_worlds, transform = camera_utils.auto_orient_and_center_poses(
                 camera_to_worlds,
-                method="vertical",
-                center_method="none"
+                method=orientation_method
             )
 
             # we should also transform normal accordingly
