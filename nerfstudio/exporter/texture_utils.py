@@ -27,9 +27,9 @@ from typing import Optional, Tuple
 import mediapy as media
 import numpy as np
 import torch
+from torch import Tensor as TensorType
 import xatlas
 from rich.console import Console
-from torchtyping import TensorType
 from typing_extensions import Literal
 
 from nerfstudio.cameras.rays import RayBundle
@@ -41,8 +41,8 @@ CONSOLE = Console(width=120)
 
 
 def get_parallelogram_area(
-    p: TensorType["bs":..., 2], v0: TensorType["bs":..., 2], v1: TensorType["bs":..., 2]
-) -> TensorType["bs":...]:
+    p: TensorType, v0: TensorType, v1: TensorType
+) -> TensorType:
     """Given three 2D points, return the area defined by the parallelogram. I.e., 2x the triangle area.
 
     Args:
@@ -76,9 +76,9 @@ def get_texture_image(num_pixels_w, num_pixels_h, device):
 
 
 def unwrap_mesh_per_uv_triangle(
-    vertices: TensorType["num_verts", 3],
-    faces: TensorType["num_faces", 3],
-    vertex_normals: TensorType["num_verts", 3],
+    vertices: TensorType,
+    faces: TensorType,
+    vertex_normals: TensorType,
     px_per_uv_triangle: int,
 ):
     """Unwrap a mesh to a UV texture. This is done by making a grid of rectangles in the UV texture map
@@ -208,15 +208,15 @@ def unwrap_mesh_per_uv_triangle(
 
 
 def unwrap_mesh_with_xatlas(
-    vertices: TensorType["num_verts", 3],
-    faces: TensorType["num_faces", 3, torch.long],
-    vertex_normals: TensorType["num_verts", 3],
+    vertices: TensorType,
+    faces: TensorType,
+    vertex_normals: TensorType,
     num_pixels_per_side=1024,
     num_faces_per_barycentric_chunk=10,
 ) -> Tuple[
-    TensorType["num_faces", 3, 2],
-    TensorType["num_pixels", "num_pixels", 3],
-    TensorType["num_pixels", "num_pixels", "num_pixels"],
+    TensorType,
+    TensorType,
+    TensorType,
 ]:
     """Unwrap a mesh using xatlas. We use xatlas to unwrap the mesh with UV coordinates.
     Then we rasterize the mesh with a square pattern. We interpolate the XYZ and normal
