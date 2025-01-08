@@ -287,7 +287,10 @@ class NeuSFactoModel(NeuSModel):
         if self.config.background_model != "none":
             field_outputs = self.forward_background_field_and_merge(ray_samples, field_outputs)
 
-        weights = ray_samples.get_weights_from_alphas(field_outputs[FieldHeadNames.ALPHA])
+        alphas = field_outputs[FieldHeadNames.ALPHA]
+        if not torch.isfinite(alphas).all():
+            print(f"WARNING: alphas are not finite: {alphas}")
+        weights = ray_samples.get_weights_from_alphas(alphas)
 
         weights_list.append(weights)
         ray_samples_list.append(ray_samples)
