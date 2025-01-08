@@ -601,9 +601,21 @@ class SDFField(Field):
             else:
                 specular_linear = 0.5 * rgb
 
-            # TODO linear to srgb?
+            # Adapted from https://github.com/google-research/multinerf/blob/main/internal/image.py#L48
+            def linear_to_srgb(linear: TensorType,
+                               eps: Optional[float] = None) -> TensorType:
+                """Assumes `linear` is in [0, 1], see https://en.wikipedia.org/wiki/SRGB."""
+                if eps is None:
+                    eps = torch.finfo(linear.dtype).eps
+                srgb0 = 323 / 25 * linear
+                srgb1 = (211 * torch.maximum(torch.tensor(eps), linear) ** (5 / 12) - 11) / 200
+                return torch.where(linear <= 0.0031308, srgb0, srgb1)
+
             # Combine specular and diffuse components and tone map to sRGB.
-            rgb = torch.clamp(specular_linear + diffuse_linear, 0.0, 1.0)
+            # specular_linear = diffuse_linear
+            rgb = specular_linear + diffuse_linear
+            # rgb = linear_to_srgb(rgb)
+            rgb = torch.clamp(rgb, 0.0, 1.0)
 
         # Apply padding, mapping color to [-rgb_padding, 1+rgb_padding].
         rgb = rgb * (1 + 2 * self.config.rgb_padding) - self.config.rgb_padding
