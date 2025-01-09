@@ -127,6 +127,7 @@ def blur_stepfun(x, y, r):
     return x_r, y_r
 
 
+@torch.amp.autocast(device_type='cuda', enabled=False)
 def interlevel_loss_zip(weights_list, ray_samples_list):
     """Calculates the proposal loss in the Zip-NeRF paper."""
     c = ray_samples_to_sdist(ray_samples_list[-1]).detach()
@@ -140,9 +141,6 @@ def interlevel_loss_zip(weights_list, ray_samples_list):
         # 2. step blur with different r
         x_r, y_r = blur_stepfun(c, w_normalize, r)
         y_r = torch.clip(y_r, min=0)
-        if not torch.isfinite(y_r).all():
-            print(f"WARNING: y_r is not finite {y_r}")
-        # assert (y_r >= 0.0).all()
 
         # 3. accumulate
         y_cum = torch.cumsum((y_r[:, 1:] + y_r[:, :-1]) * 0.5 * (x_r[:, 1:] - x_r[:, :-1]), dim=-1)
