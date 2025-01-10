@@ -412,6 +412,16 @@ def export_textured_mesh(
     texture_image = outputs["rgb"].cpu().numpy()
     media.write_image(str(output_dir / "material_0.png"), texture_image)
 
+    # save the normal image
+    normal_image = outputs["normal"].cpu().numpy()
+    normal_image = (normal_image + 1.0) / 2.0
+    media.write_image(str(output_dir / "normal_0.png"), normal_image)
+
+    # save direction image
+    # direction_image = -directions.cpu().numpy()
+    # direction_image = (direction_image + 1.0) / 2.0
+    # media.write_image(str(output_dir / "direction.png"), direction_image)
+
     CONSOLE.print("Writing relevant OBJ information to files...")
     # create the .mtl file
     lines_mtl = [

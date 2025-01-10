@@ -18,6 +18,7 @@ Field for compound nerf model, adds scene contraction and image embeddings to in
 
 import math
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Optional, Type, Union
 
 import numpy as np
@@ -162,6 +163,8 @@ class SDFFieldConfig(FieldConfig):
     """whether to use reflections as in ref-nerf"""
     use_n_dot_v: bool = False
     """whether to use n dot v as in ref-nerf"""
+    enable_pred_roughness: bool = False
+    """whether to predict roughness"""
     rgb_padding: float = 0.001
     """Padding added to the RGB outputs"""
     off_axis: bool = False
@@ -326,6 +329,8 @@ class SDFField(Field):
             self.diffuse_color_pred = nn.Linear(self.config.geo_feat_dim, 3)
         if self.config.use_specular_tint:
             self.specular_tint_pred = nn.Linear(self.config.geo_feat_dim, 3)
+        if self.config.enable_pred_roughness:
+            self.roughness_pred = nn.Linear(self.config.geo_feat_dim, 1)
 
         # view dependent color network
         dims = [self.config.hidden_dim_color for _ in range(self.config.num_layers_color)]
@@ -537,6 +542,8 @@ class SDFField(Field):
             raw_rgb_diffuse = self.diffuse_color_pred(geo_features.view(-1, self.config.geo_feat_dim))
         if self.config.use_specular_tint:
             tint = self.sigmoid(self.specular_tint_pred(geo_features.view(-1, self.config.geo_feat_dim)))
+        if self.config.enable_pred_roughness:
+            roughness = self.softplus(self.roughness_pred(geo_features.view(-1, self.config.geo_feat_dim)) - 1)
 
         normals = F.normalize(gradients, p=2, dim=-1)
 
@@ -603,20 +610,15 @@ class SDFField(Field):
                 specular_linear = 0.5 * rgb
 
             # Adapted from https://github.com/google-research/multinerf/blob/main/internal/image.py#L48
-            def linear_to_srgb(linear: TensorType,
-                               eps: Optional[float] = None) -> TensorType:
-                """Assumes `linear` is in [0, 1], see https://en.wikipedia.org/wiki/SRGB."""
+            def linear_to_srgb(linear: TensorType, eps: Optional[float] = None) -> TensorType:
                 if eps is None:
                     eps = torch.finfo(linear.dtype).eps
-                srgb0 = 323 / 25 * linear
-                srgb1 = (211 * torch.maximum(torch.tensor(eps), linear) ** (5 / 12) - 11) / 200
+                srgb0 = (323 / 25) * linear
+                srgb1 = (211 * torch.clamp_min(linear, eps).pow(5 / 12) - 11) / 200
                 return torch.where(linear <= 0.0031308, srgb0, srgb1)
 
             # Combine specular and diffuse components and tone map to sRGB.
-            # specular_linear = diffuse_linear
-            rgb = specular_linear + diffuse_linear
-            # rgb = linear_to_srgb(rgb)
-            rgb = torch.clamp(rgb, 0.0, 1.0)
+            rgb = torch.clamp(linear_to_srgb(specular_linear + diffuse_linear), 0.0, 1.0)
 
         # Apply padding, mapping color to [-rgb_padding, 1+rgb_padding].
         rgb = rgb * (1 + 2 * self.config.rgb_padding) - self.config.rgb_padding
