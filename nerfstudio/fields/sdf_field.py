@@ -600,6 +600,14 @@ class SDFField(Field):
 
         rgb = self.sigmoid(h)
 
+        # Adapted from https://github.com/google-research/multinerf/blob/main/internal/image.py#L48
+        def linear_to_srgb(linear: TensorType, eps: Optional[float] = None) -> TensorType:
+            if eps is None:
+                eps = torch.finfo(linear.dtype).eps
+            srgb0 = (323 / 25) * linear
+            srgb1 = (211 * torch.clamp_min(linear, eps).pow(5 / 12) - 11) / 200
+            return torch.where(linear <= 0.0031308, srgb0, srgb1)
+
         if self.config.use_diffuse_color:
             # Initialize linear diffuse color around 0.25, so that the combined
             # linear color is initialized around 0.5.
@@ -609,23 +617,22 @@ class SDFField(Field):
             else:
                 specular_linear = 0.5 * rgb
 
-            # Adapted from https://github.com/google-research/multinerf/blob/main/internal/image.py#L48
-            def linear_to_srgb(linear: TensorType, eps: Optional[float] = None) -> TensorType:
-                if eps is None:
-                    eps = torch.finfo(linear.dtype).eps
-                srgb0 = (323 / 25) * linear
-                srgb1 = (211 * torch.clamp_min(linear, eps).pow(5 / 12) - 11) / 200
-                return torch.where(linear <= 0.0031308, srgb0, srgb1)
-
             # Combine specular and diffuse components and tone map to sRGB.
-            rgb = torch.clamp(linear_to_srgb(specular_linear + diffuse_linear), 0.0, 1.0)
+            rgb = linear_to_srgb(specular_linear + diffuse_linear).clamp(0, 1)
 
         # Apply padding, mapping color to [-rgb_padding, 1+rgb_padding].
         rgb = rgb * (1 + 2 * self.config.rgb_padding) - self.config.rgb_padding
-
+        if self.config.use_diffuse_color:
+            return (rgb,
+                    linear_to_srgb(2 * diffuse_linear).clamp(0, 1),
+                    linear_to_srgb(specular_linear).clamp(0, 1),
+                    linear_to_srgb(tint).clamp(0, 1))
         return rgb
 
-    def get_outputs(self, ray_samples: RaySamples, return_alphas=False, return_occupancy=False):
+    def get_outputs(self,
+                    ray_samples: RaySamples,
+                    return_alphas: bool = False,
+                    return_occupancy: bool = False):
         """compute output of ray samples"""
         if ray_samples.camera_indices is None:
             raise AttributeError("Camera indices are not provided.")
@@ -669,6 +676,13 @@ class SDFField(Field):
             sampled_sdf = None
 
         rgb = self.get_colors(inputs, directions_flat, gradients, geo_feature, camera_indices)
+        if isinstance(rgb, tuple):
+            rgb, diffuse, specular, tint = rgb
+            outputs.update({
+                "diffuse": diffuse.view(*ray_samples.frustums.directions.shape[:-1], -1),
+                "specular": specular.view(*ray_samples.frustums.directions.shape[:-1], -1),
+                "tint": tint.view(*ray_samples.frustums.directions.shape[:-1], -1)
+            })
 
         density = self.laplace_density(sdf)
 

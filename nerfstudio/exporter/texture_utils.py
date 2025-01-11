@@ -364,7 +364,6 @@ def export_textured_mesh(
         texture_coordinates, origins, directions = unwrap_mesh_with_xatlas(
             vertices, faces, vertex_normals, num_pixels_per_side=num_pixels_per_side
         )
-        print("\033[A\033[A")
         CONSOLE.print("[bold green]:white_check_mark: Unwrapped mesh with xatlas method")
     elif unwrap_method == "custom":
         CONSOLE.print("Unwrapping mesh with custom method...")
@@ -404,13 +403,26 @@ def export_textured_mesh(
         fars=fars,
     )
 
-    CONSOLE.print("Creating texture image by rendering with NeRF...")
+    CONSOLE.print("Rendering texture and normals... this may take a while.")
     with torch.no_grad():
         outputs = pipeline.model.get_outputs_for_camera_ray_bundle(camera_ray_bundle)
+    CONSOLE.print("[bold green]:white_check_mark: Rendered texture and normals")
 
     # save the texture image
     texture_image = outputs["rgb"].cpu().numpy()
     media.write_image(str(output_dir / "material_0.png"), texture_image)
+
+    if "diffuse" in outputs:
+        diffuse_image = outputs["diffuse"].cpu().numpy()
+        media.write_image(str(output_dir / "diffuse_0.png"), diffuse_image)
+
+    if "specular" in outputs:
+        specular_image = outputs["specular"].cpu().numpy()
+        media.write_image(str(output_dir / "specular_0.png"), specular_image)
+
+    if "tint" in outputs:
+        tint_image = outputs["tint"].cpu().numpy()
+        media.write_image(str(output_dir / "tint_0.png"), tint_image)
 
     # save the normal image
     normal_image = outputs["normal"].cpu().numpy()

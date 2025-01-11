@@ -296,8 +296,15 @@ class SurfaceModel(Model):
         field_outputs = samples_and_field_outputs["field_outputs"]
         ray_samples = samples_and_field_outputs["ray_samples"]
         weights = samples_and_field_outputs["weights"]
+        outputs = dict()
 
         rgb = self.renderer_rgb(rgb=field_outputs[FieldHeadNames.RGB], weights=weights)
+        if "diffuse" in field_outputs:
+            outputs["diffuse"] = self.renderer_rgb(rgb=field_outputs["diffuse"], weights=weights)
+        if "specular" in field_outputs:
+            outputs["specular"] = self.renderer_rgb(rgb=field_outputs["specular"], weights=weights)
+        if "tint" in field_outputs:
+            outputs["tint"] = self.renderer_rgb(rgb=field_outputs["tint"], weights=weights)
         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
         # the rendered depth is point-to-point distance and we should convert to depth
         depth = depth / ray_bundle.directions_norm
@@ -325,10 +332,10 @@ class SurfaceModel(Model):
 
             rgb_bg = self.renderer_rgb(rgb=field_outputs_bg[FieldHeadNames.RGB], weights=weights_bg)
 
-            # merge background color to forgound color
+            # merge background color to foreground color
             rgb = rgb + bg_transmittance * rgb_bg
 
-        outputs = {
+        outputs.update({
             "rgb": rgb,
             "accumulation": accumulation,
             "depth": depth,
@@ -338,7 +345,7 @@ class SurfaceModel(Model):
                 ray_samples.frustums.get_start_positions()
             ),  # used for creating visiblity mask
             "directions_norm": ray_bundle.directions_norm,  # used to scale z_vals for free space and sdf loss
-        }
+        })
 
         if self.training:
             grad_points = field_outputs[FieldHeadNames.GRADIENT]

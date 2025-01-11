@@ -39,8 +39,8 @@ class TextureMesh:
     """The method to use for unwrapping the mesh."""
     num_pixels_per_side: int = 2048
     """If using xatlas for unwrapping, the pixels per side of the texture image."""
-    target_num_faces: Optional[int] = 50000
-    """Target number of faces for the mesh to texture."""
+    target_num_faces: Optional[int | float] = 50000
+    """Target number of faces for the mesh to texture. If < 1, it is a fraction of the original mesh faces."""
 
     def main(self) -> None:
         """Export textured mesh"""

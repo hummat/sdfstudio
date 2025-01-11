@@ -161,9 +161,14 @@ def get_surface_sliding(
         if simplify_mesh:
             ms = pymeshlab.MeshSet()
             ms.load_new_mesh(filename)
-
-            print("simply mesh")
-            ms.meshing_decimation_quadric_edge_collapse(targetfacenum=2000000)
+            ms.meshing_decimation_quadric_edge_collapse(targetfacenum=2_000_000,
+                                                        qualitythr=1.0,
+                                                        preserveboundary=True,
+                                                        preservenormal=True,
+                                                        preservetopology=True,
+                                                        planarquadric=True,
+                                                        planarweight=1e-20,
+                                                        autoclean=True)
             ms.save_current_mesh(filename_simplify, save_face_color=False)
 
 
@@ -335,7 +340,12 @@ def get_surface_sliding_with_contraction(
         if simplify_mesh:
             ms = pymeshlab.MeshSet()
             ms.load_new_mesh(filename)
-
-            print("simply mesh")
-            ms.meshing_decimation_quadric_edge_collapse(targetfacenum=2000000)
+            ms.meshing_decimation_quadric_edge_collapse(targetfacenum=2_000_000,
+                                                        qualitythr=1.0,
+                                                        preserveboundary=True,
+                                                        preservenormal=True,
+                                                        preservetopology=True,
+                                                        planarquadric=True,
+                                                        planarweight=1e-20,
+                                                        autoclean=True)
             ms.save_current_mesh(filename_simplify, save_face_color=False)
