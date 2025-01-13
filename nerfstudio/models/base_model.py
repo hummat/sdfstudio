@@ -181,13 +181,11 @@ class Model(nn.Module):
                 end_idx = i + num_rays_per_chunk
                 ray_bundle = camera_ray_bundle.get_row_major_sliced_ray_bundle(start_idx, end_idx)
                 outputs = self.forward(ray_bundle=ray_bundle)
-                for output_name, output in outputs.items():  # type: ignore
-                    outputs_lists[output_name].append(output)
+                for output_name, output in outputs.items():
+                    if torch.is_tensor(output):
+                        outputs_lists[output_name].append(output.cpu())
         outputs = {}
         for output_name, outputs_list in outputs_lists.items():
-            if not torch.is_tensor(outputs_list[0]):
-                # TODO: handle lists of tensors as well
-                continue
             outputs[output_name] = torch.cat(outputs_list).view(image_height, image_width, -1)  # type: ignore
         return outputs
 

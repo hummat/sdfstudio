@@ -45,7 +45,7 @@ from nerfstudio.data.dataparsers.phototourism_dataparser import (
     PhototourismDataParserConfig,
 )
 from nerfstudio.data.dataparsers.sdfstudio_dataparser import SDFStudioDataParserConfig
-from nerfstudio.engine.optimizers import AdamOptimizerConfig, RAdamOptimizerConfig, AdamWOptimizerConfig
+from nerfstudio.engine.optimizers import AdamWOptimizerConfig, RAdamWOptimizerConfig, AdamWOptimizerConfig
 from nerfstudio.engine.schedulers import (
     ExponentialSchedulerConfig,
     MultiStepSchedulerConfig,
@@ -124,7 +124,7 @@ method_configs["bakedangelo"] = Config(
             train_num_rays_per_batch=8192,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=BakedAngeloModelConfig(
@@ -164,7 +164,7 @@ method_configs["bakedangelo"] = Config(
     ),
     optimizers={
         "proposal_networks": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=1000_000),
         },
         "fields": {
@@ -197,7 +197,7 @@ method_configs["neuralangelo"] = Config(
             train_num_rays_per_batch=512,
             eval_num_rays_per_batch=512,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NeuralangeloModelConfig(
@@ -259,7 +259,7 @@ method_configs["bakedsdf"] = Config(
             train_num_rays_per_batch=8192,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=BakedSDFModelConfig(
@@ -293,15 +293,15 @@ method_configs["bakedsdf"] = Config(
     ),
     optimizers={
         "proposal_networks": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=250000),
         },
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=250000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-3, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=250000),
         },
     },
@@ -326,7 +326,7 @@ method_configs["bakedsdf-mlp"] = Config(
             train_num_rays_per_batch=4096,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=BakedSDFModelConfig(
@@ -361,15 +361,15 @@ method_configs["bakedsdf-mlp"] = Config(
     ),
     optimizers={
         "proposal_networks": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=250000),
         },
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=0.002, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=0.002, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=250000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-3, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=250000),
         },
     },
@@ -394,7 +394,7 @@ method_configs["neus-facto-angelo"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NeuSFactoModelConfig(
@@ -433,11 +433,11 @@ method_configs["neus-facto-angelo"] = Config(
     ),
     optimizers={
         "proposal_networks": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=1000_000),
         },
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-3, eps=1e-15),
             "scheduler": MultiStepWarmupSchedulerConfig(warm_up_end=5000, milestones=[600_000, 800_000], gamma=0.1),
         },
         "field_background": {
@@ -465,7 +465,7 @@ method_configs["neus-facto"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NeuSFactoModelConfig(
@@ -484,15 +484,15 @@ method_configs["neus-facto"] = Config(
     ),
     optimizers={
         "proposal_networks": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=20000),
         },
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=20000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=20000),
         },
     },
@@ -516,7 +516,7 @@ method_configs["neus-facto-bigmlp"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NeuSFactoModelConfig(
@@ -525,15 +525,15 @@ method_configs["neus-facto-bigmlp"] = Config(
     ),
     optimizers={
         "proposal_networks": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=100000),
         },
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-3, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=100000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=100000),
         },
     },
@@ -557,20 +557,20 @@ method_configs["geo-volsdf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=VolSDFModelConfig(patch_warp_loss_mult=0.1, eval_num_rays_per_chunk=1024),
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(
                 max_steps=1000000
             ),  # set max_steps to a large value so it never step and we will use the last_lr form the pretrained model
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": ExponentialSchedulerConfig(decay_rate=0.1, max_steps=200000),
         },
     },
@@ -594,18 +594,18 @@ method_configs["monosdf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=VolSDFModelConfig(mono_depth_loss_mult=0.1, mono_normal_loss_mult=0.05, eval_num_rays_per_chunk=1024),
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": ExponentialSchedulerConfig(decay_rate=0.1, max_steps=200000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": ExponentialSchedulerConfig(decay_rate=0.1, max_steps=200000),
         },
     },
@@ -629,18 +629,18 @@ method_configs["volsdf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=VolSDFModelConfig(eval_num_rays_per_chunk=1024),
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": ExponentialSchedulerConfig(decay_rate=0.1, max_steps=100000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": ExponentialSchedulerConfig(decay_rate=0.1, max_steps=100000),
         },
     },
@@ -664,18 +664,18 @@ method_configs["geo-neus"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NeuSModelConfig(patch_warp_loss_mult=0.1, eval_num_rays_per_chunk=1024),
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
     },
@@ -699,18 +699,18 @@ method_configs["mono-neus"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NeuSModelConfig(mono_depth_loss_mult=0.1, mono_normal_loss_mult=0.05, eval_num_rays_per_chunk=1024),
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
     },
@@ -734,18 +734,18 @@ method_configs["neus"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NeuSModelConfig(eval_num_rays_per_chunk=1024),
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
     },
@@ -769,18 +769,18 @@ method_configs["unisurf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=UniSurfModelConfig(eval_num_rays_per_chunk=1024),
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
     },
@@ -804,18 +804,18 @@ method_configs["mono-unisurf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=UniSurfModelConfig(mono_depth_loss_mult=0.1, mono_normal_loss_mult=0.05, eval_num_rays_per_chunk=1024),
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
     },
@@ -839,18 +839,18 @@ method_configs["geo-unisurf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=UniSurfModelConfig(patch_warp_loss_mult=0.1, eval_num_rays_per_chunk=1024),
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=5000, learning_rate_alpha=0.05, max_steps=300000),
         },
     },
@@ -874,22 +874,22 @@ method_configs["dto"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=2048,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=DtoOModelConfig(eval_num_rays_per_chunk=1 << 10),
     ),
     optimizers={
         "proposal_networks": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=300000),
         },
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=300000),
         },
         "occupancy_field": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=300000),
         },
     },
@@ -913,7 +913,7 @@ method_configs["neusW"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=2048,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NeuralReconWModelConfig(
@@ -922,11 +922,11 @@ method_configs["neusW"] = Config(
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-3, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=300000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=300000),
         },
     },
@@ -950,18 +950,18 @@ method_configs["neus-acc"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NeuSAccModelConfig(eval_num_rays_per_chunk=1024),
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=20000),
         },
         "field_background": {
-            "optimizer": AdamOptimizerConfig(lr=5e-4, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=5e-4, eps=1e-15),
             "scheduler": NeuSSchedulerConfig(warm_up_end=500, learning_rate_alpha=0.05, max_steps=20000),
         },
     },
@@ -981,18 +981,18 @@ method_configs["nerfacto"] = Config(
             train_num_rays_per_batch=4096,
             eval_num_rays_per_batch=4096,
             camera_optimizer=CameraOptimizerConfig(
-                mode="SO3xR3", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="SO3xR3", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NerfactoModelConfig(eval_num_rays_per_chunk=1 << 15),
     ),
     optimizers={
         "proposal_networks": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=300000),
         },
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=300000),
         },
     },
@@ -1016,7 +1016,7 @@ method_configs["instant-ngp"] = Config(
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": MultiStepSchedulerConfig(max_steps=20000),
         }
     },
@@ -1038,7 +1038,7 @@ method_configs["mipnerf"] = Config(
     ),
     optimizers={
         "fields": {
-            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
+            "optimizer": RAdamWOptimizerConfig(lr=5e-4, eps=1e-08),
             "scheduler": None,
         }
     },
@@ -1057,11 +1057,11 @@ method_configs["semantic-nerfw"] = Config(
     ),
     optimizers={
         "proposal_networks": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": None,
         },
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": None,
         },
     },
@@ -1079,11 +1079,11 @@ method_configs["vanilla-nerf"] = Config(
     ),
     optimizers={
         "fields": {
-            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
+            "optimizer": RAdamWOptimizerConfig(lr=5e-4, eps=1e-08),
             "scheduler": None,
         },
         "temporal_distortion": {
-            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
+            "optimizer": RAdamWOptimizerConfig(lr=5e-4, eps=1e-08),
             "scheduler": None,
         },
     },
@@ -1100,11 +1100,11 @@ method_configs["tensorf"] = Config(
     ),
     optimizers={
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=0.001),
+            "optimizer": AdamWOptimizerConfig(lr=0.001),
             "scheduler": SchedulerConfig(lr_final=0.0001, max_steps=30000),
         },
         "encodings": {
-            "optimizer": AdamOptimizerConfig(lr=0.02),
+            "optimizer": AdamWOptimizerConfig(lr=0.02),
             "scheduler": SchedulerConfig(lr_final=0.002, max_steps=30000),
         },
     },
@@ -1122,11 +1122,11 @@ method_configs["dnerf"] = Config(
     ),
     optimizers={
         "fields": {
-            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
+            "optimizer": RAdamWOptimizerConfig(lr=5e-4, eps=1e-08),
             "scheduler": None,
         },
         "temporal_distortion": {
-            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
+            "optimizer": RAdamWOptimizerConfig(lr=5e-4, eps=1e-08),
             "scheduler": None,
         },
     },
@@ -1143,18 +1143,18 @@ method_configs["phototourism"] = Config(
             train_num_rays_per_batch=4096,
             eval_num_rays_per_batch=4096,
             camera_optimizer=CameraOptimizerConfig(
-                mode="SO3xR3", optimizer=AdamOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="SO3xR3", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
             ),
         ),
         model=NerfactoModelConfig(eval_num_rays_per_chunk=1 << 15),
     ),
     optimizers={
         "proposal_networks": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": None,
         },
         "fields": {
-            "optimizer": AdamOptimizerConfig(lr=1e-2, eps=1e-15),
+            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
             "scheduler": None,
         },
     },
