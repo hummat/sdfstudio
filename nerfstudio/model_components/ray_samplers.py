@@ -22,7 +22,7 @@ from typing import Callable, List, Optional, Tuple, Union
 
 import nerfacc
 import torch
-from nerfacc import OccupancyGrid
+from nerfacc import OccGridEstimator as OccupancyGrid
 from torch import nn
 from torch import Tensor as TensorType
 

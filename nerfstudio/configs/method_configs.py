@@ -56,7 +56,6 @@ from nerfstudio.field_components.temporal_distortions import TemporalDistortionK
 from nerfstudio.fields.sdf_field import SDFFieldConfig
 from nerfstudio.models.bakedsdf import BakedSDFModelConfig
 from nerfstudio.models.dto import DtoOModelConfig
-from nerfstudio.models.instant_ngp import InstantNGPModelConfig
 from nerfstudio.models.mipnerf import MipNerfModel
 from nerfstudio.models.nerfacto import NerfactoModelConfig
 from nerfstudio.models.neuralangelo import NeuralangeloModelConfig
@@ -79,7 +78,6 @@ from nerfstudio.pipelines.dynamic_batch import DynamicBatchPipelineConfig
 method_configs: Dict[str, Config] = {}
 descriptions = {
     "nerfacto": "Recommended real-time model tuned for real captures. This model will be continually updated.",
-    "instant-ngp": "Implementation of Instant-NGP. Recommended real-time model for bounded synthetic data.",
     "mipnerf": "High quality model for bounded scenes. (slow)",
     "semantic-nerfw": "Predicts semantic segmentations and filters out transient objects.",
     "vanilla-nerf": "Original NeRF model. (slow)",
@@ -180,7 +178,6 @@ method_configs["bakedangelo"] = Config(
     vis="viewer",
 )
 
-
 method_configs["neuralangelo"] = Config(
     method_name="neuralangelo",
     trainer=TrainerConfig(
@@ -241,7 +238,6 @@ method_configs["neuralangelo"] = Config(
     viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
     vis="viewer",
 )
-
 
 method_configs["bakedsdf"] = Config(
     method_name="bakedsdf",
@@ -309,7 +305,6 @@ method_configs["bakedsdf"] = Config(
     vis="viewer",
 )
 
-
 method_configs["bakedsdf-mlp"] = Config(
     method_name="bakedsdf-mlp",
     trainer=TrainerConfig(
@@ -376,7 +371,6 @@ method_configs["bakedsdf-mlp"] = Config(
     viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
     vis="viewer",
 )
-
 
 method_configs["neus-facto-angelo"] = Config(
     method_name="neus-facto-angelo",
@@ -1000,29 +994,6 @@ method_configs["nerfacto"] = Config(
     vis="viewer",
 )
 
-method_configs["instant-ngp"] = Config(
-    method_name="instant-ngp",
-    trainer=TrainerConfig(
-        steps_per_eval_batch=5000,
-        steps_per_eval_image=5000,
-        steps_per_save=20000,
-        max_num_iterations=20001,
-        mixed_precision=True,
-        steps_per_eval_all_images=20000,
-    ),
-    pipeline=DynamicBatchPipelineConfig(
-        datamanager=VanillaDataManagerConfig(dataparser=NerfstudioDataParserConfig(), train_num_rays_per_batch=8192),
-        model=InstantNGPModelConfig(render_step_size=0.005, eval_num_rays_per_chunk=8192),
-    ),
-    optimizers={
-        "fields": {
-            "optimizer": AdamWOptimizerConfig(lr=1e-2, eps=1e-15),
-            "scheduler": MultiStepSchedulerConfig(max_steps=20000),
-        }
-    },
-    viewer=ViewerConfig(num_rays_per_chunk=64000),
-    vis="viewer",
-)
 
 method_configs["mipnerf"] = Config(
     method_name="mipnerf",
