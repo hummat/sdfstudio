@@ -312,8 +312,7 @@ class SDFField(Field):
                     torch.nn.init.normal_(lin.weight, 0.0, np.sqrt(2) / np.sqrt(out_dim))
 
             if self.config.weight_norm:
-                lin = nn.utils.weight_norm(lin)
-                # print("=======", lin.weight.shape)
+                lin = nn.utils.parametrizations.weight_norm(lin)
             setattr(self, "glin" + str(l), lin)
 
         # laplace function for transform sdf to density from VolSDF
@@ -362,8 +361,7 @@ class SDFField(Field):
             torch.nn.init.zeros_(lin.bias.data)
 
             if self.config.weight_norm:
-                lin = nn.utils.weight_norm(lin)
-            # print("=======", lin.weight.shape)
+                lin = nn.utils.parametrizations.weight_norm(lin)
             setattr(self, "clin" + str(l), lin)
 
         self.softplus = nn.Softplus(beta=100)

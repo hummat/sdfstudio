@@ -25,7 +25,7 @@ from typing import Dict, List, Tuple
 
 import torch
 from rich.console import Console
-from torch.cuda.amp.grad_scaler import GradScaler
+from torch.amp.grad_scaler import GradScaler
 from typing_extensions import Literal
 
 from nerfstudio.configs import base_config as cfg

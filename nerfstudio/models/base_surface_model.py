@@ -482,26 +482,23 @@ class SurfaceModel(Model):
     def get_metrics_dict(self, outputs, batch) -> Dict:
         metrics_dict = {}
         image = batch["image"].to(self.device)
-        metrics_dict["psnr"] = self.psnr(outputs["rgb"], image)
+        rgb = outputs["rgb"].to(self.device)
+        metrics_dict["psnr"] = self.psnr(rgb, image)
         return metrics_dict
 
     def get_image_metrics_and_images(
         self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
     ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
         image = batch["image"].to(self.device)
-        rgb = outputs["rgb"]
-        acc = colormaps.apply_colormap(outputs["accumulation"])
-
-        normal = outputs["normal"]
-        # don't need to normalize here
-        # normal = torch.nn.functional.normalize(normal, p=2, dim=-1)
-        normal = (normal + 1.0) / 2.0
+        rgb = outputs["rgb"].to(self.device)
+        normal = (outputs["normal"].to(self.device) + 1.0) / 2.0
+        acc = colormaps.apply_colormap(outputs["accumulation"].to(self.device))
 
         combined_rgb = torch.cat([image, rgb], dim=1)
         combined_acc = torch.cat([acc], dim=1)
         if "depth" in batch:
+            depth_pred = outputs["depth"].to(self.device)
             depth_gt = batch["depth"].to(self.device)
-            depth_pred = outputs["depth"]
 
             # align to predicted depth and normalize
             scale, shift = compute_scale_and_shift(
@@ -513,8 +510,8 @@ class SurfaceModel(Model):
             combined_depth = colormaps.apply_depth_colormap(combined_depth)
         else:
             depth = colormaps.apply_depth_colormap(
-                outputs["depth"],
-                accumulation=outputs["accumulation"],
+                outputs["depth"].to(self.device),
+                accumulation=outputs["accumulation"].to(self.device),
             )
             combined_depth = torch.cat([depth], dim=1)
 

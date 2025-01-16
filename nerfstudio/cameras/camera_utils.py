@@ -243,8 +243,8 @@ def viewmatrix(lookat, up, pos) -> Tensor:
     """
     vec2 = normalize(lookat)
     vec1_avg = normalize(up)
-    vec0 = normalize(torch.cross(vec1_avg, vec2))
-    vec1 = normalize(torch.cross(vec2, vec0))
+    vec0 = normalize(torch.linalg.cross(vec1_avg, vec2))
+    vec1 = normalize(torch.linalg.cross(vec2, vec0))
     m = torch.stack([vec0, vec1, vec2, pos], 1)
     return m
 
@@ -390,7 +390,7 @@ def rotation_matrix(a: Tensor, b: Tensor) -> Tensor:
     """
     a = a / torch.linalg.norm(a)
     b = b / torch.linalg.norm(b)
-    v = torch.cross(a, b)
+    v = torch.linalg.cross(a, b)
     c = torch.dot(a, b)
     # If vectors are exactly opposite, we add a little noise to one of them
     if c < -1 + 1e-8:
