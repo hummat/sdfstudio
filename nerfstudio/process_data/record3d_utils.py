@@ -1,4 +1,4 @@
-# Copyright 2022 The Nerfstudio Team. All rights reserved.
+# Copyright 2022 the Regents of the University of California, Nerfstudio Team and contributors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,26 +16,32 @@
 
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import numpy as np
-from rich.console import Console
+import open3d as o3d
 from scipy.spatial.transform import Rotation
 
 from nerfstudio.process_data.process_data_utils import CAMERA_MODELS
 from nerfstudio.utils import io
 
-CONSOLE = Console(width=120)
 
-
-def record3d_to_json(images_paths: List[Path], metadata_path: Path, output_dir: Path, indices: np.ndarray) -> int:
+def record3d_to_json(
+    images_paths: List[Path],
+    metadata_path: Path,
+    output_dir: Path,
+    indices: np.ndarray,
+    ply_dirname: Optional[Path],
+    voxel_size: Optional[float],
+) -> int:
     """Converts Record3D's metadata and image paths to a JSON file.
 
     Args:
-        images_paths: list if image paths.
+        images_paths: list of image paths.
         metadata_path: Path to the Record3D metadata JSON file.
         output_dir: Path to the output directory.
         indices: Indices to sample the metadata_path. Should be the same length as images_paths.
+        ply_dirname: Path to the directory of exported ply files.
 
     Returns:
         The number of registered images.
@@ -46,6 +52,8 @@ def record3d_to_json(images_paths: List[Path], metadata_path: Path, output_dir: 
     metadata_dict = io.load_from_json(metadata_path)
 
     poses_data = np.array(metadata_dict["poses"])  # (N, 3, 4)
+    # NB: Record3D / scipy use "scalar-last" format quaternions (x y z w)
+    # https://fzheng.me/2017/11/12/quaternion_conventions_en/
     camera_to_worlds = np.concatenate(
         [Rotation.from_quat(poses_data[:, :4]).as_matrix(), poses_data[:, 4:, None]],
         axis=-1,
@@ -87,6 +95,23 @@ def record3d_to_json(images_paths: List[Path], metadata_path: Path, output_dir: 
     }
 
     out["frames"] = frames
+
+    # If .ply directory exists add the sparse point cloud for gsplat point initialization
+    if ply_dirname is not None:
+        assert ply_dirname.exists(), f"Directory not found: {ply_dirname}"
+        assert ply_dirname.is_dir(), f"Path given is not a directory: {ply_dirname}"
+
+        # Create sparce point cloud
+        pcd = o3d.geometry.PointCloud()
+        for ply_filename in ply_dirname.iterdir():
+            temp_pcd = o3d.io.read_point_cloud(str(ply_filename))
+            pcd += temp_pcd.voxel_down_sample(voxel_size=voxel_size)
+
+        # Save point cloud
+        points3D = np.asarray(pcd.points)
+        pcd.points = o3d.utility.Vector3dVector(points3D)
+        o3d.io.write_point_cloud(str(output_dir / "sparse_pc.ply"), pcd, write_ascii=True)
+        out["ply_file_path"] = "sparse_pc.ply"
 
     with open(output_dir / "transforms.json", "w", encoding="utf-8") as f:
         json.dump(out, f, indent=4)

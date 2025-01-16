@@ -1,403 +1,46 @@
+# Copyright 2022 the Regents of the University of California, Nerfstudio Team and contributors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #!/usr/bin/env python
 """Processes a video or image sequence to a nerfstudio compatible dataset."""
 
-
-import json
 import sys
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import tyro
-from rich.console import Console
-from typing_extensions import Annotated, Literal
+from typing_extensions import Annotated
 
 from nerfstudio.process_data import (
-    colmap_utils,
-    hloc_utils,
-    insta360_utils,
     metashape_utils,
+    odm_utils,
     polycam_utils,
     process_data_utils,
+    realitycapture_utils,
     record3d_utils,
 )
-from nerfstudio.process_data.process_data_utils import CAMERA_MODELS
-from nerfstudio.utils import install_checks
-
-CONSOLE = Console(width=120)
-
-
-@dataclass
-class ProcessImages:
-    """Process images into a nerfstudio dataset.
-
-    This script does the following:
-
-    1. Scales images to a specified size.
-    2. Calculates the camera poses for each image using `COLMAP <https://colmap.github.io/>`_.
-    """
-
-    data: Path
-    """Path the data, either a video file or a directory of images."""
-    output_dir: Path
-    """Path to the output directory."""
-    camera_type: Literal["perspective", "fisheye"] = "perspective"
-    """Camera model to use."""
-    matching_method: Literal["exhaustive", "sequential", "vocab_tree"] = "vocab_tree"
-    """Feature matching method to use. Vocab tree is recommended for a balance of speed and
-        accuracy. Exhaustive is slower but more accurate. Sequential is faster but should only be used for videos."""
-    sfm_tool: Literal["any", "colmap", "hloc"] = "any"
-    """Structure from motion tool to use. Colmap will use sift features, hloc can use many modern methods
-       such as superpoint features and superglue matcher"""
-    feature_type: Literal[
-        "any",
-        "sift",
-        "superpoint",
-        "superpoint_aachen",
-        "superpoint_max",
-        "superpoint_inloc",
-        "r2d2",
-        "d2net-ss",
-        "sosnet",
-        "disk",
-    ] = "any"
-    """Type of feature to use."""
-    matcher_type: Literal[
-        "any", "NN", "superglue", "superglue-fast", "NN-superpoint", "NN-ratio", "NN-mutual", "adalam"
-    ] = "any"
-    """Matching algorithm."""
-    num_downscales: int = 3
-    """Number of times to downscale the images. Downscales by 2 each time. For example a value of 3
-        will downscale the images by 2x, 4x, and 8x."""
-    skip_colmap: bool = False
-    """If True, skips COLMAP and generates transforms.json if possible."""
-    colmap_cmd: str = "colmap"
-    """How to call the COLMAP executable."""
-    gpu: bool = True
-    """If True, use GPU."""
-    verbose: bool = False
-    """If True, print extra logging."""
-
-    def main(self) -> None:
-        """Process images into a nerfstudio dataset."""
-        install_checks.check_ffmpeg_installed()
-        install_checks.check_colmap_installed()
-
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        image_dir = self.output_dir / "images"
-        image_dir.mkdir(parents=True, exist_ok=True)
-
-        summary_log = []
-
-        # Copy images to output directory
-        num_frames = process_data_utils.copy_images(self.data, image_dir=image_dir, verbose=self.verbose)
-        summary_log.append(f"Starting with {num_frames} images")
-
-        # Downscale images
-        summary_log.append(process_data_utils.downscale_images(image_dir, self.num_downscales, verbose=self.verbose))
-
-        # Run COLMAP
-        colmap_dir = self.output_dir / "colmap"
-        if not self.skip_colmap:
-            colmap_dir.mkdir(parents=True, exist_ok=True)
-
-            (sfm_tool, feature_type, matcher_type) = process_data_utils.find_tool_feature_matcher_combination(
-                self.sfm_tool, self.feature_type, self.matcher_type
-            )
-
-            if sfm_tool == "colmap":
-                colmap_utils.run_colmap(
-                    image_dir=image_dir,
-                    colmap_dir=colmap_dir,
-                    camera_model=CAMERA_MODELS[self.camera_type],
-                    gpu=self.gpu,
-                    verbose=self.verbose,
-                    matching_method=self.matching_method,
-                    colmap_cmd=self.colmap_cmd,
-                )
-            elif sfm_tool == "hloc":
-                hloc_utils.run_hloc(
-                    image_dir=image_dir,
-                    colmap_dir=colmap_dir,
-                    camera_model=CAMERA_MODELS[self.camera_type],
-                    verbose=self.verbose,
-                    matching_method=self.matching_method,
-                    feature_type=feature_type,
-                    matcher_type=matcher_type,
-                )
-            else:
-                CONSOLE.log("[bold red]Invalid combination of sfm_tool, feature_type, and matcher_type, exiting")
-                sys.exit(1)
-
-        # Save transforms.json
-        if (colmap_dir / "sparse" / "0" / "cameras.bin").exists():
-            with CONSOLE.status("[bold yellow]Saving results to transforms.json", spinner="balloon"):
-                num_matched_frames = colmap_utils.colmap_to_json(
-                    cameras_path=colmap_dir / "sparse" / "0" / "cameras.bin",
-                    images_path=colmap_dir / "sparse" / "0" / "images.bin",
-                    output_dir=self.output_dir,
-                    camera_model=CAMERA_MODELS[self.camera_type],
-                )
-                summary_log.append(f"Colmap matched {num_matched_frames} images")
-            summary_log.append(colmap_utils.get_matching_summary(num_frames, num_matched_frames))
-        else:
-            CONSOLE.log("[bold yellow]Warning: could not find existing COLMAP results. Not generating transforms.json")
-
-        CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
-
-        for summary in summary_log:
-            CONSOLE.print(summary, justify="center")
-        CONSOLE.rule()
+from nerfstudio.process_data.colmap_converter_to_nerfstudio_dataset import BaseConverterToNerfstudioDataset
+from nerfstudio.process_data.images_to_nerfstudio_dataset import ImagesToNerfstudioDataset
+from nerfstudio.process_data.video_to_nerfstudio_dataset import VideoToNerfstudioDataset
+from nerfstudio.utils.rich_utils import CONSOLE
 
 
 @dataclass
-class ProcessVideo:
-    """Process videos into a nerfstudio dataset.
-
-    This script does the following:
-
-    1. Converts the video into images.
-    2. Scales images to a specified size.
-    3. Calculates the camera poses for each image using `COLMAP <https://colmap.github.io/>`_.
-    """
-
-    data: Path
-    """Path the data, either a video file or a directory of images."""
-    output_dir: Path
-    """Path to the output directory."""
-    num_frames_target: int = 300
-    """Target number of frames to use for the dataset, results may not be exact."""
-    camera_type: Literal["perspective", "fisheye"] = "perspective"
-    """Camera model to use."""
-    matching_method: Literal["exhaustive", "sequential", "vocab_tree"] = "vocab_tree"
-    """Feature matching method to use. Vocab tree is recommended for a balance of speed and
-        accuracy. Exhaustive is slower but more accurate. Sequential is faster but should only be used for videos."""
-    sfm_tool: Literal["any", "colmap", "hloc"] = "any"
-    """Structure from motion tool to use. Colmap will use sift features, hloc can use many modern methods
-       such as superpoint features and superglue matcher"""
-    feature_type: Literal[
-        "any",
-        "sift",
-        "superpoint",
-        "superpoint_aachen",
-        "superpoint_max",
-        "superpoint_inloc",
-        "r2d2",
-        "d2net-ss",
-        "sosnet",
-        "disk",
-    ] = "any"
-    """Type of feature to use."""
-    matcher_type: Literal[
-        "any", "NN", "superglue", "superglue-fast", "NN-superpoint", "NN-ratio", "NN-mutual", "adalam"
-    ] = "any"
-    """Matching algorithm."""
-    num_downscales: int = 3
-    """Number of times to downscale the images. Downscales by 2 each time. For example a value of 3
-        will downscale the images by 2x, 4x, and 8x."""
-    skip_colmap: bool = False
-    """If True, skips COLMAP and generates transforms.json if possible."""
-    colmap_cmd: str = "colmap"
-    """How to call the COLMAP executable."""
-    gpu: bool = True
-    """If True, use GPU."""
-    verbose: bool = False
-    """If True, print extra logging."""
-
-    def main(self) -> None:
-        """Process video into a nerfstudio dataset."""
-        install_checks.check_ffmpeg_installed()
-        install_checks.check_colmap_installed()
-
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        image_dir = self.output_dir / "images"
-        image_dir.mkdir(parents=True, exist_ok=True)
-
-        # Convert video to images
-        summary_log, num_extracted_frames = process_data_utils.convert_video_to_images(
-            self.data, image_dir=image_dir, num_frames_target=self.num_frames_target, verbose=self.verbose
-        )
-
-        # Downscale images
-        summary_log.append(process_data_utils.downscale_images(image_dir, self.num_downscales, verbose=self.verbose))
-
-        # Run Colmap
-        colmap_dir = self.output_dir / "colmap"
-        if not self.skip_colmap:
-            colmap_dir.mkdir(parents=True, exist_ok=True)
-
-            (sfm_tool, feature_type, matcher_type) = process_data_utils.find_tool_feature_matcher_combination(
-                self.sfm_tool, self.feature_type, self.matcher_type
-            )
-
-            if sfm_tool == "colmap":
-                colmap_utils.run_colmap(
-                    image_dir=image_dir,
-                    colmap_dir=colmap_dir,
-                    camera_model=CAMERA_MODELS[self.camera_type],
-                    gpu=self.gpu,
-                    verbose=self.verbose,
-                    matching_method=self.matching_method,
-                    colmap_cmd=self.colmap_cmd,
-                )
-            elif sfm_tool == "hloc":
-                hloc_utils.run_hloc(
-                    image_dir=image_dir,
-                    colmap_dir=colmap_dir,
-                    camera_model=CAMERA_MODELS[self.camera_type],
-                    verbose=self.verbose,
-                    matching_method=self.matching_method,
-                    feature_type=feature_type,
-                    matcher_type=matcher_type,
-                )
-            else:
-                CONSOLE.log("[bold red]Invalid combination of sfm_tool, feature_type, and matcher_type, exiting")
-                sys.exit(1)
-
-        # Save transforms.json
-        if (colmap_dir / "sparse" / "0" / "cameras.bin").exists():
-            with CONSOLE.status("[bold yellow]Saving results to transforms.json", spinner="balloon"):
-                num_matched_frames = colmap_utils.colmap_to_json(
-                    cameras_path=colmap_dir / "sparse" / "0" / "cameras.bin",
-                    images_path=colmap_dir / "sparse" / "0" / "images.bin",
-                    output_dir=self.output_dir,
-                    camera_model=CAMERA_MODELS[self.camera_type],
-                )
-                summary_log.append(f"Colmap matched {num_matched_frames} images")
-            summary_log.append(colmap_utils.get_matching_summary(num_extracted_frames, num_matched_frames))
-        else:
-            CONSOLE.log("[bold yellow]Warning: could not find existing COLMAP results. Not generating transforms.json")
-
-        CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
-
-        for summary in summary_log:
-            CONSOLE.print(summary, justify="center")
-        CONSOLE.rule()
-
-
-@dataclass
-class ProcessInsta360:
-    """Process Insta360 videos into a nerfstudio dataset. Currently this uses a center crop of the raw data
-    so data at the extreme edges of the video will be lost.
-
-    Expects data from a 2 camera Insta360, single or >2 camera models will not work.
-    (tested with Insta360 One X2)
-
-    This script does the following:
-
-    1. Converts the videos into images.
-    2. Scales images to a specified size.
-    3. Calculates the camera poses for each image using `COLMAP <https://colmap.github.io/>`_.
-    """
-
-    data: Path
-    """Path the data, It should be one of the 3 .insv files saved with each capture (Any work)."""
-    output_dir: Path
-    """Path to the output directory."""
-    num_frames_target: int = 400
-    """Target number of frames to use for the dataset, results may not be exact."""
-    matching_method: Literal["exhaustive", "sequential", "vocab_tree"] = "vocab_tree"
-    """Feature matching method to use. Vocab tree is recommended for a balance of speed and
-        accuracy. Exhaustive is slower but more accurate. Sequential is faster but should only be used for videos."""
-    num_downscales: int = 3
-    """Number of times to downscale the images. Downscales by 2 each time. For example a value of 3
-        will downscale the images by 2x, 4x, and 8x."""
-    skip_colmap: bool = False
-    """If True, skips COLMAP and generates transforms.json if possible."""
-    colmap_cmd: str = "colmap"
-    """How to call the COLMAP executable."""
-    gpu: bool = True
-    """If True, use GPU."""
-    verbose: bool = False
-    """If True, print extra logging."""
-
-    def main(self) -> None:
-        """Process video into a nerfstudio dataset."""
-        install_checks.check_ffmpeg_installed()
-        install_checks.check_colmap_installed()
-
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        image_dir = self.output_dir / "images"
-        image_dir.mkdir(parents=True, exist_ok=True)
-
-        filename_back, filename_front = insta360_utils.get_insta360_filenames(self.data)
-
-        if not filename_back.exists():
-            raise FileNotFoundError(f"Could not find {filename_back}")
-
-        ffprobe_cmd = f"ffprobe -v quiet -print_format json -show_streams -select_streams v:0 {filename_back}"
-
-        ffprobe_output = process_data_utils.run_command(ffprobe_cmd)
-
-        assert ffprobe_output is not None
-        ffprobe_decoded = json.loads(ffprobe_output)
-
-        width, height = ffprobe_decoded["streams"][0]["width"], ffprobe_decoded["streams"][0]["height"]
-
-        summary_log, num_extracted_frames = [], 0
-
-        if width / height == 1:
-            if not filename_front.exists():
-                raise FileNotFoundError(f"Could not find {filename_front}")
-            # Convert video to images
-            summary_log, num_extracted_frames = insta360_utils.convert_insta360_to_images(
-                video_front=filename_front,
-                video_back=filename_back,
-                image_dir=image_dir,
-                num_frames_target=self.num_frames_target,
-                verbose=self.verbose,
-            )
-        else:
-            summary_log, num_extracted_frames = insta360_utils.convert_insta360_single_file_to_images(
-                video=filename_back,
-                image_dir=image_dir,
-                num_frames_target=self.num_frames_target,
-                verbose=self.verbose,
-            )
-
-        # Downscale images
-        summary_log.append(process_data_utils.downscale_images(image_dir, self.num_downscales, verbose=self.verbose))
-
-        # Run Colmap
-        colmap_dir = self.output_dir / "colmap"
-        if not self.skip_colmap:
-            colmap_dir.mkdir(parents=True, exist_ok=True)
-
-            colmap_utils.run_colmap(
-                image_dir=image_dir,
-                colmap_dir=colmap_dir,
-                camera_model=CAMERA_MODELS["fisheye"],
-                gpu=self.gpu,
-                verbose=self.verbose,
-                matching_method=self.matching_method,
-                colmap_cmd=self.colmap_cmd,
-            )
-
-        # Save transforms.json
-        if (colmap_dir / "sparse" / "0" / "cameras.bin").exists():
-            with CONSOLE.status("[bold yellow]Saving results to transforms.json", spinner="balloon"):
-                num_matched_frames = colmap_utils.colmap_to_json(
-                    cameras_path=colmap_dir / "sparse" / "0" / "cameras.bin",
-                    images_path=colmap_dir / "sparse" / "0" / "images.bin",
-                    output_dir=self.output_dir,
-                    camera_model=CAMERA_MODELS["fisheye"],
-                )
-                summary_log.append(f"Colmap matched {num_matched_frames} images")
-            summary_log.append(colmap_utils.get_matching_summary(num_extracted_frames, num_matched_frames))
-        else:
-            CONSOLE.log("[bold yellow]Warning: could not find existing COLMAP results. Not generating transforms.json")
-
-        CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
-
-        for summary in summary_log:
-            CONSOLE.print(summary, justify="center")
-        CONSOLE.rule()
-
-
-@dataclass
-class ProcessRecord3D:
+class ProcessRecord3D(BaseConverterToNerfstudioDataset):
     """Process Record3D data into a nerfstudio dataset.
 
     This script does the following:
@@ -406,19 +49,17 @@ class ProcessRecord3D:
     2. Converts Record3D poses into the nerfstudio format.
     """
 
-    data: Path
-    """Path to the record3D data."""
-    output_dir: Path
-    """Path to the output directory."""
+    ply_dir: Optional[Path] = None
+    """Path to the Record3D directory of point export ply files."""
+    voxel_size: Optional[float] = 0.8
+    """Voxel size for down sampling dense point cloud"""
+
     num_downscales: int = 3
     """Number of times to downscale the images. Downscales by 2 each time. For example a value of 3
         will downscale the images by 2x, 4x, and 8x."""
     max_dataset_size: int = 300
     """Max number of images to train on. If the dataset has more, images will be sampled approximately evenly. If -1,
     use all images."""
-
-    verbose: bool = False
-    """If True, print extra logging."""
 
     def main(self) -> None:
         """Process images into a nerfstudio dataset."""
@@ -449,7 +90,10 @@ class ProcessRecord3D:
         record3d_image_filenames = list(np.array(record3d_image_filenames)[idx])
         # Copy images to output directory
         copied_image_paths = process_data_utils.copy_images_list(
-            record3d_image_filenames, image_dir=image_dir, verbose=self.verbose
+            record3d_image_filenames,
+            image_dir=image_dir,
+            verbose=self.verbose,
+            num_downscales=self.num_downscales,
         )
         num_frames = len(copied_image_paths)
 
@@ -457,15 +101,19 @@ class ProcessRecord3D:
         summary_log.append(f"Used {num_frames} images out of {num_images} total")
         if self.max_dataset_size > 0:
             summary_log.append(
-                "To change the size of the dataset add the argument --max_dataset_size to larger than the "
-                f"current value ({self.max_dataset_size}), or -1 to use all images."
+                "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
+                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
             )
 
-        # Downscale images
-        summary_log.append(process_data_utils.downscale_images(image_dir, self.num_downscales, verbose=self.verbose))
-
         metadata_path = self.data / "metadata.json"
-        record3d_utils.record3d_to_json(copied_image_paths, metadata_path, self.output_dir, indices=idx)
+        record3d_utils.record3d_to_json(
+            copied_image_paths,
+            metadata_path,
+            self.output_dir,
+            indices=idx,
+            ply_dirname=self.ply_dir,
+            voxel_size=self.voxel_size,
+        )
         CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
 
         for summary in summary_log:
@@ -474,7 +122,7 @@ class ProcessRecord3D:
 
 
 @dataclass
-class ProcessPolycam:
+class ProcessPolycam(BaseConverterToNerfstudioDataset):
     """Process Polycam data into a nerfstudio dataset.
 
     To capture data, use the Polycam app on an iPhone or iPad with LiDAR. The capture must be in LiDAR or ROOM mode.
@@ -487,10 +135,6 @@ class ProcessPolycam:
     2. Converts Polycam poses into the nerfstudio format.
     """
 
-    data: Path
-    """Path the polycam export data folder. Can be .zip file or folder."""
-    output_dir: Path
-    """Path to the output directory."""
     num_downscales: int = 3
     """Number of times to downscale the images. Downscales by 2 each time. For example a value of 3
         will downscale the images by 2x, 4x, and 8x."""
@@ -504,9 +148,7 @@ class ProcessPolycam:
     crop_border_pixels: int = 15
     """Number of pixels to crop from each border of the image. Useful as borders may be black due to undistortion."""
     use_depth: bool = False
-
-    verbose: bool = False
-    """If True, print extra logging."""
+    """If True, processes the generated depth maps from Polycam"""
 
     def main(self) -> None:
         """Process images into a nerfstudio dataset."""
@@ -514,9 +156,6 @@ class ProcessPolycam:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         image_dir = self.output_dir / "images"
         image_dir.mkdir(parents=True, exist_ok=True)
-        if self.use_depth:
-            depth_dir = self.output_dir / "depths"
-            depth_dir.mkdir(parents=True, exist_ok=True)
 
         summary_log = []
 
@@ -525,6 +164,9 @@ class ProcessPolycam:
                 zip_ref.extractall(self.output_dir)
                 extracted_folder = zip_ref.namelist()[0].split("/")[0]
             self.data = self.output_dir / extracted_folder
+            if not (self.data / "keyframes").exists():
+                # new versions of polycam data have a different structure, strip the last dir off
+                self.data = self.output_dir
 
         if (self.data / "keyframes" / "corrected_images").exists() and not self.use_uncorrected_images:
             polycam_image_dir = self.data / "keyframes" / "corrected_images"
@@ -532,72 +174,48 @@ class ProcessPolycam:
         else:
             polycam_image_dir = self.data / "keyframes" / "images"
             polycam_cameras_dir = self.data / "keyframes" / "cameras"
-            self.crop_border_pixels = 0
             if not self.use_uncorrected_images:
                 CONSOLE.print("[bold yellow]Corrected images not found, using raw images.")
 
         if not polycam_image_dir.exists():
             raise ValueError(f"Image directory {polycam_image_dir} doesn't exist")
 
-        # Copy images to output directory
+        if not (self.data / "keyframes" / "depth").exists():
+            depth_dir = self.data / "keyframes" / "depth"
+            raise ValueError(f"Depth map directory {depth_dir} doesn't exist")
 
-        polycam_image_filenames = []
-        for f in polycam_image_dir.iterdir():
-            if f.suffix.lower() in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
-                polycam_image_filenames.append(f)
-        polycam_image_filenames = sorted(polycam_image_filenames, key=lambda fn: int(fn.stem))
-        num_images = len(polycam_image_filenames)
-        idx = np.arange(num_images)
-        if self.max_dataset_size != -1 and num_images > self.max_dataset_size:
-            idx = np.round(np.linspace(0, num_images - 1, self.max_dataset_size)).astype(int)
-
-        polycam_image_filenames = list(np.array(polycam_image_filenames)[idx])
-        # Copy images to output directory
-        copied_image_paths = process_data_utils.copy_images_list(
-            polycam_image_filenames,
-            image_dir=image_dir,
+        (image_processing_log, polycam_image_filenames) = polycam_utils.process_images(
+            polycam_image_dir,
+            image_dir,
             crop_border_pixels=self.crop_border_pixels,
+            max_dataset_size=self.max_dataset_size,
+            num_downscales=self.num_downscales,
             verbose=self.verbose,
         )
-        # Copy depth images to output directory
 
+        summary_log.extend(image_processing_log)
+
+        polycam_depth_filenames = []
         if self.use_depth:
-            polycam_depth_filenames = []
-            polycam_depth_dir = self.data / "keyframes" / "depth"
-            for f in polycam_depth_dir.iterdir():
-                if f.suffix.lower() in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
-                    polycam_depth_filenames.append(f)
-            polycam_depth_filenames = sorted(polycam_depth_filenames, key=lambda fn: int(fn.stem))
-            polycam_depth_filenames = list(np.array(polycam_depth_filenames)[idx])
-
-            copied_depth_paths = process_data_utils.copy_images_list(
-                polycam_depth_filenames,
-                image_dir=depth_dir,
+            polycam_depth_image_dir = self.data / "keyframes" / "depth"
+            depth_dir = self.output_dir / "depth"
+            depth_dir.mkdir(parents=True, exist_ok=True)
+            (depth_processing_log, polycam_depth_filenames) = polycam_utils.process_depth_maps(
+                polycam_depth_image_dir,
+                depth_dir,
+                num_processed_images=len(polycam_image_filenames),
+                crop_border_pixels=self.crop_border_pixels,
+                max_dataset_size=self.max_dataset_size,
+                num_downscales=self.num_downscales,
                 verbose=self.verbose,
             )
-        num_frames = len(copied_image_paths)
+            summary_log.extend(depth_processing_log)
 
-        copied_image_paths = [Path("images/" + copied_image_path.name) for copied_image_path in copied_image_paths]
-
-        if self.max_dataset_size > 0 and num_frames != num_images:
-            summary_log.append(f"Started with {num_frames} images out of {num_images} total")
-            summary_log.append(
-                "To change the size of the dataset add the argument --max_dataset_size to larger than the "
-                f"current value ({self.max_dataset_size}), or -1 to use all images."
-            )
-        else:
-            summary_log.append(f"Started with {num_frames} images")
-
-        # Downscale images
-        summary_log.append(process_data_utils.downscale_images(image_dir, self.num_downscales, verbose=self.verbose))
-
-        # Save json
-        if num_frames == 0:
-            CONSOLE.print("[bold red]No images found, exiting")
-            sys.exit(1)
         summary_log.extend(
             polycam_utils.polycam_to_json(
                 image_filenames=polycam_image_filenames,
+                depth_filenames=polycam_depth_filenames,
+                glb_filename=self.data / "raw.glb" if (self.data / "raw.glb").exists() else None,
                 cameras_dir=polycam_cameras_dir,
                 output_dir=self.output_dir,
                 min_blur_score=self.min_blur_score,
@@ -613,11 +231,22 @@ class ProcessPolycam:
 
 
 @dataclass
-class ProcessMetashape:
+class _NoDefaultProcessMetashape:
+    """Private class to order the parameters of ProcessMetashape in the right order for default values."""
+
+    xml: Path
+    """Path to the Metashape xml file."""
+
+
+@dataclass
+class ProcessMetashape(BaseConverterToNerfstudioDataset, _NoDefaultProcessMetashape):
     """Process Metashape data into a nerfstudio dataset.
 
     This script assumes that cameras have been aligned using Metashape. After alignment, it is necessary to export the
     camera poses as a `.xml` file. This option can be found under `File > Export > Export Cameras`.
+
+    Additionally, the points can be exported as pointcloud under `File > Export > Export Point Cloud`. Make sure to
+    export the data in non-binary format and exclude the normals.
 
     This script does the following:
 
@@ -625,28 +254,31 @@ class ProcessMetashape:
     2. Converts Metashape poses into the nerfstudio format.
     """
 
-    data: Path
-    """Path to a folder of images."""
-    xml: Path
-    """Path to the Metashape xml file."""
-    output_dir: Path
-    """Path to the output directory."""
+    ply: Optional[Path] = None
+    """Path to the Metashape point export ply file."""
+
     num_downscales: int = 3
     """Number of times to downscale the images. Downscales by 2 each time. For example a value of 3
         will downscale the images by 2x, 4x, and 8x."""
     max_dataset_size: int = 600
     """Max number of images to train on. If the dataset has more, images will be sampled approximately evenly. If -1,
     use all images."""
-    verbose: bool = False
-    """If True, print extra logging."""
 
     def main(self) -> None:
         """Process images into a nerfstudio dataset."""
 
         if self.xml.suffix != ".xml":
             raise ValueError(f"XML file {self.xml} must have a .xml extension")
-        if not self.xml.exists:
+        if not self.xml.exists():
             raise ValueError(f"XML file {self.xml} doesn't exist")
+        if self.eval_data is not None:
+            raise ValueError("Cannot use eval_data since cameras were already aligned with Metashape.")
+
+        if self.ply is not None:
+            if self.ply.suffix != ".ply":
+                raise ValueError(f"PLY file {self.ply} must have a .ply extension")
+            if not self.ply.exists():
+                raise ValueError(f"PLY file {self.ply} doesn't exist")
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         image_dir = self.output_dir / "images"
@@ -655,22 +287,12 @@ class ProcessMetashape:
         summary_log = []
 
         # Copy images to output directory
-        image_filenames = []
-        for f in self.data.iterdir():
-            if f.suffix.lower() in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]:
-                image_filenames.append(f)
-        image_filenames = sorted(image_filenames, key=lambda fn: fn.stem)
-        num_images = len(image_filenames)
-        idx = np.arange(num_images)
-        if self.max_dataset_size != -1 and num_images > self.max_dataset_size:
-            idx = np.round(np.linspace(0, num_images - 1, self.max_dataset_size)).astype(int)
-
-        image_filenames = list(np.array(image_filenames)[idx])
-        # Copy images to output directory
+        image_filenames, num_orig_images = process_data_utils.get_image_filenames(self.data, self.max_dataset_size)
         copied_image_paths = process_data_utils.copy_images_list(
             image_filenames,
             image_dir=image_dir,
             verbose=self.verbose,
+            num_downscales=self.num_downscales,
         )
         num_frames = len(copied_image_paths)
 
@@ -678,17 +300,14 @@ class ProcessMetashape:
         original_names = [image_path.stem for image_path in image_filenames]
         image_filename_map = dict(zip(original_names, copied_image_paths))
 
-        if self.max_dataset_size > 0 and num_frames != num_images:
-            summary_log.append(f"Started with {num_frames} images out of {num_images} total")
+        if self.max_dataset_size > 0 and num_frames != num_orig_images:
+            summary_log.append(f"Started with {num_frames} images out of {num_orig_images} total")
             summary_log.append(
-                "To change the size of the dataset add the argument --max_dataset_size to larger than the "
-                f"current value ({self.max_dataset_size}), or -1 to use all images."
+                "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
+                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
             )
         else:
             summary_log.append(f"Started with {num_frames} images")
-
-        # Downscale images
-        summary_log.append(process_data_utils.downscale_images(image_dir, self.num_downscales, verbose=self.verbose))
 
         # Save json
         if num_frames == 0:
@@ -698,6 +317,104 @@ class ProcessMetashape:
             metashape_utils.metashape_to_json(
                 image_filename_map=image_filename_map,
                 xml_filename=self.xml,
+                output_dir=self.output_dir,
+                ply_filename=self.ply,
+                verbose=self.verbose,
+            )
+        )
+
+        CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
+
+        for summary in summary_log:
+            CONSOLE.print(summary, justify="center")
+        CONSOLE.rule()
+
+
+@dataclass
+class _NoDefaultProcessRealityCapture:
+    """Private class to order the parameters of ProcessRealityCapture in the right order for default values."""
+
+    csv: Path
+    """Path to the RealityCapture cameras CSV file."""
+
+
+@dataclass
+class ProcessRealityCapture(BaseConverterToNerfstudioDataset, _NoDefaultProcessRealityCapture):
+    """Process RealityCapture data into a nerfstudio dataset.
+
+    This script assumes that cameras have been aligned using RealityCapture. After alignment, it is necessary to
+    export the camera poses as a `.csv` file using the `Internal/External camera parameters` option.
+
+    This script does the following:
+
+    1. Scales images to a specified size.
+    2. Converts RealityCapture poses into the nerfstudio format.
+    """
+
+    ply: Optional[Path] = None
+    """Path to the RealityCapture exported ply file"""
+
+    num_downscales: int = 3
+    """Number of times to downscale the images. Downscales by 2 each time. For example a value of 3
+        will downscale the images by 2x, 4x, and 8x."""
+    max_dataset_size: int = 600
+    """Max number of images to train on. If the dataset has more, images will be sampled approximately evenly. If -1,
+    use all images."""
+
+    def main(self) -> None:
+        """Process images into a nerfstudio dataset."""
+
+        if self.csv.suffix != ".csv":
+            raise ValueError(f"CSV file {self.csv} must have a .csv extension")
+        if not self.csv.exists():
+            raise ValueError(f"CSV file {self.csv} doesn't exist")
+        if self.eval_data is not None:
+            raise ValueError("Cannot use eval_data since cameras were already aligned with RealityCapture.")
+
+        if self.ply is not None:
+            if self.ply.suffix != ".ply":
+                raise ValueError(f"PLY file {self.ply} must have a .ply extension")
+            if not self.ply.exists():
+                raise ValueError(f"PLY file {self.ply} doesn't exist")
+
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        image_dir = self.output_dir / "images"
+        image_dir.mkdir(parents=True, exist_ok=True)
+
+        summary_log = []
+
+        # Copy images to output directory
+        image_filenames, num_orig_images = process_data_utils.get_image_filenames(self.data, self.max_dataset_size)
+        copied_image_paths = process_data_utils.copy_images_list(
+            image_filenames,
+            image_dir=image_dir,
+            verbose=self.verbose,
+            num_downscales=self.num_downscales,
+        )
+        num_frames = len(copied_image_paths)
+
+        copied_image_paths = [Path("images/" + copied_image_path.name) for copied_image_path in copied_image_paths]
+        original_names = [image_path.stem for image_path in image_filenames]
+        image_filename_map = dict(zip(original_names, copied_image_paths))
+
+        if self.max_dataset_size > 0 and num_frames != num_orig_images:
+            summary_log.append(f"Started with {num_frames} images out of {num_orig_images} total")
+            summary_log.append(
+                "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
+                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
+            )
+        else:
+            summary_log.append(f"Started with {num_frames} images")
+
+        # Save json
+        if num_frames == 0:
+            CONSOLE.print("[bold red]No images found, exiting")
+            sys.exit(1)
+        summary_log.extend(
+            realitycapture_utils.realitycapture_to_json(
+                image_filename_map=image_filename_map,
+                csv_filename=self.csv,
+                ply_filename=self.ply,
                 output_dir=self.output_dir,
                 verbose=self.verbose,
             )
@@ -710,24 +427,147 @@ class ProcessMetashape:
         CONSOLE.rule()
 
 
+@dataclass
+class ProcessODM(BaseConverterToNerfstudioDataset):
+    """Process ODM data into a nerfstudio dataset.
+
+    This script does the following:
+
+    1. Scales images to a specified size.
+    2. Converts ODM poses into the nerfstudio format.
+    """
+
+    num_downscales: int = 3
+    """Number of times to downscale the images. Downscales by 2 each time. For example a value of 3
+        will downscale the images by 2x, 4x, and 8x."""
+    max_dataset_size: int = 600
+    """Max number of images to train on. If the dataset has more, images will be sampled approximately evenly. If -1,
+    use all images."""
+
+    def main(self) -> None:
+        """Process images into a nerfstudio dataset."""
+
+        orig_images_dir = self.data / "images"
+        cameras_file = self.data / "cameras.json"
+        shots_file = self.data / "odm_report" / "shots.geojson"
+        reconstruction_file = self.data / "opensfm" / "reconstruction.json"
+
+        if not shots_file.exists():
+            raise ValueError(f"shots file {shots_file} doesn't exist")
+        if not shots_file.exists():
+            raise ValueError(f"cameras file {cameras_file} doesn't exist")
+
+        if not orig_images_dir.exists():
+            raise ValueError(f"Images dir {orig_images_dir} doesn't exist")
+
+        if self.eval_data is not None:
+            raise ValueError("Cannot use eval_data since cameras were already aligned with ODM.")
+
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        image_dir = self.output_dir / "images"
+        image_dir.mkdir(parents=True, exist_ok=True)
+
+        summary_log = []
+
+        # Copy images to output directory
+        image_filenames, num_orig_images = process_data_utils.get_image_filenames(
+            orig_images_dir, self.max_dataset_size
+        )
+        copied_image_paths = process_data_utils.copy_images_list(
+            image_filenames,
+            image_dir=image_dir,
+            verbose=self.verbose,
+            num_downscales=self.num_downscales,
+        )
+        num_frames = len(copied_image_paths)
+
+        copied_image_paths = [Path("images/" + copied_image_path.name) for copied_image_path in copied_image_paths]
+        original_names = [image_path.stem for image_path in image_filenames]
+        image_filename_map = dict(zip(original_names, copied_image_paths))
+
+        if self.max_dataset_size > 0 and num_frames != num_orig_images:
+            summary_log.append(f"Started with {num_frames} images out of {num_orig_images} total")
+            summary_log.append(
+                "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
+                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
+            )
+        else:
+            summary_log.append(f"Started with {num_frames} images")
+
+        # Save json
+        if num_frames == 0:
+            CONSOLE.print("[bold red]No images found, exiting")
+            sys.exit(1)
+        summary_log.extend(
+            odm_utils.cameras2nerfds(
+                image_filename_map=image_filename_map,
+                cameras_file=cameras_file,
+                shots_file=shots_file,
+                reconstruction_file=reconstruction_file,
+                output_dir=self.output_dir,
+                verbose=self.verbose,
+            )
+        )
+
+        CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
+
+        for summary in summary_log:
+            CONSOLE.print(summary, justify="center")
+        CONSOLE.rule()
+
+
+@dataclass
+class NotInstalled:
+    def main(self) -> None: ...
+
+
 Commands = Union[
-    Annotated[ProcessImages, tyro.conf.subcommand(name="images")],
-    Annotated[ProcessVideo, tyro.conf.subcommand(name="video")],
+    Annotated[ImagesToNerfstudioDataset, tyro.conf.subcommand(name="images")],
+    Annotated[VideoToNerfstudioDataset, tyro.conf.subcommand(name="video")],
     Annotated[ProcessPolycam, tyro.conf.subcommand(name="polycam")],
     Annotated[ProcessMetashape, tyro.conf.subcommand(name="metashape")],
-    Annotated[ProcessInsta360, tyro.conf.subcommand(name="insta360")],
+    Annotated[ProcessRealityCapture, tyro.conf.subcommand(name="realitycapture")],
     Annotated[ProcessRecord3D, tyro.conf.subcommand(name="record3d")],
+    Annotated[ProcessODM, tyro.conf.subcommand(name="odm")],
 ]
+
+# Add aria subcommand if projectaria_tools is installed.
+try:
+    import projectaria_tools
+except ImportError:
+    projectaria_tools = None
+
+if projectaria_tools is not None:
+    from nerfstudio.scripts.datasets.process_project_aria import ProcessProjectAria
+
+    # Note that Union[A, Union[B, C]] == Union[A, B, C].
+    Commands = Union[Commands, Annotated[ProcessProjectAria, tyro.conf.subcommand(name="aria")]]
+else:
+    Commands = Union[
+        Commands,
+        Annotated[
+            NotInstalled,
+            tyro.conf.subcommand(
+                name="aria",
+                description="**Not installed.** Processing Project Aria data requires `pip install projectaria_tools'[all]'`.",
+            ),
+        ],
+    ]
 
 
 def entrypoint():
     """Entrypoint for use with pyproject scripts."""
     tyro.extras.set_accent_color("bright_yellow")
-    tyro.cli(Commands).main()
+    try:
+        tyro.cli(Commands).main()
+    except (RuntimeError, ValueError) as e:
+        CONSOLE.log("[bold red]" + e.args[0])
 
 
 if __name__ == "__main__":
     entrypoint()
 
-# For sphinx docs
-get_parser_fn = lambda: tyro.extras.get_parser(Commands)  # type: ignore
+
+def get_parser_fn():
+    """Get the parser function for the sphinx docs."""
+    return tyro.extras.get_parser(Commands)  # type: ignore
