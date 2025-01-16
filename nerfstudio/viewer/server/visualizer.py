@@ -19,7 +19,7 @@ import sys
 from threading import Thread
 from typing import Dict, Optional, Union
 
-import umsgpack
+from . import umsgpack
 import zmq
 from rich.console import Console
 

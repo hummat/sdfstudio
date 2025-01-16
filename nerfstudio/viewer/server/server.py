@@ -22,7 +22,7 @@ import tornado.ioloop
 import tornado.web
 import tornado.websocket
 import tyro
-import umsgpack
+from . import umsgpack
 import zmq
 import zmq.eventloop.ioloop
 from pyngrok import ngrok
