@@ -45,7 +45,7 @@ from nerfstudio.data.dataparsers.phototourism_dataparser import (
     PhototourismDataParserConfig,
 )
 from nerfstudio.data.dataparsers.sdfstudio_dataparser import SDFStudioDataParserConfig
-from nerfstudio.engine.optimizers import AdamWOptimizerConfig, RAdamWOptimizerConfig, AdamWOptimizerConfig
+from nerfstudio.engine.optimizers import RAdamOptimizerConfig, AdamWOptimizerConfig
 from nerfstudio.engine.schedulers import (
     ExponentialSchedulerConfig,
     MultiStepSchedulerConfig,
@@ -1038,7 +1038,7 @@ method_configs["mipnerf"] = Config(
     ),
     optimizers={
         "fields": {
-            "optimizer": RAdamWOptimizerConfig(lr=5e-4, eps=1e-08),
+            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
             "scheduler": None,
         }
     },
@@ -1079,11 +1079,11 @@ method_configs["vanilla-nerf"] = Config(
     ),
     optimizers={
         "fields": {
-            "optimizer": RAdamWOptimizerConfig(lr=5e-4, eps=1e-08),
+            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
             "scheduler": None,
         },
         "temporal_distortion": {
-            "optimizer": RAdamWOptimizerConfig(lr=5e-4, eps=1e-08),
+            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
             "scheduler": None,
         },
     },
@@ -1122,11 +1122,11 @@ method_configs["dnerf"] = Config(
     ),
     optimizers={
         "fields": {
-            "optimizer": RAdamWOptimizerConfig(lr=5e-4, eps=1e-08),
+            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
             "scheduler": None,
         },
         "temporal_distortion": {
-            "optimizer": RAdamWOptimizerConfig(lr=5e-4, eps=1e-08),
+            "optimizer": RAdamOptimizerConfig(lr=5e-4, eps=1e-08),
             "scheduler": None,
         },
     },
