@@ -475,7 +475,7 @@ class SDFField(Field):
         density = self.laplace_density(sdf)
         return density, geo_feature
 
-    @torch.amp.autocast(device_type='cuda', enabled=False)
+    @torch.cuda.amp.autocast(enabled=False)
     def get_alpha(self, ray_samples: RaySamples, sdf=None, gradients=None):
         """compute alpha from sdf as in NeuS"""
         if sdf is None or gradients is None:
