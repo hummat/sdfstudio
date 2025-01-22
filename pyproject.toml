@@ -3,52 +3,57 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nerfstudio"
-version = "0.1.12"
+name = "sdfstudio"
+version = "0.1.0"
 description = "All-in-one repository for state-of-the-art NeRFs"
 readme = "README.md"
 license = { text="Apache 2.0"}
-requires-python = ">=3.7.3"
+requires-python = "~=3.10"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python",
 ]
 dependencies = [
     "appdirs",
-    "av",
+    #"av",
     "tyro",
-    "gdown",
-    "ninja",
+    #"gdown",
+    #"ninja",
     #"functorch==0.2.1",
-    "h5py",
+    #"h5py",
     "imageio",
-    "ipywidgets",
-    "jupyterlab",
-    "matplotlib",
-    "mediapy",
-    "msgpack",
-    "msgpack_numpy",
-    "nerfacc==0.3.5",
+    #"ipywidgets",
+    #"jupyterlab",
+    #"matplotlib==3.10.0",
+    #"mediapy",
+    #"msgpack",
+    #"msgpack_numpy",
+    "nerfacc",
     "open3d",
     "opencv-python",
-    "plotly",
-    "protobuf",
+    #"plotly",
+    #"protobuf",
     "pymeshlab",
     "pyngrok",
-    "python-socketio",
-    "requests",
-    "rich",
+    #"python-socketio",
+    #"requests",
+    #"rich",
     "scikit-image",
     "tensorboard",
-    #"torch==1.12.1",
+    #"torch==2.5.1",
     "torchmetrics[image]",
     #"torchtyping>=0.1.4",
-    #"torchvision>=0.13.0",
-    "u-msgpack-python",
+    #"torchvision>=0.20.1",
+    #"u-msgpack-python",
     #"nuscenes-devkit>=1.1.1",
     "wandb",
-    "xatlas",
+    #"xatlas",
     "trimesh",
+    #"numpy==2.2.2",
+    "rawpy",
+    #"scipy==1.15.1",
+    "tornado",
+    "pyzmq"
 ]
 
 [project.urls]
