@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sdfstudio"
-version = "0.1.0"
-description = "All-in-one repository for state-of-the-art NeRFs"
+version = "0.2.0"
+description = "All-in-one repository for state-of-the-art neural surface reconstruction"
 readme = "README.md"
 license = { text="Apache 2.0"}
-requires-python = "~=3.10"
+requires-python = ">=3.9"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python",
@@ -100,6 +100,7 @@ ns-dev-test = "scripts.github.run_actions:entrypoint"
 ns-bridge-server = "nerfstudio.viewer.server.server:entrypoint"
 ns-extract-mesh = "scripts.extract_mesh:entrypoint"
 ns-render-mesh = "scripts.render_mesh:entrypoint"
+ns-texture-mesh = "scripts.texture:entrypoint"
 
 
 [options]
@@ -159,5 +160,5 @@ reportMissingTypeStubs = false
 reportPrivateImportUsage = false
 reportUndefinedVariable = false
 
-pythonVersion = "3.7"
+pythonVersion = "3.9"
 pythonPlatform = "Linux"
