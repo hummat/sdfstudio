@@ -58,8 +58,8 @@ class NerfstudioDataParserConfig(DataParserConfig):
     """The method to use for orientation."""
     center_method: Literal["poses", "focus", "none"] = "poses"
     """The method to use to center the poses."""
-    auto_scale_poses: bool = True
-    """Whether to automatically scale the poses to fit in +/- 1 bounding box."""
+    auto_scale_poses: str = "median"
+    """Whether to automatically scale the poses to fit in +/- 1 bounding box (max), or to have a mean/median norm of 1 (mean/median)."""
     use_all_train_images: bool = False
     """Whether to use all images for training. If True, all images are used for training."""
     train_split_fraction: float = 0.9
@@ -195,10 +195,18 @@ class Nerfstudio(DataParser):
         # Scale poses
         scale_factor = 1.0
         if self.config.auto_scale_poses:
-            scale_factor /= float(torch.max(torch.abs(poses[:, :3, 3])))
-        scale_factor *= self.config.scale_factor
+            if self.config.auto_scale_poses == "max":
+                scale_factor /= float(torch.max(torch.abs(poses[:, :3, 3])))
+            elif self.config.auto_scale_poses == "mean":
+                scale_factor /= float(torch.mean(torch.norm(poses[:, :3, 3], dim=1)))
+            elif self.config.auto_scale_poses == "median":
+                scale_factor /= float(torch.median(torch.norm(poses[:, :3, 3], dim=1)))
+            CONSOLE.log(f"Estimated object scale: {scale_factor}")
 
+        scale_factor *= self.config.scale_factor
         poses[:, :3, 3] *= scale_factor
+
+        CONSOLE.log(f"Near plane: {torch.norm(poses[:, :3, 3], dim=1).min()}, Far plane: {torch.norm(poses[:, :3, 3], dim=1).max()}")
 
         # Choose image_filenames and poses based on split, but after auto orient and scaling the poses.
         image_filenames = [image_filenames[i] for i in indices]
