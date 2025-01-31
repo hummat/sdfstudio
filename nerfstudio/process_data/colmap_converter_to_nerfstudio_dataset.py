@@ -102,8 +102,9 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
     same_dimensions: bool = True
     """Whether to assume all images are same dimensions and so to use fast downscaling with no autorotation."""
     use_single_camera_mode: bool = True
-    """Whether to assume all images taken with the same camera characteristics, set to False for multiple cameras in colmap (only works with hloc sfm_tool).
-    """
+    """Whether to assume all images taken with the same camera characteristics, set to False for multiple cameras in colmap (only works with hloc sfm_tool)."""
+    min_match_ratio: Optional[float] = None
+    """Minimum ratio of matched images to total images. If the ratio is below this value, the process will fail."""
 
     @staticmethod
     def default_colmap_path() -> Path:
@@ -141,7 +142,15 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
                     image_rename_map=image_rename_map,
                     use_single_camera_mode=self.use_single_camera_mode,
                 )
-                summary_log.append(f"Colmap matched {num_matched_frames} images")
+                if self.min_match_ratio and num_matched_frames / num_frames < self.min_match_ratio:
+                    Path(self.output_dir / "transforms.json").unlink()
+                    raise RuntimeError(
+                        f"Matching ratio of {num_matched_frames}/{num_frames} is below the minimum of {self.min_match_ratio}"
+                    )
+                elif self.min_match_ratio:
+                    summary_log.append(f"Sufficient matching ratio: {num_matched_frames/num_frames}")
+                else:
+                    summary_log.append(f"Colmap matched {num_matched_frames} images")
             summary_log.append(colmap_utils.get_matching_summary(num_frames, num_matched_frames))
 
         else:

@@ -164,17 +164,20 @@ class Model(nn.Module):
         """
 
     @torch.no_grad()
-    def get_outputs_for_camera_ray_bundle(self, camera_ray_bundle: RayBundle) -> Dict[str, torch.Tensor]:
+    def get_outputs_for_camera_ray_bundle(self,
+                                          camera_ray_bundle: RayBundle,
+                                          progress: bool = False) -> Dict[str, torch.Tensor]:
         """Takes in camera parameters and computes the output of the model.
 
         Args:
             camera_ray_bundle: ray bundle to calculate outputs over
+            progress: whether to show progress bar
         """
         num_rays_per_chunk = self.config.eval_num_rays_per_chunk
         image_height, image_width = camera_ray_bundle.origins.shape[:2]
         num_rays = len(camera_ray_bundle)
         outputs_lists = defaultdict(list)
-        progress = get_progress("Chunking rays for rendering")
+        progress = get_progress("Chunking rays for rendering", disable=not progress)
         with progress:
             for i in progress.track(range(0, num_rays, num_rays_per_chunk)):
                 start_idx = i

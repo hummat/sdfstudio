@@ -405,7 +405,7 @@ def export_textured_mesh(
 
     CONSOLE.print("Rendering texture and normals... this may take a while.")
     with torch.no_grad():
-        outputs = pipeline.model.get_outputs_for_camera_ray_bundle(camera_ray_bundle)
+        outputs = pipeline.model.get_outputs_for_camera_ray_bundle(camera_ray_bundle, progress=True)
     CONSOLE.print("[bold green]:white_check_mark: Rendered texture and normals")
 
     # save the texture image
