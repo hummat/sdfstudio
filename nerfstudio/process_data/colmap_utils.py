@@ -18,7 +18,7 @@ Tools supporting the execution of COLMAP and preparation of COLMAP-based dataset
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Dict, Literal, Optional, Union, Tuple
 
 import appdirs
 import cv2
@@ -41,6 +41,7 @@ from nerfstudio.process_data.process_data_utils import CameraModel
 from nerfstudio.utils import colormaps
 from nerfstudio.utils.rich_utils import CONSOLE, status
 from nerfstudio.utils.scripts import run_command
+from nerfstudio.cameras.camera_utils import adjust_intrinsics_for_crop
 
 
 def get_colmap_version(colmap_cmd: str, default_version: str = "3.8") -> Version:
@@ -396,19 +397,22 @@ def colmap_to_json(
     ply_filename="sparse_pc.ply",
     keep_original_world_coordinate: bool = False,
     use_single_camera_mode: bool = True,
+    crop_factor: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
 ) -> int:
     """Converts COLMAP's cameras.bin and images.bin to a JSON file.
 
     Args:
         recon_dir: Path to the reconstruction directory, e.g. "sparse/0"
         output_dir: Path to the output directory.
-        camera_model: Camera model used.
         camera_mask_path: Path to the camera mask.
         image_id_to_depth_path: When including sfm-based depth, embed these depth file paths in the exported json
         image_rename_map: Use these image names instead of the names embedded in the COLMAP db
+        ply_filename: Name of the ply file to be created.
         keep_original_world_coordinate: If True, no extra transform will be applied to world coordinate.
                     Colmap optimized world often have y direction of the first camera pointing towards down direction,
                     while nerfstudio world set z direction to be up direction for viewer.
+        use_single_camera_mode: If True, use the first camera for all frames.
+        crop_factor: Crop factor to adjust the intrinsics for the crop.
     Returns:
         The number of registered images.
     """
@@ -426,6 +430,9 @@ def colmap_to_json(
         out = {}  # out = {"camera_model": parse_colmap_camera_params(cam_id_to_camera[1])["camera_model"]}
     else:  # one camera for all frames
         out = parse_colmap_camera_params(cam_id_to_camera[1])
+        w, h, cx, cy = adjust_intrinsics_for_crop(out["w"], out["h"], out["cx"], out["cy"], crop_factor)
+        out.update({"w": w, "h": h, "cx": cx, "cy": cy})
+
 
     frames = []
     for im_id, im_data in im_id_to_image.items():
@@ -465,7 +472,10 @@ def colmap_to_json(
             frame["depth_file_path"] = str(depth_path.relative_to(depth_path.parent.parent))
 
         if not use_single_camera_mode:  # add the camera parameters for this frame
-            frame.update(parse_colmap_camera_params(cam_id_to_camera[im_data.camera_id]))
+            out = parse_colmap_camera_params(cam_id_to_camera[im_data.camera_id])
+            w, h, cx, cy = adjust_intrinsics_for_crop(out["w"], out["h"], out["cx"], out["cy"], crop_factor)
+            out.update({"w": w, "h": h, "cx": cx, "cy": cy})
+            frame.update(out)
 
         frames.append(frame)
 

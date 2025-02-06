@@ -141,6 +141,7 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
                     camera_mask_path=camera_mask_path,
                     image_rename_map=image_rename_map,
                     use_single_camera_mode=self.use_single_camera_mode,
+                    crop_factor=self.crop_factor,
                 )
                 if self.min_match_ratio and num_matched_frames / num_frames < self.min_match_ratio:
                     Path(self.output_dir / "transforms.json").unlink()

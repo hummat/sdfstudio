@@ -200,9 +200,9 @@ def get_interpolated_k(k_a, k_b, steps: int = 10) -> Tensor:
 
 
 def get_interpolated_poses_many(
-    poses: Tensor,
-    Ks: Tensor,
-    steps_per_transition=10,
+        poses: Tensor,
+        Ks: Tensor,
+        steps_per_transition=10,
 ) -> Tuple[Tensor, Tensor]:
     """Return interpolated poses for many camera poses.
 
@@ -250,12 +250,12 @@ def viewmatrix(lookat, up, pos) -> Tensor:
 
 
 def get_distortion_params(
-    k1: float = 0.0,
-    k2: float = 0.0,
-    k3: float = 0.0,
-    k4: float = 0.0,
-    p1: float = 0.0,
-    p2: float = 0.0,
+        k1: float = 0.0,
+        k2: float = 0.0,
+        k3: float = 0.0,
+        k4: float = 0.0,
+        p1: float = 0.0,
+        p2: float = 0.0,
 ) -> Tensor:
     """Returns a distortion parameters matrix.
 
@@ -274,11 +274,11 @@ def get_distortion_params(
 
 @torch.jit.script
 def _compute_residual_and_jacobian(
-    x: torch.Tensor,
-    y: torch.Tensor,
-    xd: torch.Tensor,
-    yd: torch.Tensor,
-    distortion_params: torch.Tensor,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        xd: torch.Tensor,
+        yd: torch.Tensor,
+        distortion_params: torch.Tensor,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,]:
     """Auxiliary function of radial_and_tangential_undistort() that computes residuals and jacobians.
     Adapted from MultiNeRF:
@@ -340,10 +340,10 @@ def _compute_residual_and_jacobian(
 
 @torch.jit.script
 def radial_and_tangential_undistort(
-    coords: torch.Tensor,
-    distortion_params: torch.Tensor,
-    eps: float = 1e-3,
-    max_iterations: int = 10,
+        coords: torch.Tensor,
+        distortion_params: torch.Tensor,
+        eps: float = 1e-3,
+        max_iterations: int = 10,
 ) -> torch.Tensor:
     """Computes undistorted coords given opencv distortion parameters.
     Addapted from MultiNeRF
@@ -404,7 +404,7 @@ def rotation_matrix(a: Tensor, b: Tensor) -> Tensor:
             [-v[1], v[0], 0],
         ]
     )
-    return torch.eye(3) + skew_sym_mat + skew_sym_mat @ skew_sym_mat * ((1 - c) / (s**2 + 1e-8))
+    return torch.eye(3) + skew_sym_mat + skew_sym_mat @ skew_sym_mat * ((1 - c) / (s ** 2 + 1e-8))
 
 
 def focus_of_attention(poses: Tensor, initial_focus: Tensor) -> Tensor:
@@ -547,3 +547,32 @@ def auto_orient_and_center_poses(poses: Tensor,
         raise ValueError(f"Unknown value for method: {method}")
 
     return oriented_poses, transform
+
+
+def adjust_intrinsics_for_crop(width: int,
+                               height: int,
+                               cx: float,
+                               cy: float,
+                               crop_factor: Tuple[float, float, float, float]) -> Tuple[int, int, float, float]:
+    """Adjusts the intrinsics for a crop factor.
+
+    Args:
+        width: The width of the image.
+        height: The height of the image.
+        cx: The x-coordinate of the principal point.
+        cy: The y-coordinate of the principal point.
+        crop_factor: The crop factor in the format (crop_top, crop_bottom, crop_left, crop_right).
+
+    Returns:
+        The adjusted intrinsics.
+    """
+    crop_top, crop_bottom, crop_left, crop_right = crop_factor
+    if not (0 <= crop_top < 1 and 0 <= crop_bottom < 1 and 0 <= crop_left < 1 and 0 <= crop_right < 1):
+        raise ValueError("Crop factors must be in [0, 1).")
+    if crop_top + crop_bottom >= 1 or crop_left + crop_right >= 1:
+        raise ValueError("The sum of crop factors for vertical or horizontal must be less than 1.")
+    new_width: int = int(np.round(width * (1 - crop_left - crop_right)))
+    new_height: int = int(np.round(height * (1 - crop_top - crop_bottom)))
+    new_cx: float = cx - crop_left * width
+    new_cy: float = cy - crop_top * height
+    return new_width, new_height, new_cx, new_cy
