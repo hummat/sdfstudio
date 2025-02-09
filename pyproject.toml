@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sdfstudio"
-version = "0.2.3"
+version = "0.2.4"
 description = "All-in-one repository for state-of-the-art neural surface reconstruction"
 readme = "README.md"
 license = { text="Apache 2.0"}
@@ -40,10 +40,10 @@ dependencies = [
     #"rich",
     "scikit-image",
     "tensorboard",
-    #"torch==2.5.1",
+    "torch>=2.0,<2.6",
+    "torchvision>=0.15,<=0.20.1",
     "torchmetrics[image]",
     #"torchtyping>=0.1.4",
-    #"torchvision>=0.20.1",
     #"u-msgpack-python",
     #"nuscenes-devkit>=1.1.1",
     "wandb",
@@ -89,18 +89,18 @@ docs = [
 
 [project.scripts]
 # Note, add entrypoint name to scripts/completions/install.py to include CLI completion
-ns-install-cli = "scripts.completions.install:entrypoint"
-ns-process-data = "scripts.process_data:entrypoint"
-ns-download-data = "scripts.downloads.download_data:entrypoint"
-ns-train = "scripts.train:entrypoint"
-ns-eval = "scripts.eval:entrypoint"
-ns-render = "scripts.render:entrypoint"
-ns-export = "scripts.exporter:entrypoint"
-ns-dev-test = "scripts.github.run_actions:entrypoint"
-ns-bridge-server = "nerfstudio.viewer.server.server:entrypoint"
-ns-extract-mesh = "scripts.extract_mesh:entrypoint"
-ns-render-mesh = "scripts.render_mesh:entrypoint"
-ns-texture-mesh = "scripts.texture:entrypoint"
+sdf-install-cli = "scripts.completions.install:entrypoint"
+sdf-process-data = "scripts.process_data:entrypoint"
+sdf-download-data = "scripts.downloads.download_data:entrypoint"
+sdf-train = "scripts.train:entrypoint"
+sdf-eval = "scripts.eval:entrypoint"
+sdf-render = "scripts.render:entrypoint"
+sdf-export = "scripts.exporter:entrypoint"
+sdf-dev-test = "scripts.github.run_actions:entrypoint"
+sdf-bridge-server = "nerfstudio.viewer.server.server:entrypoint"
+sdf-extract-mesh = "scripts.extract_mesh:entrypoint"
+sdf-render-mesh = "scripts.render_mesh:entrypoint"
+sdf-texture-mesh = "scripts.texture:entrypoint"
 
 
 [options]

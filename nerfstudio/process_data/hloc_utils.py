@@ -46,6 +46,7 @@ def run_hloc(
         "disk+lightglue",
         "superpoint+lightglue",
     ] = "superglue",
+    matcher_location: Literal["indoor", "outdoor"] = "outdoor",
     num_matched: int = 50,
     refine_pixsfm: bool = False,
     use_single_camera_mode: bool = True,
@@ -61,6 +62,7 @@ def run_hloc(
         matching_method: Method to use for matching images.
         feature_type: Type of visual features to use.
         matcher_type: Type of feature matcher to use.
+        matcher_location: Use indoor or outdoor weights for the matcher.
         num_matched: Number of image pairs for loc.
         refine_pixsfm: If True, refine the reconstruction using pixel-perfect-sfm.
         use_single_camera_mode: If True, uses one camera for all frames. Otherwise uses one camera per frame.
@@ -108,6 +110,8 @@ def run_hloc(
     retrieval_conf = extract_features.confs["netvlad"]  # type: ignore
     feature_conf = extract_features.confs[feature_type]  # type: ignore
     matcher_conf = match_features.confs[matcher_type]  # type: ignore
+    if "weights" in matcher_conf["model"]:
+        matcher_conf["model"]["weights"] = matcher_location
 
     references = [p.relative_to(image_dir).as_posix() for p in image_dir.iterdir()]
     extract_features.main(feature_conf, image_dir, image_list=references, feature_path=features)  # type: ignore

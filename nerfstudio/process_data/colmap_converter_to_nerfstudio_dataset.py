@@ -70,6 +70,8 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
         "superpoint+lightglue",
     ] = "any"
     """Matching algorithm."""
+    matcher_location: Literal["indoor", "outdoor"] = "outdoor"
+    """Whether to use indoor or outdoor weights for the matcher."""
     num_downscales: int = 3
     """Number of times to downscale the images. Downscales by 2 each time. For example a value of 3 will downscale the
        images by 2x, 4x, and 8x."""
@@ -245,6 +247,7 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
                 matching_method=self.matching_method,
                 feature_type=feature_type,
                 matcher_type=matcher_type,
+                matcher_location=self.matcher_location,
                 refine_pixsfm=self.refine_pixsfm,
                 use_single_camera_mode=self.use_single_camera_mode,
             )
