@@ -32,6 +32,8 @@ class ImagesToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
 
     percent_radius_crop: float = 1.0
     """Create circle crop mask. The radius is the percent of the image diagonal."""
+    save_transforms: bool = True
+    """Whether to save the SfM results as JSON."""
 
     def main(self) -> None:
         """Process images into a nerfstudio dataset."""
@@ -125,12 +127,13 @@ class ImagesToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
         if require_cameras_exist and not (self.absolute_colmap_model_path / "cameras.bin").exists():
             raise RuntimeError(f"Could not find existing COLMAP results ({self.colmap_model_path / 'cameras.bin'}).")
 
-        summary_log += self._save_transforms(
-            num_frames,
-            image_id_to_depth_path,
-            None,
-            image_rename_map,
-        )
+        if self.save_transforms:
+            summary_log += self._save_transforms(
+                num_frames,
+                image_id_to_depth_path,
+                None,
+                image_rename_map,
+            )
 
         CONSOLE.log("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
 

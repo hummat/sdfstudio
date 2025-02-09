@@ -42,8 +42,7 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
     """If True, runs refinement using Pixel Perfect SFM.
     Only works with hloc sfm_tool"""
     refine_intrinsics: bool = True
-    """If True, do bundle adjustment to refine intrinsics.
-    Only works with colmap sfm_tool"""
+    """If True, do bundle adjustment to refine intrinsics."""
     feature_type: Literal[
         "any",
         "sift",
@@ -250,6 +249,7 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
                 matcher_location=self.matcher_location,
                 refine_pixsfm=self.refine_pixsfm,
                 use_single_camera_mode=self.use_single_camera_mode,
+                refine_intrinsics=self.refine_intrinsics,
             )
         else:
             raise RuntimeError("Invalid combination of sfm_tool, feature_type, and matcher_type, exiting")
@@ -257,7 +257,7 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
     def __post_init__(self) -> None:
         super().__post_init__()
         install_checks.check_ffmpeg_installed()
-        if not self.skip_colmap:
+        if self.sfm_tool == "colmap" and not self.skip_colmap:
             install_checks.check_colmap_installed(self.colmap_cmd)
 
         if self.crop_bottom < 0.0 or self.crop_bottom > 1:

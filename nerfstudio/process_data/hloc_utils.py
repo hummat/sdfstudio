@@ -50,6 +50,7 @@ def run_hloc(
     num_matched: int = 50,
     refine_pixsfm: bool = False,
     use_single_camera_mode: bool = True,
+    refine_intrinsics: bool = False,
 ) -> None:
     """Runs hloc on the images.
 
@@ -66,6 +67,7 @@ def run_hloc(
         num_matched: Number of image pairs for loc.
         refine_pixsfm: If True, refine the reconstruction using pixel-perfect-sfm.
         use_single_camera_mode: If True, uses one camera for all frames. Otherwise uses one camera per frame.
+        refine_intrinsics: If True, do bundle adjustment to refine intrinsics.
     """
 
     try:
@@ -152,6 +154,7 @@ def run_hloc(
         print("Refined", refined.summary())
 
     else:
+        pass
         reconstruction.main(  # type: ignore
             sfm_dir,
             image_dir,
@@ -162,3 +165,10 @@ def run_hloc(
             image_options=image_options,
             verbose=verbose,
         )
+
+    if refine_intrinsics:
+        reconstruction = pycolmap.Reconstruction()
+        reconstruction.read(sfm_dir)
+        options = pycolmap.BundleAdjustmentOptions(refine_principal_point=True)
+        pycolmap.bundle_adjustment(reconstruction, options)
+        reconstruction.write(sfm_dir)

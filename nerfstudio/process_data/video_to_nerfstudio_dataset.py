@@ -45,6 +45,8 @@ class VideoToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
     """Random seed to select video frames for training set"""
     eval_random_seed: Optional[int] = None
     """Random seed to select video frames for eval set"""
+    save_transforms: bool = True
+    """Whether to save the SfM results as JSON."""
 
     def main(self) -> None:
         """Process video into a nerfstudio dataset."""
@@ -144,7 +146,8 @@ class VideoToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
         image_id_to_depth_path, log_tmp = self._export_depth()
         summary_log += log_tmp
 
-        summary_log += self._save_transforms(num_extracted_frames, image_id_to_depth_path, mask_path)
+        if self.save_transforms:
+            summary_log += self._save_transforms(num_extracted_frames, image_id_to_depth_path, mask_path)
 
         CONSOLE.log("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
 
