@@ -28,7 +28,7 @@ dependencies = [
     "mediapy",
     #"msgpack",
     #"msgpack_numpy",
-    "nerfacc",
+    "nerfacc==0.5.2",
     "open3d",
     "opencv-python",
     #"plotly",
