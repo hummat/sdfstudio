@@ -103,11 +103,11 @@ sdf-render-mesh = "scripts.render_mesh:entrypoint"
 sdf-texture-mesh = "scripts.texture:entrypoint"
 
 
-[options]
+#[options]
 # equivalent to using --extra-index-url with pip, which is needed for specifying the CUDA version torch and torchvision
-dependency_links = [
-    "https://download.pytorch.org/whl/cu113"
-]
+#dependency_links = [
+#    "https://download.pytorch.org/whl/cu113"
+#]
 
 [tool.setuptools.packages.find]
 include = ["nerfstudio*","scripts*"]
