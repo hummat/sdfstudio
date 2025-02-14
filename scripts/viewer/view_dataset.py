@@ -13,10 +13,10 @@ from pathlib import Path
 import torch
 import tyro
 
-from nerfstudio.configs.base_config import ViewerConfig
-from nerfstudio.data.datamanagers import AnnotatedDataParserUnion
-from nerfstudio.data.datasets.base_dataset import InputDataset
-from nerfstudio.viewer.server import viewer_utils
+from sdfstudio.configs.base_config import ViewerConfig
+from sdfstudio.data.datamanagers import AnnotatedDataParserUnion
+from sdfstudio.data.datasets.base_dataset import InputDataset
+from sdfstudio.viewer.server import viewer_utils
 
 DEFAULT_TIMEOUT = timedelta(minutes=30)
 

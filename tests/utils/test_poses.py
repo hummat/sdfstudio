@@ -4,7 +4,7 @@ Test pose utils
 
 import torch
 
-from nerfstudio.utils import poses
+from sdfstudio.utils import poses
 
 
 def test_to4x4():

@@ -22,7 +22,7 @@ You can then enable type/auto complete on the config passed into the `NerfactoMo
 :::
 
 ```python
-"""nerfstudio/models/nerfacto.py"""
+"""sdfstudio/models/nerfacto.py"""
 
 @dataclass
 class NerfactoModelConfig(ModelConfig):
@@ -57,7 +57,7 @@ If you are interested in creating a new model config, you will have to modify th
 For instance, say we created a brand new model called Nerfacto that has an associated `NerfactoModelConfig`, we can specify the following new Config by overriding the pipeline and optimizers attributes appropriately.
 
 ```python
-"""nerfstudio/configs/method_configs.py"""
+"""sdfstudio/configs/method_configs.py"""
 
 method_configs["nerfacto"] = Config(
     method_name="nerfacto",

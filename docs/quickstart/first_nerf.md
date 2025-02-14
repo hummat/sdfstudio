@@ -6,9 +6,9 @@ The following will train a _nerfacto_ model, our recommended model for real worl
 
 ```bash
 # Download some test data:
-ns-download-data nerfstudio --capture-name=poster
+ns-download-data sdfstudio --capture-name=poster
 # Train model
-ns-train nerfacto --data data/nerfstudio/poster
+ns-train nerfacto --data data/sdfstudio/poster
 ```
 
 If everything works, you should see training progress like the following:
@@ -35,7 +35,7 @@ Navigating to the link at the end of the terminal will load the webviewer. If yo
 It is possible to load a pretrained model by running
 
 ```bash
-ns-train nerfacto --data data/nerfstudio/poster --trainer.load-dir {outputs/.../nerfstudio_models}
+ns-train nerfacto --data data/sdfstudio/poster --trainer.load-dir {outputs/.../nerfstudio_models}
 ```
 
 This will automatically start training. If you do not want it to train, add `--viewer.start-train False` to your training command.
@@ -85,7 +85,7 @@ ns-train nerfacto --help
 At the end of the command you can specify the dataparser used. By default we use the _nerfstudio-data_ dataparser. We include other dataparsers such as _Blender_, _NuScenes_, ect. For a list of dataparse specific arguments, add `--help` to the end of the command,
 
 ```bash
-ns-train nerfacto <nerfacto optional args> nerfstudio-data --help
+ns-train nerfacto <nerfacto optional args> sdfstudio-data --help
 ```
 
 Each script will have some other minor quirks (like the training script dataparser subcommand needing to come after the model subcommand), read up on them [here](../reference/cli/index.md).

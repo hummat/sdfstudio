@@ -73,7 +73,7 @@ NeRFs are a volumetric representation encoded into a neural network. They are no
 The associated NeRF fields can be instantiated with the following nerfstudio code (encoding described in next section):
 
 ```python
-from nerfstudio.fields.vanilla_nerf_field import NeRFField
+from sdfstudio.fields.vanilla_nerf_field import NeRFField
 
 field_coarse = NeRFField(position_encoding=pos_enc, direction_encoding=dir_enc)
 field_fine = NeRFField(position_encoding=pos_enc, direction_encoding=dir_enc)
@@ -84,7 +84,7 @@ field_fine = NeRFField(position_encoding=pos_enc, direction_encoding=dir_enc)
 An extra trick is necessary to make the neural network expressive enough to represent fine details in the scene. The input coordinates $(x,y,z,\theta,\phi)$ need to be encoded to a higher dimensional space prior to being input into the network. You can learn more about encodings [here](../model_components/visualize_encoders.ipynb).
 
 ```python
-from nerfstudio.field_components.encodings import NeRFEncoding
+from sdfstudio.field_components.encodings import NeRFEncoding
 
 pos_enc = NeRFEncoding(
     in_dim=3, num_frequencies=10, min_freq_exp=0.0, max_freq_exp=8.0, include_input=True
@@ -115,7 +115,7 @@ Rending RGB images is not the only type of output render supported. It is possib
 Associated nerfstudio code:
 
 ```python
-from nerfstudio.renderers.renderers import RGBRenderer
+from sdfstudio.renderers.renderers import RGBRenderer
 
 renderer_rgb = RGBRenderer(background_color=colors.WHITE)
 # Ray samples discussed in the next section
@@ -148,7 +148,7 @@ The PDF sampler uses these _weights_ to generate a new set of samples that are b
 Associated code:
 
 ```python
-from nerfstudio.model_components.ray_samplers import PDFSampler, UniformSampler
+from sdfstudio.model_components.ray_samplers import PDFSampler, UniformSampler
 
 sampler_uniform = UniformSampler(num_samples=num_coarse_samples)
 ray_samples_uniform = sampler_uniform(ray_bundle)

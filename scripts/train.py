@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Train a radiance field with nerfstudio.
+"""Train a radiance field with sdfstudio.
 For real captures, we recommend using the [bright_yellow]nerfacto[/bright_yellow] model.
 
 Nerfstudio allows for customizing your training and eval configs from the CLI in a powerful way, but there are some
@@ -9,24 +9,24 @@ The most demonstrative and helpful example of the CLI structure is the differenc
 commands:
 
     ns-train -h
-    ns-train nerfacto -h nerfstudio-data
-    ns-train nerfacto nerfstudio-data -h
+    ns-train nerfacto -h sdfstudio-data
+    ns-train nerfacto sdfstudio-data -h
 
-In each of these examples, the -h applies to the previous subcommand (ns-train, nerfacto, and nerfstudio-data).
+In each of these examples, the -h applies to the previous subcommand (ns-train, nerfacto, and sdfstudio-data).
 
 In the first example, we get the help menu for the ns-train script.
 In the second example, we get the help menu for the nerfacto model.
-In the third example, we get the help menu for the nerfstudio-data dataparser.
+In the third example, we get the help menu for the sdfstudio-data dataparser.
 
 With our scripts, your arguments will apply to the preceding subcommand in your command, and thus where you put your
 arguments matters! Any optional arguments you discover from running
 
-    ns-train nerfacto -h nerfstudio-data
+    ns-train nerfacto -h sdfstudio-data
 
 need to come directly after the nerfacto subcommand, since these optional arguments only belong to the nerfacto
 subcommand:
 
-    ns-train nerfacto {nerfacto optional args} nerfstudio-data
+    ns-train nerfacto {nerfacto optional args} sdfstudio-data
 """
 
 from __future__ import annotations
@@ -45,11 +45,11 @@ import tyro
 import yaml
 from rich.console import Console
 
-from nerfstudio.configs import base_config as cfg
-from nerfstudio.configs.config_utils import convert_markup_to_ansi
-from nerfstudio.configs.method_configs import AnnotatedBaseConfigUnion
-from nerfstudio.engine.trainer import Trainer
-from nerfstudio.utils import comms, profiler
+from sdfstudio.configs import base_config as cfg
+from sdfstudio.configs.config_utils import convert_markup_to_ansi
+from sdfstudio.configs.method_configs import AnnotatedBaseConfigUnion
+from sdfstudio.engine.trainer import Trainer
+from sdfstudio.utils import comms, profiler
 
 CONSOLE = Console(width=120)
 DEFAULT_TIMEOUT = timedelta(minutes=30)

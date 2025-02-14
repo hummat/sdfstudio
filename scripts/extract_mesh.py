@@ -12,9 +12,9 @@ import torch
 import tyro
 from rich.console import Console
 
-from nerfstudio.model_components.ray_samplers import save_points
-from nerfstudio.utils.eval_utils import eval_setup
-from nerfstudio.utils.marching_cubes import (
+from sdfstudio.model_components.ray_samplers import save_points
+from sdfstudio.utils.eval_utils import eval_setup
+from sdfstudio.utils.marching_cubes import (
     get_surface_occupancy,
     get_surface_sliding,
     get_surface_sliding_with_contraction,

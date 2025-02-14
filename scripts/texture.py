@@ -14,9 +14,9 @@ import tyro
 from rich.console import Console
 from typing_extensions import Literal
 
-from nerfstudio.exporter import texture_utils
-from nerfstudio.exporter.exporter_utils import get_mesh_from_filename
-from nerfstudio.utils.eval_utils import eval_setup
+from sdfstudio.exporter import texture_utils
+from sdfstudio.exporter.exporter_utils import get_mesh_from_filename
+from sdfstudio.utils.eval_utils import eval_setup
 
 CONSOLE = Console(width=120)
 

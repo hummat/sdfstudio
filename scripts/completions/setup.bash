@@ -1,4 +1,4 @@
-# nerfstudio completions for bash.
+# sdfstudio completions for bash.
 #
 # This should generally be installed automatically by `configure.py`.
 

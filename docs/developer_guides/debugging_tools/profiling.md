@@ -11,7 +11,7 @@ The profiler computes the average total time of execution for any function with 
 For instance, if you wanted to profile the total time it takes to generate rays given pixel and camera indices via the `RayGenerator` class, you might want to time its `forward()` function. In that case, you would need to add the decorator to the function.
 
 ```python
-"""nerfstudio/model_components/ray_generators.py""""
+"""sdfstudio/model_components/ray_generators.py""""
 
 class RayGenerator(nn.Module):
 

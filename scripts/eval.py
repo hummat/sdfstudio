@@ -14,7 +14,7 @@ import torch
 import tyro
 from rich.console import Console
 
-from nerfstudio.utils.eval_utils import eval_setup
+from sdfstudio.utils.eval_utils import eval_setup
 
 CONSOLE = Console(width=120)
 

@@ -1,4 +1,4 @@
-# nerfstudio completions for zsh.
+# sdfstudio completions for zsh.
 #
 # This should generally be installed automatically by `configure.py`.
 

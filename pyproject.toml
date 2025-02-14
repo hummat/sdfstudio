@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sdfstudio"
-version = "0.3.2"
+version = "0.4.0"
 description = "All-in-one repository for state-of-the-art neural surface reconstruction"
 readme = "README.md"
 license = { text="Apache 2.0"}
@@ -97,7 +97,7 @@ sdf-eval = "scripts.eval:entrypoint"
 sdf-render = "scripts.render:entrypoint"
 sdf-export = "scripts.exporter:entrypoint"
 sdf-dev-test = "scripts.github.run_actions:entrypoint"
-sdf-bridge-server = "nerfstudio.viewer.server.server:entrypoint"
+sdf-bridge-server = "sdfstudio.viewer.server.server:entrypoint"
 sdf-extract-mesh = "scripts.extract_mesh:entrypoint"
 sdf-render-mesh = "scripts.render_mesh:entrypoint"
 sdf-texture-mesh = "scripts.texture:entrypoint"
@@ -110,7 +110,7 @@ sdf-texture-mesh = "scripts.texture:entrypoint"
 #]
 
 [tool.setuptools.packages.find]
-include = ["nerfstudio*","scripts*"]
+include = ["sdfstudio*","scripts*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "py.typed", "setup.bash", "setup.zsh"]
@@ -141,18 +141,18 @@ disable = [
 
 #pytest
 [tool.pytest.ini_options]
-addopts = "-n=4 --typeguard-packages=nerfstudio --torchtyping-patch-typeguard --disable-warnings"
+addopts = "-n=4 --typeguard-packages=sdfstudio --torchtyping-patch-typeguard --disable-warnings"
 testpaths = [
     "tests",
 ]
 
 # pyright
 [tool.pyright]
-include = ["nerfstudio"]
+include = ["sdfstudio"]
 exclude = ["**/node_modules",
     "**/__pycache__",
 ]
-ignore = ["nerfstudio/viewer"]
+ignore = ["sdfstudio/viewer"]
 defineConstant = { DEBUG = true }
 
 reportMissingImports = true

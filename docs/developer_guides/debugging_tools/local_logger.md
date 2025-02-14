@@ -5,7 +5,7 @@ You can specify additional parameters to customize your logging experience.
 A skeleton of the local writer config is defined below.
 
 ```python
-"""nerfstudio/configs/base_config.py""""
+"""sdfstudio/configs/base_config.py""""
 
 @dataclass
 class LocalWriterConfig(InstantiateConfig):

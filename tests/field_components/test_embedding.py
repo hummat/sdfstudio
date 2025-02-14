@@ -1,7 +1,7 @@
 """
 Embedding tests
 """
-from nerfstudio.field_components.embedding import Embedding
+from sdfstudio.field_components.embedding import Embedding
 
 
 def test_indexing():

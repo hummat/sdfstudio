@@ -9,8 +9,8 @@ CUDA must be installed on the system. This library has been tested with version 
 Nerfstudio requires `python >= 3.7`. We recommend using conda to manage dependencies. Make sure to install [Conda](https://docs.conda.io/en/latest/miniconda.html) before preceding.
 
 ```bash
-conda create --name nerfstudio -y python=3.8
-conda activate nerfstudio
+conda create --name sdfstudio -y python=3.8
+conda activate sdfstudio
 python -m pip install --upgrade pip
 
 ```
@@ -30,15 +30,15 @@ pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/to
 **From pip**
 
 ```bash
-pip install nerfstudio
+pip install sdfstudio
 ```
 
 **From source**
 Optional, use this command if you want the latest development version.
 
 ```bash
-git clone git@github.com:nerfstudio-project/nerfstudio.git
-cd nerfstudio
+git clone git@github.com:sdfstudio-project/sdfstudio.git
+cd sdfstudio
 pip install --upgrade pip setuptools
 pip install -e .
 ```
@@ -69,11 +69,11 @@ Instead of installing and compiling prerequisites, setting up the environment an
 Docker ([get docker](https://docs.docker.com/get-docker/)) and nvidia GPU drivers ([get nvidia drivers](https://www.nvidia.de/Download/index.aspx?lang=de)), capable of working with CUDA 11.3, must be installed.
 The docker image can then either be pulled from [here](https://hub.docker.com/r/dromni/nerfstudio/tags) (replace <version> with the actual version, e.g. 0.1.10)
 ```bash
-docker pull dromni/nerfstudio:<version>
+docker pull dromni/sdfstudio:<version>
 ```
 or be built from the repository using
 ```bash
-docker build --tag nerfstudio -f Dockerfile .
+docker build --tag sdfstudio -f Dockerfile .
 ```
 ### Using an interactive container
 The docker container can be launched with an interactive terminal where nerfstudio commands can be entered as usual. Some parameters are required and some are strongly reocmmended for usage as following:
@@ -84,14 +84,14 @@ docker run --gpus all \                                         # Give the conta
             -p 7007:7007 \                                      # Map port from local machine to docker container (required to access the web interface/UI).
             --rm \                                              # Remove container after it is closed (recommended).
             -it \                                               # Start container in interactive mode.
-            nerfstudio                                          # Docker image name
+            sdfstudio                                          # Docker image name
 ```
 ### Call nerfstudio commands directly
 Besides, the container can also directly be used by adding the nerfstudio command to the end.
 ```bash
 docker run --gpus all -v /folder/of/your/data:/workspace/ -v /home/<YOUR_USER>/.cache/:/home/user/.cache/ -p 7007:7007 --rm # Parameters.
-            nerfstudio \                                        # Docker image name
-            ns-process-data video --data /workspace/video.mp4   # Smaple command of nerfstudio.
+            sdfstudio \                                        # Docker image name
+            ns-process-data video --data /workspace/video.mp4   # Smaple command of sdfstudio.
 ```
 ### Note
 - The container works on Linux and Windows, depending on your OS some additional setup steps might be required to provide access to your GPU inside containers.

@@ -3,7 +3,7 @@ Test colormaps
 """
 import torch
 
-from nerfstudio.utils import colormaps
+from sdfstudio.utils import colormaps
 
 
 def test_apply_colormap():

@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 def main(args):
     """
-    Given data that follows the nerfstudio format such as the output from colmap or polycam,
+    Given data that follows the sdfstudio format such as the output from colmap or polycam,
     convert to a format that sdfstudio will ingest
     """
     output_dir = Path(args.output_dir)
@@ -244,10 +244,10 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="preprocess nerfstudio dataset to sdfstudio dataset, "
+    parser = argparse.ArgumentParser(description="preprocess sdfstudio dataset to sdfstudio dataset, "
                                                  "currently support colmap and polycam")
 
-    parser.add_argument("--data", dest="input_dir", required=True, help="path to nerfstudio data directory")
+    parser.add_argument("--data", dest="input_dir", required=True, help="path to sdfstudio data directory")
     parser.add_argument("--output-dir", dest="output_dir", required=True, help="path to output data directory")
     parser.add_argument("--data-type", dest="data_type", required=True, choices=["colmap", "polycam"])
     parser.add_argument("--scene-type", dest="scene_type", required=True, choices=["indoor", "object", "unbound"],

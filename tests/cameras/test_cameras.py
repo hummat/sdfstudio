@@ -6,8 +6,8 @@ from itertools import product
 
 import torch
 
-from nerfstudio.cameras.cameras import Cameras, CameraType
-from nerfstudio.cameras.rays import RayBundle
+from sdfstudio.cameras.cameras import Cameras, CameraType
+from sdfstudio.cameras.rays import RayBundle
 
 BATCH_SIZE = 2
 H_W = 800

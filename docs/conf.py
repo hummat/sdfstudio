@@ -16,13 +16,13 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 sys.path.append(os.path.abspath("./_pygments"))
-import nerfstudio.configs.base_config
+import sdfstudio.configs.base_config
 
 # -- Project information -----------------------------------------------------
 
-project = "nerfstudio"
-copyright = "2022, nerfstudio Team"
-author = "nerfstudio Team"
+project = "sdfstudio"
+copyright = "2022, sdfstudio Team"
+author = "sdfstudio Team"
 
 # -- General configuration ---------------------------------------------------
 
@@ -81,7 +81,7 @@ ogp_image = "https://assets.nerf.studio/opg.png"
 # a list of builtin themes.
 #
 html_theme = "furo"
-html_title = "nerfstudio"
+html_title = "sdfstudio"
 
 autosectionlabel_prefix_document = True
 

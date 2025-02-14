@@ -7,7 +7,7 @@ from typing import Dict
 import pytest
 import torch
 
-from nerfstudio.utils.tensor_dataclass import TensorDataclass
+from sdfstudio.utils.tensor_dataclass import TensorDataclass
 
 
 @dataclass

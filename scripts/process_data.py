@@ -13,7 +13,7 @@
 # limitations under the License.
 
 #!/usr/bin/env python
-"""Processes a video or image sequence to a nerfstudio compatible dataset."""
+"""Processes a video or image sequence to a sdfstudio compatible dataset."""
 
 import sys
 import zipfile
@@ -25,7 +25,7 @@ import numpy as np
 import tyro
 from typing_extensions import Annotated
 
-from nerfstudio.process_data import (
+from sdfstudio.process_data import (
     metashape_utils,
     odm_utils,
     polycam_utils,
@@ -33,20 +33,20 @@ from nerfstudio.process_data import (
     realitycapture_utils,
     record3d_utils,
 )
-from nerfstudio.process_data.colmap_converter_to_nerfstudio_dataset import BaseConverterToNerfstudioDataset
-from nerfstudio.process_data.images_to_nerfstudio_dataset import ImagesToNerfstudioDataset
-from nerfstudio.process_data.video_to_nerfstudio_dataset import VideoToNerfstudioDataset
-from nerfstudio.utils.rich_utils import CONSOLE
+from sdfstudio.process_data.colmap_converter_to_nerfstudio_dataset import BaseConverterToNerfstudioDataset
+from sdfstudio.process_data.images_to_nerfstudio_dataset import ImagesToNerfstudioDataset
+from sdfstudio.process_data.video_to_nerfstudio_dataset import VideoToNerfstudioDataset
+from sdfstudio.utils.rich_utils import CONSOLE
 
 
 @dataclass
 class ProcessRecord3D(BaseConverterToNerfstudioDataset):
-    """Process Record3D data into a nerfstudio dataset.
+    """Process Record3D data into a sdfstudio dataset.
 
     This script does the following:
 
     1. Scales images to a specified size.
-    2. Converts Record3D poses into the nerfstudio format.
+    2. Converts Record3D poses into the sdfstudio format.
     """
 
     ply_dir: Optional[Path] = None
@@ -62,7 +62,7 @@ class ProcessRecord3D(BaseConverterToNerfstudioDataset):
     use all images."""
 
     def main(self) -> None:
-        """Process images into a nerfstudio dataset."""
+        """Process images into a sdfstudio dataset."""
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         image_dir = self.output_dir / "images"
@@ -123,7 +123,7 @@ class ProcessRecord3D(BaseConverterToNerfstudioDataset):
 
 @dataclass
 class ProcessPolycam(BaseConverterToNerfstudioDataset):
-    """Process Polycam data into a nerfstudio dataset.
+    """Process Polycam data into a sdfstudio dataset.
 
     To capture data, use the Polycam app on an iPhone or iPad with LiDAR. The capture must be in LiDAR or ROOM mode.
     Developer mode must be enabled in the app settings, this will enable a raw data export option in the export menus.
@@ -132,7 +132,7 @@ class ProcessPolycam(BaseConverterToNerfstudioDataset):
     This script does the following:
 
     1. Scales images to a specified size.
-    2. Converts Polycam poses into the nerfstudio format.
+    2. Converts Polycam poses into the sdfstudio format.
     """
 
     num_downscales: int = 3
@@ -151,7 +151,7 @@ class ProcessPolycam(BaseConverterToNerfstudioDataset):
     """If True, processes the generated depth maps from Polycam"""
 
     def main(self) -> None:
-        """Process images into a nerfstudio dataset."""
+        """Process images into a sdfstudio dataset."""
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         image_dir = self.output_dir / "images"
@@ -240,7 +240,7 @@ class _NoDefaultProcessMetashape:
 
 @dataclass
 class ProcessMetashape(BaseConverterToNerfstudioDataset, _NoDefaultProcessMetashape):
-    """Process Metashape data into a nerfstudio dataset.
+    """Process Metashape data into a sdfstudio dataset.
 
     This script assumes that cameras have been aligned using Metashape. After alignment, it is necessary to export the
     camera poses as a `.xml` file. This option can be found under `File > Export > Export Cameras`.
@@ -251,7 +251,7 @@ class ProcessMetashape(BaseConverterToNerfstudioDataset, _NoDefaultProcessMetash
     This script does the following:
 
     1. Scales images to a specified size.
-    2. Converts Metashape poses into the nerfstudio format.
+    2. Converts Metashape poses into the sdfstudio format.
     """
 
     ply: Optional[Path] = None
@@ -265,7 +265,7 @@ class ProcessMetashape(BaseConverterToNerfstudioDataset, _NoDefaultProcessMetash
     use all images."""
 
     def main(self) -> None:
-        """Process images into a nerfstudio dataset."""
+        """Process images into a sdfstudio dataset."""
 
         if self.xml.suffix != ".xml":
             raise ValueError(f"XML file {self.xml} must have a .xml extension")
@@ -340,7 +340,7 @@ class _NoDefaultProcessRealityCapture:
 
 @dataclass
 class ProcessRealityCapture(BaseConverterToNerfstudioDataset, _NoDefaultProcessRealityCapture):
-    """Process RealityCapture data into a nerfstudio dataset.
+    """Process RealityCapture data into a sdfstudio dataset.
 
     This script assumes that cameras have been aligned using RealityCapture. After alignment, it is necessary to
     export the camera poses as a `.csv` file using the `Internal/External camera parameters` option.
@@ -348,7 +348,7 @@ class ProcessRealityCapture(BaseConverterToNerfstudioDataset, _NoDefaultProcessR
     This script does the following:
 
     1. Scales images to a specified size.
-    2. Converts RealityCapture poses into the nerfstudio format.
+    2. Converts RealityCapture poses into the sdfstudio format.
     """
 
     ply: Optional[Path] = None
@@ -362,7 +362,7 @@ class ProcessRealityCapture(BaseConverterToNerfstudioDataset, _NoDefaultProcessR
     use all images."""
 
     def main(self) -> None:
-        """Process images into a nerfstudio dataset."""
+        """Process images into a sdfstudio dataset."""
 
         if self.csv.suffix != ".csv":
             raise ValueError(f"CSV file {self.csv} must have a .csv extension")
@@ -429,12 +429,12 @@ class ProcessRealityCapture(BaseConverterToNerfstudioDataset, _NoDefaultProcessR
 
 @dataclass
 class ProcessODM(BaseConverterToNerfstudioDataset):
-    """Process ODM data into a nerfstudio dataset.
+    """Process ODM data into a sdfstudio dataset.
 
     This script does the following:
 
     1. Scales images to a specified size.
-    2. Converts ODM poses into the nerfstudio format.
+    2. Converts ODM poses into the sdfstudio format.
     """
 
     num_downscales: int = 3
@@ -445,7 +445,7 @@ class ProcessODM(BaseConverterToNerfstudioDataset):
     use all images."""
 
     def main(self) -> None:
-        """Process images into a nerfstudio dataset."""
+        """Process images into a sdfstudio dataset."""
 
         orig_images_dir = self.data / "images"
         cameras_file = self.data / "cameras.json"
@@ -538,7 +538,7 @@ except ImportError:
     projectaria_tools = None
 
 if projectaria_tools is not None:
-    from nerfstudio.scripts.datasets.process_project_aria import ProcessProjectAria
+    from sdfstudio.scripts.datasets.process_project_aria import ProcessProjectAria
 
     # Note that Union[A, Union[B, C]] == Union[A, B, C].
     Commands = Union[Commands, Annotated[ProcessProjectAria, tyro.conf.subcommand(name="aria")]]

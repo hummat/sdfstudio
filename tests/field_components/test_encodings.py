@@ -4,7 +4,7 @@ Encoding Tests
 import pytest
 import torch
 
-from nerfstudio.field_components import encodings
+from sdfstudio.field_components import encodings
 
 
 def test_scaling_and_offset():

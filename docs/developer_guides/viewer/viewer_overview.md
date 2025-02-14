@@ -25,7 +25,7 @@ The connection between the Bridge Server and the Client App works with WebSocket
 #### Running the Client App
 
 ```shell
-cd nerfstudio/viewer/app
+cd sdfstudio/viewer/app
 ```
 
 Install npm (to install yarn) and yarn

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Configuration script for setting up tab completion for nerfstudio in bash and zsh."""
+"""Configuration script for setting up tab completion for sdfstudio in bash and zsh."""
 
 import concurrent.futures
 import itertools
@@ -143,7 +143,7 @@ def _update_rc(
     """
 
     # Install or uninstall `source_line`.
-    header_line = "# Source nerfstudio autocompletions."
+    header_line = "# Source sdfstudio autocompletions."
     if shell == "zsh":
         source_lines = "\n".join(
             [

@@ -33,9 +33,9 @@ jobs:
         run: |
           python ./scripts/docs/add_nb_tags.py --check
       - name: Run isort
-        run: isort docs/ nerfstudio/ scripts/ tests/ --profile black --check
+        run: isort docs/ sdfstudio/ scripts/ tests/ --profile black --check
       - name: Run Black
-        run: black docs/ nerfstudio/ scripts/ tests/ --check
+        run: black docs/ sdfstudio/ scripts/ tests/ --check
       - name: Python Pylint
         run: |
           pylint nerfstudio tests scripts

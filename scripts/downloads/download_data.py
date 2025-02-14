@@ -14,7 +14,7 @@ import tyro
 from rich.console import Console
 from typing_extensions import Annotated
 
-from nerfstudio.configs.base_config import PrintableConfig
+from sdfstudio.configs.base_config import PrintableConfig
 
 CONSOLE = Console(width=120)
 
@@ -124,19 +124,19 @@ def download_capture_name(save_dir: Path, dataset_name: str, capture_name: str, 
 
 @dataclass
 class NerfstudioDownload(DatasetDownload):
-    """Download the nerfstudio dataset."""
+    """Download the sdfstudio dataset."""
 
     capture_name: NerfstudioCaptureName = "bww_entrance"
 
     def download(self, save_dir: Path):
-        """Download the nerfstudio dataset."""
+        """Download the sdfstudio dataset."""
         if self.capture_name == "all":
             for capture_name in nerfstudio_file_ids:
                 if capture_name != "all":
-                    download_capture_name(save_dir, "nerfstudio", capture_name, nerfstudio_file_ids)
+                    download_capture_name(save_dir, "sdfstudio", capture_name, nerfstudio_file_ids)
             return
 
-        download_capture_name(save_dir, "nerfstudio", self.capture_name, capture_name_to_file_id=nerfstudio_file_ids)
+        download_capture_name(save_dir, "sdfstudio", self.capture_name, capture_name_to_file_id=nerfstudio_file_ids)
 
 
 record3d_file_ids = {
@@ -316,7 +316,7 @@ class Mipnerf360Download(DatasetDownload):
 
         # Download the files
         url = "https://data.nerf.studio/nerfstudio-data-mipnerf360.zip"
-        download_path = str(save_dir / "nerfstudio-data-mipnerf360.zip")
+        download_path = str(save_dir / "sdfstudio-data-mipnerf360.zip")
         gdown.download(url, output=download_path)
         with zipfile.ZipFile(download_path, "r") as zip_ref:
             zip_ref.extractall(str(save_dir))
@@ -326,7 +326,7 @@ class Mipnerf360Download(DatasetDownload):
 Commands = Union[
     Annotated[BlenderDownload, tyro.conf.subcommand(name="blender")],
     Annotated[FriendsDownload, tyro.conf.subcommand(name="friends")],
-    Annotated[NerfstudioDownload, tyro.conf.subcommand(name="nerfstudio")],
+    Annotated[NerfstudioDownload, tyro.conf.subcommand(name="sdfstudio")],
     Annotated[Record3dDownload, tyro.conf.subcommand(name="record3d")],
     Annotated[DNerfDownload, tyro.conf.subcommand(name="dnerf")],
     Annotated[PhototourismDownload, tyro.conf.subcommand(name="phototourism")],
@@ -340,7 +340,7 @@ def main(
 ):
     """Script to download existing datasets.
     We currently support the following datasets:
-    - nerfstudio: Growing collection of real-world scenes. Use the `capture_name` argument to specify
+    - sdfstudio: Growing collection of real-world scenes. Use the `capture_name` argument to specify
         which capture to download.
     - blender: Blender synthetic scenes realeased with NeRF.
     - friends: Friends TV show scenes.

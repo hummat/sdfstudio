@@ -16,14 +16,14 @@ import tyro
 from rich.console import Console
 from typing_extensions import Annotated, Literal
 
-from nerfstudio.cameras.rays import RayBundle
-from nerfstudio.exporter import texture_utils, tsdf_utils
-from nerfstudio.exporter.exporter_utils import (
+from sdfstudio.cameras.rays import RayBundle
+from sdfstudio.exporter import texture_utils, tsdf_utils
+from sdfstudio.exporter.exporter_utils import (
     generate_point_cloud,
     get_mesh_from_filename,
 )
-from nerfstudio.pipelines.base_pipeline import Pipeline
-from nerfstudio.utils.eval_utils import eval_setup
+from sdfstudio.pipelines.base_pipeline import Pipeline
+from sdfstudio.utils.eval_utils import eval_setup
 
 CONSOLE = Console(width=120)
 

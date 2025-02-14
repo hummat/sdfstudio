@@ -14,9 +14,9 @@ import trimesh
 import yaml
 from tqdm import tqdm
 
-# from nerfstudio.utils import colmap_utils
-from nerfstudio.data.utils import colmap_utils
-from nerfstudio.model_components.ray_samplers import save_points
+# from sdfstudio.utils import colmap_utils
+from sdfstudio.data.utils import colmap_utils
+from sdfstudio.model_components.ray_samplers import save_points
 
 os.environ["PYOPENGL_PLATFORM"] = "egl"
 

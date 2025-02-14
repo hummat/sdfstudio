@@ -20,16 +20,16 @@ from scipy.interpolate import interp1d
 from scipy.spatial.transform import Rotation, Slerp
 from typing_extensions import Literal, assert_never
 
-from nerfstudio.cameras.camera_paths import (
+from sdfstudio.cameras.camera_paths import (
     generate_ellipse_path,
     get_path_from_json,
     get_spiral_path,
 )
-from nerfstudio.cameras.cameras import Cameras
-from nerfstudio.configs.base_config import Config  # pylint: disable=unused-import
-from nerfstudio.data.datamanagers.base_datamanager import AnnotatedDataParserUnion
-from nerfstudio.data.dataparsers.sdfstudio_dataparser import SDFStudioDataParserConfig
-from nerfstudio.utils import install_checks
+from sdfstudio.cameras.cameras import Cameras
+from sdfstudio.configs.base_config import Config  # pylint: disable=unused-import
+from sdfstudio.data.datamanagers.base_datamanager import AnnotatedDataParserUnion
+from sdfstudio.data.dataparsers.sdfstudio_dataparser import SDFStudioDataParserConfig
+from sdfstudio.utils import install_checks
 
 CONSOLE = Console(width=120)
 
