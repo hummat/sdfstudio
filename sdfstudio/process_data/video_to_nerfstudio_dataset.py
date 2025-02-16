@@ -49,7 +49,7 @@ class VideoToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
     """Whether to save the SfM results as JSON."""
 
     def main(self) -> None:
-        """Process video into a sdfstudio dataset."""
+        """Process video into a nerfstudio dataset."""
 
         summary_log = []
         summary_log_eval = []

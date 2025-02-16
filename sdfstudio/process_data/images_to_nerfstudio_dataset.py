@@ -36,7 +36,7 @@ class ImagesToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
     """Whether to save the SfM results as JSON."""
 
     def main(self) -> None:
-        """Process images into a sdfstudio dataset."""
+        """Process images into a nerfstudio dataset."""
 
         require_cameras_exist = False
         if self.colmap_model_path != ColmapConverterToNerfstudioDataset.default_colmap_path():

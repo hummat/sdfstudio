@@ -457,7 +457,23 @@ def colmap_to_json(
 
         name = im_data.name
         if image_rename_map is not None:
-            name = image_rename_map[name]
+            stem = Path(name).stem
+            if name in image_rename_map:
+                name = image_rename_map[name]
+            elif stem + ".jpg" in image_rename_map:
+                name = image_rename_map[stem + ".jpg"]
+            elif stem + ".JPG" in image_rename_map:
+                name = image_rename_map[stem + ".JPG"]
+            elif stem + ".jpeg" in image_rename_map:
+                name = image_rename_map[stem + ".jpeg"]
+            elif stem + ".JPEG" in image_rename_map:
+                name = image_rename_map[stem + ".JPEG"]
+            elif stem + ".png" in image_rename_map:
+                name = image_rename_map[stem + ".png"]
+            elif stem + ".PNG" in image_rename_map:
+                name = image_rename_map[stem + ".PNG"]
+            else:
+                raise ValueError(f"Image name {name} with extension {Path(name).suffix} not found in image_rename_map")
         name = Path(f"./images/{name}")
 
         frame = {
