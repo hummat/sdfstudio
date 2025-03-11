@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Helper utils for processing data into the sdfstudio format."""
 
 import math
@@ -37,7 +36,6 @@ from sdfstudio.utils.rich_utils import CONSOLE, status
 from sdfstudio.utils.scripts import run_command
 
 POLYCAM_UPSCALING_TIMES = 2
-
 """Lowercase suffixes to treat as raw image."""
 ALLOWED_RAW_EXTS = [".cr2"]
 """Suffix to use for converted images from raw."""
@@ -111,6 +109,7 @@ def get_num_frames_in_video(video: Path) -> int:
     """
     cmd = f'ffprobe -v error -select_streams v:0 -count_packets \
             -show_entries stream=nb_read_packets -of csv=p=0 "{video}"'
+
     output = run_command(cmd)
     assert output is not None
     number_match = re.search(r"\d+", output)
@@ -188,12 +187,8 @@ def convert_video_to_images(
         for dir in downscale_dirs:
             dir.mkdir(parents=True, exist_ok=True)
 
-        downscale_chain = (
-            f"split={num_downscales + 1}"
-            + "".join([f"[t{i}]" for i in range(num_downscales + 1)])
-            + ";"
-            + ";".join(downscale_chains)
-        )
+        downscale_chain = (f"split={num_downscales + 1}" + "".join([f"[t{i}]" for i in range(num_downscales + 1)]) +
+                           ";" + ";".join(downscale_chains))
 
         ffmpeg_cmd += " -vsync vfr"
 
@@ -213,8 +208,7 @@ def convert_video_to_images(
             select_cmd = ""
 
         downscale_cmd = f' -filter_complex "{select_cmd}{crop_cmd}{downscale_chain}"' + "".join(
-            [f' -map "[out{i}]" "{downscale_paths[i]}"' for i in range(num_downscales + 1)]
-        )
+            [f' -map "[out{i}]" "{downscale_paths[i]}"' for i in range(num_downscales + 1)])
 
         ffmpeg_cmd += downscale_cmd
 
@@ -235,13 +229,13 @@ def copy_images_list(
     num_downscales: int,
     image_prefix: str = "frame_",
     crop_border_pixels: Optional[int] = None,
-    crop_factor: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
+    crop_factor: Union[Tuple[float, float, float, float], Literal["auto"]] = (0.0, 0.0, 0.0, 0.0),
     verbose: bool = False,
     keep_image_dir: bool = False,
     upscale_factor: Optional[int] = None,
     nearest_neighbor: bool = False,
     same_dimensions: bool = True,
-) -> List[Path]:
+) -> Tuple[List[Path], List]:
     """Copy all images in a list of Paths. Useful for filtering from a directory.
     Args:
         image_paths: List of Paths of images to copy to a new directory.
@@ -267,6 +261,7 @@ def copy_images_list(
     image_dir.mkdir(exist_ok=True, parents=True)
 
     copied_image_paths = []
+    crop_factors = []
 
     # Images should be 1-indexed for the rest of the pipeline.
     for idx, image_path in enumerate(image_paths):
@@ -294,19 +289,27 @@ def copy_images_list(
             pass
         copied_image_paths.append(copied_image_path)
 
+        if crop_factor == "auto":
+            image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
+            if image.shape[2] == 4:
+                crop_factors.append(compute_crop_factor_from_bounding_box(image[:, :, 3]))
+            else:
+                crop_factors.append((0.0, 0.0, 0.0, 0.0))
+        else:
+            crop_factors.append(crop_factor)
+
+    if crop_factor == "auto":
+        same_dimensions = False
+
     nn_flag = "" if not nearest_neighbor else ":flags=neighbor"
     downscale_chains = [f"[t{i}]scale=iw/{2**i}:ih/{2**i}{nn_flag}[out{i}]" for i in range(num_downscales + 1)]
-    downscale_dirs = [Path(str(image_dir) + (f"_{2**i}" if i > 0 else "")) for i in range(num_downscales + 1)]
+    downscale_dirs = [Path(str(image_dir) + f"_{2**i}") for i in range(num_downscales + 1)]
 
     for dir in downscale_dirs:
         dir.mkdir(parents=True, exist_ok=True)
 
-    downscale_chain = (
-        f"split={num_downscales + 1}"
-        + "".join([f"[t{i}]" for i in range(num_downscales + 1)])
-        + ";"
-        + ";".join(downscale_chains)
-    )
+    downscale_chain = (f"split={num_downscales + 1}" + "".join([f"[t{i}]" for i in range(num_downscales + 1)]) + ";" +
+                       ";".join(downscale_chains))
 
     num_frames = len(image_paths)
     # ffmpeg batch commands assume all images are the same dimensions.
@@ -319,35 +322,39 @@ def copy_images_list(
         crop_cmd = ""
         if crop_border_pixels is not None:
             crop_cmd = f"crop=iw-{crop_border_pixels * 2}:ih-{crop_border_pixels * 2}[cropped];[cropped]"
-        elif crop_factor != (0.0, 0.0, 0.0, 0.0):
-            height = 1 - crop_factor[0] - crop_factor[1]
-            width = 1 - crop_factor[2] - crop_factor[3]
-            start_x = crop_factor[2]
-            start_y = crop_factor[0]
+        elif crop_factors[framenum - 1] != (0.0, 0.0, 0.0, 0.0):
+            cf = crop_factors[framenum - 1]
+            height = 1 - cf[0] - cf[1]
+            width = 1 - cf[2] - cf[3]
+            start_x = cf[2]
+            start_y = cf[0]
             crop_cmd = f"crop=w=iw*{width}:h=ih*{height}:x=iw*{start_x}:y=ih*{start_y}[cropped];[cropped]"
 
         select_cmd = "[0:v]"
         if upscale_factor is not None:
             select_cmd = f"[0:v]scale=iw*{upscale_factor}:ih*{upscale_factor}:flags=neighbor[upscaled];[upscaled]"
 
-        downscale_cmd = f' -filter_complex "{select_cmd}{crop_cmd}{downscale_chain}"' + "".join(
-            [
-                f' -map "[out{i}]" -q:v 2 "{downscale_dirs[i] / f"{framename}{copied_image_paths[0].suffix}"}"'
-                for i in range(num_downscales + 1)
-            ]
-        )
+        downscale_cmd = f' -filter_complex "{select_cmd}{crop_cmd}{downscale_chain}"' + "".join([
+            f' -map "[out{i}]" -q:v 2 "{downscale_dirs[i] / f"{framename}{copied_image_paths[0].suffix}"}"'
+            for i in range(num_downscales + 1)
+        ])
 
         ffmpeg_cmd += downscale_cmd
         if verbose:
             CONSOLE.log(f"... {ffmpeg_cmd}")
         run_command(ffmpeg_cmd, verbose=verbose)
 
+    shutil.rmtree(image_dir, ignore_errors=True)
+    shutil.move(downscale_dirs[0], image_dir)
+
     if num_frames == 0:
         CONSOLE.log("[bold red]:skull: No usable images in the data folder.")
     else:
         CONSOLE.log(f"[bold green]:tada: Done copying images with prefix '{image_prefix}'.")
 
-    return copied_image_paths
+    if crop_factor == "auto":
+        return copied_image_paths, crop_factors
+    return copied_image_paths, []
 
 
 def copy_and_upscale_polycam_depth_maps_list(
@@ -372,9 +379,9 @@ def copy_and_upscale_polycam_depth_maps_list(
 
     # copy and upscale them to new directory
     with status(
-        msg="[bold yellow] Upscaling depth maps...",
-        spinner="growVertical",
-        verbose=verbose,
+            msg="[bold yellow] Upscaling depth maps...",
+            spinner="growVertical",
+            verbose=verbose,
     ):
         upscale_factor = 2**POLYCAM_UPSCALING_TIMES
         assert upscale_factor > 1
@@ -400,10 +407,10 @@ def copy_images(
     image_prefix: str = "frame_",
     verbose: bool = False,
     keep_image_dir: bool = False,
-    crop_factor: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
+    crop_factor: Union[Tuple[float, float, float, float], Literal["auto"]] = (0.0, 0.0, 0.0, 0.0),
     num_downscales: int = 0,
     same_dimensions: bool = True,
-) -> OrderedDict[Path, Path]:
+) -> Tuple[OrderedDict[Path, Path], List]:
     """Copy images from a directory to a new directory.
 
     Args:
@@ -423,7 +430,7 @@ def copy_images(
             CONSOLE.log("[bold red]:skull: No usable images in the data folder.")
             sys.exit(1)
 
-        copied_images = copy_images_list(
+        copied_images, crop_factors = copy_images_list(
             image_paths=image_paths,
             image_dir=image_dir,
             crop_factor=crop_factor,
@@ -433,7 +440,8 @@ def copy_images(
             num_downscales=num_downscales,
             same_dimensions=same_dimensions,
         )
-        return OrderedDict((original_path, new_path) for original_path, new_path in zip(image_paths, copied_images))
+        path_map = OrderedDict((original_path, new_path) for original_path, new_path in zip(image_paths, copied_images))
+        return path_map, crop_factors
 
 
 def downscale_images(
@@ -461,9 +469,9 @@ def downscale_images(
         return "No downscaling performed."
 
     with status(
-        msg="[bold yellow]Downscaling images...",
-        spinner="growVertical",
-        verbose=verbose,
+            msg="[bold yellow]Downscaling images...",
+            spinner="growVertical",
+            verbose=verbose,
     ):
         downscale_factors = [2**i for i in range(num_downscales + 1)[1:]]
         for downscale_factor in downscale_factors:
@@ -516,31 +524,31 @@ def find_tool_feature_matcher_combination(
         "superpoint+lightglue",
     ],
 ) -> Union[
-    Tuple[None, None, None],
-    Tuple[
-        Literal["colmap", "hloc"],
-        Literal[
-            "sift",
-            "superpoint_aachen",
-            "superpoint_max",
-            "superpoint_inloc",
-            "r2d2",
-            "d2net-ss",
-            "sosnet",
-            "disk",
+        Tuple[None, None, None],
+        Tuple[
+            Literal["colmap", "hloc"],
+            Literal[
+                "sift",
+                "superpoint_aachen",
+                "superpoint_max",
+                "superpoint_inloc",
+                "r2d2",
+                "d2net-ss",
+                "sosnet",
+                "disk",
+            ],
+            Literal[
+                "NN",
+                "superglue",
+                "superglue-fast",
+                "NN-superpoint",
+                "NN-ratio",
+                "NN-mutual",
+                "adalam",
+                "disk+lightglue",
+                "superpoint+lightglue",
+            ],
         ],
-        Literal[
-            "NN",
-            "superglue",
-            "superglue-fast",
-            "NN-superpoint",
-            "NN-ratio",
-            "NN-mutual",
-            "adalam",
-            "disk+lightglue",
-            "superpoint+lightglue",
-        ],
-    ],
 ]:
     """Find a valid combination of sfm tool, feature type, and matcher type.
     Basically, replace the default parameters 'any' by usable value
@@ -622,7 +630,7 @@ def generate_crop_mask(height: int, width: int, crop_factor: Tuple[float, float,
     bottom = int(bottom * height)
     left = int(left * width)
     right = int(right * width)
-    mask[top : height - bottom, left : width - right] = 1.0
+    mask[top:height - bottom, left:width - right] = 1.0
     return mask
 
 
@@ -653,10 +661,10 @@ def generate_mask(
 
 
 def save_mask(
-    image_dir: Path,
-    num_downscales: int,
-    crop_factor: Tuple[float, float, float, float] = (0, 0, 0, 0),
-    percent_radius: float = 1.0,
+        image_dir: Path,
+        num_downscales: int,
+        crop_factor: Tuple[float, float, float, float] = (0, 0, 0, 0),
+        percent_radius: float = 1.0,
 ) -> Optional[Path]:
     """Save a mask for each image in the image directory.
 
@@ -692,3 +700,20 @@ def save_mask(
         cv2.imwrite(str(mask_path_i), mask_i)
     CONSOLE.log(":tada: Generated and saved masks.")
     return mask_path / "mask.png"
+
+
+def compute_crop_factor_from_bounding_box(alpha_mask: np.ndarray) -> tuple[float, float, float, float]:
+    rows = np.any(alpha_mask > 0, axis=1)
+    cols = np.any(alpha_mask > 0, axis=0)
+
+    min_y, max_y = np.where(rows)[0][[0, -1]]
+    min_x, max_x = np.where(cols)[0][[0, -1]]
+
+    height, width = alpha_mask.shape
+
+    top = min_y / height  # Distance from top
+    bottom = (height - max_y - 1) / height  # Distance from bottom
+    left = min_x / width  # Distance from left
+    right = (width - max_x - 1) / width  # Distance from right
+
+    return top, bottom, left, right

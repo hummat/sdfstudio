@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Camera transformation helper code.
 """
@@ -85,14 +84,12 @@ def quaternion_from_matrix(matrix, isprecise: bool = False) -> np.ndarray:
         m21 = M[2, 1]
         m22 = M[2, 2]
         # symmetric matrix K
-        K = np.array(
-            [
-                [m00 - m11 - m22, 0.0, 0.0, 0.0],
-                [m01 + m10, m11 - m00 - m22, 0.0, 0.0],
-                [m02 + m20, m12 + m21, m22 - m00 - m11, 0.0],
-                [m21 - m12, m02 - m20, m10 - m01, m00 + m11 + m22],
-            ]
-        )
+        K = np.array([
+            [m00 - m11 - m22, 0.0, 0.0, 0.0],
+            [m01 + m10, m11 - m00 - m22, 0.0, 0.0],
+            [m02 + m20, m12 + m21, m22 - m00 - m11, 0.0],
+            [m21 - m12, m02 - m20, m10 - m01, m00 + m11 + m22],
+        ])
         K /= 3.0
         # quaternion is eigenvector of K that corresponds to largest eigenvalue
         w, V = np.linalg.eigh(K)
@@ -148,14 +145,12 @@ def quaternion_matrix(quaternion) -> np.ndarray:
         return np.identity(4)
     q *= math.sqrt(2.0 / n)
     q = np.outer(q, q)
-    return np.array(
-        [
-            [1.0 - q[2, 2] - q[3, 3], q[1, 2] - q[3, 0], q[1, 3] + q[2, 0], 0.0],
-            [q[1, 2] + q[3, 0], 1.0 - q[1, 1] - q[3, 3], q[2, 3] - q[1, 0], 0.0],
-            [q[1, 3] - q[2, 0], q[2, 3] + q[1, 0], 1.0 - q[1, 1] - q[2, 2], 0.0],
-            [0.0, 0.0, 0.0, 1.0],
-        ]
-    )
+    return np.array([
+        [1.0 - q[2, 2] - q[3, 3], q[1, 2] - q[3, 0], q[1, 3] + q[2, 0], 0.0],
+        [q[1, 2] + q[3, 0], 1.0 - q[1, 1] - q[3, 3], q[2, 3] - q[1, 0], 0.0],
+        [q[1, 3] - q[2, 0], q[2, 3] + q[1, 0], 1.0 - q[1, 1] - q[2, 2], 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ])
 
 
 def get_interpolated_poses(pose_a, pose_b, steps: int = 10) -> List[float]:
@@ -200,9 +195,9 @@ def get_interpolated_k(k_a, k_b, steps: int = 10) -> Tensor:
 
 
 def get_interpolated_poses_many(
-        poses: Tensor,
-        Ks: Tensor,
-        steps_per_transition=10,
+    poses: Tensor,
+    Ks: Tensor,
+    steps_per_transition=10,
 ) -> Tuple[Tensor, Tensor]:
     """Return interpolated poses for many camera poses.
 
@@ -250,12 +245,12 @@ def viewmatrix(lookat, up, pos) -> Tensor:
 
 
 def get_distortion_params(
-        k1: float = 0.0,
-        k2: float = 0.0,
-        k3: float = 0.0,
-        k4: float = 0.0,
-        p1: float = 0.0,
-        p2: float = 0.0,
+    k1: float = 0.0,
+    k2: float = 0.0,
+    k3: float = 0.0,
+    k4: float = 0.0,
+    p1: float = 0.0,
+    p2: float = 0.0,
 ) -> Tensor:
     """Returns a distortion parameters matrix.
 
@@ -274,12 +269,19 @@ def get_distortion_params(
 
 @torch.jit.script
 def _compute_residual_and_jacobian(
-        x: torch.Tensor,
-        y: torch.Tensor,
-        xd: torch.Tensor,
-        yd: torch.Tensor,
-        distortion_params: torch.Tensor,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,]:
+    x: torch.Tensor,
+    y: torch.Tensor,
+    xd: torch.Tensor,
+    yd: torch.Tensor,
+    distortion_params: torch.Tensor,
+) -> Tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+]:
     """Auxiliary function of radial_and_tangential_undistort() that computes residuals and jacobians.
     Adapted from MultiNeRF:
     https://github.com/google-research/multinerf/blob/b02228160d3179300c7d499dca28cb9ca3677f32/internal/camera_utils.py#L427-L474
@@ -340,10 +342,10 @@ def _compute_residual_and_jacobian(
 
 @torch.jit.script
 def radial_and_tangential_undistort(
-        coords: torch.Tensor,
-        distortion_params: torch.Tensor,
-        eps: float = 1e-3,
-        max_iterations: int = 10,
+    coords: torch.Tensor,
+    distortion_params: torch.Tensor,
+    eps: float = 1e-3,
+    max_iterations: int = 10,
 ) -> torch.Tensor:
     """Computes undistorted coords given opencv distortion parameters.
     Addapted from MultiNeRF
@@ -364,9 +366,11 @@ def radial_and_tangential_undistort(
     y = coords[..., 1]
 
     for _ in range(max_iterations):
-        fx, fy, fx_x, fx_y, fy_x, fy_y = _compute_residual_and_jacobian(
-            x=x, y=y, xd=coords[..., 0], yd=coords[..., 1], distortion_params=distortion_params
-        )
+        fx, fy, fx_x, fx_y, fy_x, fy_y = _compute_residual_and_jacobian(x=x,
+                                                                        y=y,
+                                                                        xd=coords[..., 0],
+                                                                        yd=coords[..., 1],
+                                                                        distortion_params=distortion_params)
         denominator = fy_x * fx_y - fx_x * fy_y
         x_numerator = fx * fy_y - fy * fx_y
         y_numerator = fy * fx_x - fx * fy_x
@@ -397,14 +401,12 @@ def rotation_matrix(a: Tensor, b: Tensor) -> Tensor:
         eps = (torch.rand(3) - 0.5) * 0.01
         return rotation_matrix(a + eps, b)
     s = torch.linalg.norm(v)
-    skew_sym_mat = torch.Tensor(
-        [
-            [0, -v[2], v[1]],
-            [v[2], 0, -v[0]],
-            [-v[1], v[0], 0],
-        ]
-    )
-    return torch.eye(3) + skew_sym_mat + skew_sym_mat @ skew_sym_mat * ((1 - c) / (s ** 2 + 1e-8))
+    skew_sym_mat = torch.Tensor([
+        [0, -v[2], v[1]],
+        [v[2], 0, -v[0]],
+        [-v[1], v[0], 0],
+    ])
+    return torch.eye(3) + skew_sym_mat + skew_sym_mat @ skew_sym_mat * ((1 - c) / (s**2 + 1e-8))
 
 
 def focus_of_attention(poses: Tensor, initial_focus: Tensor) -> Tensor:
@@ -549,10 +551,7 @@ def auto_orient_and_center_poses(poses: Tensor,
     return oriented_poses, transform
 
 
-def adjust_intrinsics_for_crop(width: int,
-                               height: int,
-                               cx: float,
-                               cy: float,
+def adjust_intrinsics_for_crop(width: int, height: int, cx: float, cy: float,
                                crop_factor: Tuple[float, float, float, float]) -> Tuple[int, int, float, float]:
     """Adjusts the intrinsics for a crop factor.
 

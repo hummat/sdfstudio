@@ -11,14 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Tools supporting the execution of COLMAP and preparation of COLMAP-based datasets for sdfstudio training.
 """
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional, Union, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import appdirs
 import cv2
@@ -28,20 +27,15 @@ import torch
 from packaging.version import Version
 from rich.progress import track
 
+from sdfstudio.cameras.camera_utils import adjust_intrinsics_for_crop
 # TODO(1480) use pycolmap instead of colmap_parsing_utils
 # import pycolmap
-from sdfstudio.data.utils.colmap_utils import (
-    qvec2rotmat,
-    read_cameras_binary,
-    read_images_binary,
-    read_points3D_binary,
-    read_points3D_text,
-)
+from sdfstudio.data.utils.colmap_utils import (qvec2rotmat, read_cameras_binary, read_images_binary,
+                                               read_points3D_binary, read_points3D_text)
 from sdfstudio.process_data.process_data_utils import CameraModel
 from sdfstudio.utils import colormaps
 from sdfstudio.utils.rich_utils import CONSOLE, status
 from sdfstudio.utils.scripts import run_command
-from sdfstudio.cameras.camera_utils import adjust_intrinsics_for_crop
 
 
 def get_colmap_version(colmap_cmd: str, default_version: str = "3.8") -> Version:
@@ -80,9 +74,9 @@ def get_vocab_tree() -> Path:
             total_length = r.headers.get("content-length")
             assert total_length is not None
             for chunk in track(
-                r.iter_content(chunk_size=1024),
-                total=int(total_length) / 1024 + 1,
-                description="Downloading vocab tree...",
+                    r.iter_content(chunk_size=1024),
+                    total=int(total_length) / 1024 + 1,
+                    description="Downloading vocab tree...",
             ):
                 if chunk:
                     f.write(chunk)
@@ -166,9 +160,9 @@ def run_colmap(
     mapper_cmd = " ".join(mapper_cmd)
 
     with status(
-        msg="[bold yellow]Running COLMAP bundle adjustment... (This may take a while)",
-        spinner="circle",
-        verbose=verbose,
+            msg="[bold yellow]Running COLMAP bundle adjustment... (This may take a while)",
+            spinner="circle",
+            verbose=verbose,
     ):
         run_command(mapper_cmd, verbose=verbose)
     CONSOLE.log("[bold green]:tada: Done COLMAP bundle adjustment.")
@@ -389,15 +383,15 @@ def parse_colmap_camera_params(camera) -> Dict[str, Any]:
 
 
 def colmap_to_json(
-    recon_dir: Path,
-    output_dir: Path,
-    camera_mask_path: Optional[Path] = None,
-    image_id_to_depth_path: Optional[Dict[int, Path]] = None,
-    image_rename_map: Optional[Dict[str, str]] = None,
-    ply_filename="sparse_pc.ply",
-    keep_original_world_coordinate: bool = False,
-    use_single_camera_mode: bool = True,
-    crop_factor: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
+        recon_dir: Path,
+        output_dir: Path,
+        camera_mask_path: Optional[Path] = None,
+        image_id_to_depth_path: Optional[Dict[int, Path]] = None,
+        image_rename_map: Optional[Dict[str, str]] = None,
+        ply_filename="sparse_pc.ply",
+        keep_original_world_coordinate: bool = False,
+        use_single_camera_mode: bool = True,
+        crop_factor: Union[Tuple[float, float, float, float], List] = (0.0, 0.0, 0.0, 0.0),
 ) -> int:
     """Converts COLMAP's cameras.bin and images.bin to a JSON file.
 
@@ -423,9 +417,8 @@ def colmap_to_json(
     # im_id_to_image = recon.images
     cam_id_to_camera = read_cameras_binary(recon_dir / "cameras.bin")
     im_id_to_image = read_images_binary(recon_dir / "images.bin")
-    if set(cam_id_to_camera.keys()) != {1}:
-        CONSOLE.print(f"[bold yellow]Warning: More than one camera is found in {recon_dir}")
-        print(cam_id_to_camera)
+    if set(cam_id_to_camera.keys()) != {1} or isinstance(crop_factor, list):
+        CONSOLE.print(f"[bold yellow]Warning: More than one camera found in {recon_dir}")
         use_single_camera_mode = False  # update bool: one camera per frame
         out = {}  # out = {"camera_model": parse_colmap_camera_params(cam_id_to_camera[1])["camera_model"]}
     else:  # one camera for all frames
@@ -433,9 +426,8 @@ def colmap_to_json(
         w, h, cx, cy = adjust_intrinsics_for_crop(out["w"], out["h"], out["cx"], out["cy"], crop_factor)
         out.update({"w": w, "h": h, "cx": cx, "cy": cy})
 
-
     frames = []
-    for im_id, im_data in im_id_to_image.items():
+    for i, (im_id, im_data) in enumerate(im_id_to_image.items()):
         # NB: COLMAP uses Eigen / scalar-first quaternions
         # * https://colmap.github.io/format.html
         # * https://github.com/colmap/colmap/blob/bf3e19140f491c3042bfd85b7192ef7d249808ec/src/base/pose.cc#L75
@@ -489,7 +481,8 @@ def colmap_to_json(
 
         if not use_single_camera_mode:  # add the camera parameters for this frame
             out = parse_colmap_camera_params(cam_id_to_camera[im_data.camera_id])
-            w, h, cx, cy = adjust_intrinsics_for_crop(out["w"], out["h"], out["cx"], out["cy"], crop_factor)
+            w, h, cx, cy = adjust_intrinsics_for_crop(out["w"], out["h"], out["cx"], out["cy"],
+                                                      crop_factor[i] if isinstance(crop_factor, list) else crop_factor)
             out.update({"w": w, "h": h, "cx": cx, "cy": cy})
             frame.update(out)
 
@@ -579,9 +572,9 @@ def create_sfm_depth(
     H = cam_id_to_camera[CAMERA_ID].height
 
     if verbose:
-        iter_images = track(
-            im_id_to_image.items(), total=len(im_id_to_image.items()), description="Creating depth maps ..."
-        )
+        iter_images = track(im_id_to_image.items(),
+                            total=len(im_id_to_image.items()),
+                            description="Creating depth maps ...")
     else:
         iter_images = iter(im_id_to_image.items())
 
@@ -619,16 +612,8 @@ def create_sfm_depth(
 
         # TODO(1480) END use pycolmap API
 
-        idx = np.where(
-            (z >= min_depth)
-            & (z <= max_depth)
-            & (errors <= max_repoj_err)
-            & (n_visible >= min_n_visible)
-            & (uv[:, 0] >= 0)
-            & (uv[:, 0] < W)
-            & (uv[:, 1] >= 0)
-            & (uv[:, 1] < H)
-        )
+        idx = np.where((z >= min_depth) & (z <= max_depth) & (errors <= max_repoj_err) & (n_visible >= min_n_visible) &
+                       (uv[:, 0] >= 0) & (uv[:, 0] < W) & (uv[:, 1] >= 0) & (uv[:, 1] < H))
         z = z[idx]
         uv = uv[idx]
 
@@ -694,9 +679,8 @@ def get_matching_summary(num_initial_frames: int, num_matched_frames: int) -> st
     return f"[bold green]COLMAP found poses for {num_matched_frames / num_initial_frames * 100:.2f}% of the images."
 
 
-def create_ply_from_colmap(
-    filename: str, recon_dir: Path, output_dir: Path, applied_transform: Union[torch.Tensor, None]
-) -> None:
+def create_ply_from_colmap(filename: str, recon_dir: Path, output_dir: Path, applied_transform: Union[torch.Tensor,
+                                                                                                      None]) -> None:
     """Writes a ply file from colmap.
 
     Args:
