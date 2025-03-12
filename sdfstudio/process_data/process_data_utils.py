@@ -299,7 +299,20 @@ def copy_images_list(
             crop_factors.append(crop_factor)
 
     if crop_factor == "auto":
-        same_dimensions = False
+        # same_dimensions = False
+
+        # Find the minimum value for each component (top, bottom, left, right)
+        # to get the maximum common crop area across all images
+        max_common_crop = (
+            min(cf[0] for cf in crop_factors),  # min top crop
+            min(cf[1] for cf in crop_factors),  # min bottom crop
+            min(cf[2] for cf in crop_factors),  # min left crop
+            min(cf[3] for cf in crop_factors),  # min right crop
+        )
+        # Replace all individual crop factors with the common one
+        crop_factors = [max_common_crop] * len(crop_factors)
+        if verbose:
+            CONSOLE.log(f"Using maximum common crop factor: {max_common_crop}")
 
     nn_flag = "" if not nearest_neighbor else ":flags=neighbor"
     downscale_chains = [f"[t{i}]scale=iw/{2**i}:ih/{2**i}{nn_flag}[out{i}]" for i in range(num_downscales + 1)]

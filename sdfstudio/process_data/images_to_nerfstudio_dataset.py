@@ -128,7 +128,8 @@ class ImagesToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
             raise RuntimeError(f"Could not find existing COLMAP results ({self.colmap_model_path / 'cameras.bin'}).")
 
         if crop_factors:
-            self.crop_factor = crop_factors
+            assert all(crop_factors[0] == cf for cf in crop_factors), "All images must have the same crop factor"
+            self.crop_factor = crop_factors[0]
         if self.save_transforms:
             summary_log += self._save_transforms(
                 num_frames,
