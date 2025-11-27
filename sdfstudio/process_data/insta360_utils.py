@@ -111,7 +111,7 @@ def convert_insta360_to_images(
 
         num_extracted_front_frames = len(list(image_dir.glob("frame*.png")))
         for i, img in enumerate(image_dir.glob("back_frame_*.png")):
-            img.rename(image_dir / f"frame_{i+1+num_extracted_front_frames:05d}.png")
+            img.rename(image_dir / f"frame_{i + 1 + num_extracted_front_frames:05d}.png")
 
     num_final_frames = len(list(image_dir.glob("*.png")))
     summary_log = []
@@ -168,7 +168,7 @@ def convert_insta360_single_file_to_images(
             f"crop=ih*{crop_percentage}:ih*{crop_percentage}:ih*({crop_percentage}/4):ih*({crop_percentage}/4)"
         )
         vf_cmds_front.append(
-            f"crop=ih*{crop_percentage}:ih*{crop_percentage}:iw/2+ih*{crop_percentage/4}:ih*{crop_percentage/4}"
+            f"crop=ih*{crop_percentage}:ih*{crop_percentage}:iw/2+ih*{crop_percentage / 4}:ih*{crop_percentage / 4}"
         )
 
         front_ffmpeg_cmd = f"ffmpeg -i {video} -vf {','.join(vf_cmds_front)} -r 1 {image_dir / 'frame_%05d.png'}"
@@ -179,7 +179,7 @@ def convert_insta360_single_file_to_images(
 
         num_extracted_frames = len(list(image_dir.glob("frame*.png")))
         for i, img in enumerate(image_dir.glob("back_frame_*.png")):
-            img.rename(image_dir / f"frame_{i+1+num_extracted_frames:05d}.png")
+            img.rename(image_dir / f"frame_{i + 1 + num_extracted_frames:05d}.png")
 
     num_final_frames = len(list(image_dir.glob("*.png")))
     summary_log = []

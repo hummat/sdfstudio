@@ -45,6 +45,7 @@ from sdfstudio.data.dataparsers.instant_ngp_dataparser import (
 from sdfstudio.data.dataparsers.mipnerf360_dataparser import Mipnerf360DataParserConfig
 from sdfstudio.data.dataparsers.monosdf_dataparser import MonoSDFDataParserConfig
 from sdfstudio.data.dataparsers.nerfstudio_dataparser import NerfstudioDataParserConfig
+
 # from sdfstudio.data.dataparsers.nuscenes_dataparser import NuScenesDataParserConfig
 from sdfstudio.data.dataparsers.phototourism_dataparser import (
     PhototourismDataParserConfig,
@@ -236,7 +237,8 @@ class DataManager(nn.Module):
         raise NotImplementedError
 
     def get_training_callbacks(  # pylint:disable=no-self-use
-        self, training_callback_attributes: TrainingCallbackAttributes  # pylint: disable=unused-argument
+        self,
+        training_callback_attributes: TrainingCallbackAttributes,  # pylint: disable=unused-argument
     ) -> List[TrainingCallback]:
         """Returns a list of callbacks to be used during training."""
         return []
@@ -478,7 +480,7 @@ class FlexibleDataManagerConfig(VanillaDataManagerConfig):
 
 
 class FlexibleDataManager(VanillaDataManager):
-    def next_train(self, step: int) -> Tuple[RayBundle, Dict]:
+    def next_train(self, step: int) -> Tuple[RayBundle, Dict, Dict]:
         """Returns the next batch of data from the train dataloader."""
         self.train_count += 1
         image_batch = next(self.iter_train_image_dataloader)

@@ -79,15 +79,17 @@ def get_mesh_from_filename(filename: str, target_num_faces: Optional[int | float
         if target_num_faces < 1:
             target_num_faces = int(len(ms.current_mesh().face_matrix()) * target_num_faces)
         CONSOLE.print(f"Simplifying mesh with {len(ms.current_mesh().face_matrix())} faces... this may take a while.")
-        ms.meshing_decimation_quadric_edge_collapse(targetfacenum=target_num_faces,
-                                                    # targetperc=target_percentage,
-                                                    qualitythr=1.0,
-                                                    preserveboundary=True,
-                                                    preservenormal=True,
-                                                    preservetopology=True,
-                                                    planarquadric=True,
-                                                    planarweight=1e-20,
-                                                    autoclean=True)
+        ms.meshing_decimation_quadric_edge_collapse(
+            targetfacenum=target_num_faces,
+            # targetperc=target_percentage,
+            qualitythr=1.0,
+            preserveboundary=True,
+            preservenormal=True,
+            preservetopology=True,
+            planarquadric=True,
+            planarweight=1e-20,
+            autoclean=True,
+        )
         CONSOLE.print(f"[bold green]:white_check_mark: Simplified mesh to {len(ms.current_mesh().face_matrix())} faces")
     mesh = ms.current_mesh()
     return get_mesh_from_pymeshlab_mesh(mesh)
@@ -145,21 +147,39 @@ def generate_point_cloud(
                 outputs = pipeline.model(ray_bundle)
             if rgb_output_name not in outputs:
                 CONSOLE.rule("Error", style="red")
-                CONSOLE.print(f"Could not find {rgb_output_name} in the model outputs", justify="center")
-                CONSOLE.print(f"Please set --rgb_output_name to one of: {outputs.keys()}", justify="center")
+                CONSOLE.print(
+                    f"Could not find {rgb_output_name} in the model outputs",
+                    justify="center",
+                )
+                CONSOLE.print(
+                    f"Please set --rgb_output_name to one of: {outputs.keys()}",
+                    justify="center",
+                )
                 sys.exit(1)
             if depth_output_name not in outputs:
                 CONSOLE.rule("Error", style="red")
-                CONSOLE.print(f"Could not find {depth_output_name} in the model outputs", justify="center")
-                CONSOLE.print(f"Please set --depth_output_name to one of: {outputs.keys()}", justify="center")
+                CONSOLE.print(
+                    f"Could not find {depth_output_name} in the model outputs",
+                    justify="center",
+                )
+                CONSOLE.print(
+                    f"Please set --depth_output_name to one of: {outputs.keys()}",
+                    justify="center",
+                )
                 sys.exit(1)
             rgb = outputs[rgb_output_name]
             depth = outputs[depth_output_name]
             if normal_output_name is not None:
                 if normal_output_name not in outputs:
                     CONSOLE.rule("Error", style="red")
-                    CONSOLE.print(f"Could not find {normal_output_name} in the model outputs", justify="center")
-                    CONSOLE.print(f"Please set --normal_output_name to one of: {outputs.keys()}", justify="center")
+                    CONSOLE.print(
+                        f"Could not find {normal_output_name} in the model outputs",
+                        justify="center",
+                    )
+                    CONSOLE.print(
+                        f"Please set --normal_output_name to one of: {outputs.keys()}",
+                        justify="center",
+                    )
                     sys.exit(1)
                 normal = outputs[normal_output_name]
             point = ray_bundle.origins + ray_bundle.directions * depth
@@ -167,9 +187,9 @@ def generate_point_cloud(
             if use_bounding_box:
                 comp_l = torch.tensor(bounding_box_min, device=point.device)
                 comp_m = torch.tensor(bounding_box_max, device=point.device)
-                assert torch.all(
-                    comp_l < comp_m
-                ), f"Bounding box min {bounding_box_min} must be smaller than max {bounding_box_max}"
+                assert torch.all(comp_l < comp_m), (
+                    f"Bounding box min {bounding_box_min} must be smaller than max {bounding_box_max}"
+                )
                 mask = torch.all(torch.concat([point > comp_l, point < comp_m], dim=-1), dim=-1)
                 point = point[mask]
                 rgb = rgb[mask]
@@ -199,7 +219,10 @@ def generate_point_cloud(
     if estimate_normals:
         if normal_output_name is not None:
             CONSOLE.rule("Error", style="red")
-            CONSOLE.print("Cannot estimate normals and use normal_output_name at the same time", justify="center")
+            CONSOLE.print(
+                "Cannot estimate normals and use normal_output_name at the same time",
+                justify="center",
+            )
             sys.exit(1)
         CONSOLE.print("Estimating Point Cloud Normals")
         pcd.estimate_normals()
@@ -256,13 +279,25 @@ def render_trajectory(
                 outputs = pipeline.model.get_outputs_for_camera_ray_bundle(camera_ray_bundle, progress=True)
             if rgb_output_name not in outputs:
                 CONSOLE.rule("Error", style="red")
-                CONSOLE.print(f"Could not find {rgb_output_name} in the model outputs", justify="center")
-                CONSOLE.print(f"Please set --rgb_output_name to one of: {outputs.keys()}", justify="center")
+                CONSOLE.print(
+                    f"Could not find {rgb_output_name} in the model outputs",
+                    justify="center",
+                )
+                CONSOLE.print(
+                    f"Please set --rgb_output_name to one of: {outputs.keys()}",
+                    justify="center",
+                )
                 sys.exit(1)
             if depth_output_name not in outputs:
                 CONSOLE.rule("Error", style="red")
-                CONSOLE.print(f"Could not find {depth_output_name} in the model outputs", justify="center")
-                CONSOLE.print(f"Please set --depth_output_name to one of: {outputs.keys()}", justify="center")
+                CONSOLE.print(
+                    f"Could not find {depth_output_name} in the model outputs",
+                    justify="center",
+                )
+                CONSOLE.print(
+                    f"Please set --depth_output_name to one of: {outputs.keys()}",
+                    justify="center",
+                )
                 sys.exit(1)
             images.append(outputs[rgb_output_name].cpu().numpy())
             depths.append(outputs[depth_output_name].cpu().numpy())

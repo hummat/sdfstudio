@@ -16,6 +16,7 @@
 Code for deploying the built viewer folder to a server and handing versioning.
 We use the library sshconf (https://github.com/sorend/sshconf) for working with the ssh config file.
 """
+
 import json
 import os
 import subprocess
@@ -119,7 +120,6 @@ def main(
 
     # update the symlink of latest
     if branch_name == "main":
-
         # move the build folder to the correct location
         run_cmd(f"""ssh {host} 'rm -rf {remote_folder}/{version}'""")
         run_cmd(f"""ssh {host} 'cp -R /home/eweb0124/build {remote_folder}/{version}'""")

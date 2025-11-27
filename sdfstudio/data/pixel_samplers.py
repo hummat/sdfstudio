@@ -190,7 +190,9 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
         if isinstance(image_batch["image"], list):
             image_batch = dict(image_batch.items())  # copy the dictioary so we don't modify the original
             pixel_batch = collate_image_dataset_batch_list(
-                image_batch, self.num_rays_per_batch, keep_full_image=self.keep_full_image
+                image_batch,
+                self.num_rays_per_batch,
+                keep_full_image=self.keep_full_image,
             )
         elif isinstance(image_batch["image"], BasicImages):
             image_batch = dict(image_batch.items())  # copy the dictioary so we don't modify the original
@@ -203,11 +205,15 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
             if "sparse_pts" in image_batch:
                 image_batch["sparse_pts"] = image_batch["sparse_pts"].images
             pixel_batch = collate_image_dataset_batch_list(
-                image_batch, self.num_rays_per_batch, keep_full_image=self.keep_full_image
+                image_batch,
+                self.num_rays_per_batch,
+                keep_full_image=self.keep_full_image,
             )
         elif isinstance(image_batch["image"], torch.Tensor):
             pixel_batch = collate_image_dataset_batch(
-                image_batch, self.num_rays_per_batch, keep_full_image=self.keep_full_image
+                image_batch,
+                self.num_rays_per_batch,
+                keep_full_image=self.keep_full_image,
             )
         else:
             raise ValueError("image_batch['image'] must be a list or torch.Tensor")
@@ -273,7 +279,6 @@ class EquirectangularPixelSampler(PixelSampler):  # pylint: disable=too-few-publ
 
     # overrides base method
     def sample(self, image_batch: Dict):
-
         pixel_batch = collate_image_dataset_batch_equirectangular(
             image_batch, self.num_rays_per_batch, keep_full_image=self.keep_full_image
         )

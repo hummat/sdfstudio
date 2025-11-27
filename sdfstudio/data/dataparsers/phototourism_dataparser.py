@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Phototourism dataset parser. Datasets and documentation here: http://phototour.cs.washington.edu/datasets/"""
+
 from __future__ import annotations
 
 import math
@@ -76,7 +77,6 @@ class Phototourism(DataParser):
 
     # pylint: disable=too-many-statements
     def _generate_dataparser_outputs(self, split="train"):
-
         image_filenames = []
         poses = []
 
@@ -100,7 +100,10 @@ class Phototourism(DataParser):
 
             assert cam.model == "PINHOLE", "Only pinhole (perspective) camera model is supported at the moment"
 
-            pose = torch.cat([torch.tensor(img.qvec2rotmat()), torch.tensor(img.tvec.reshape(3, 1))], dim=1)
+            pose = torch.cat(
+                [torch.tensor(img.qvec2rotmat()), torch.tensor(img.tvec.reshape(3, 1))],
+                dim=1,
+            )
             pose = torch.cat([pose, torch.tensor([[0.0, 0.0, 0.0, 1.0]])], dim=0)
             poses.append(torch.linalg.inv(pose))
             fxs.append(torch.tensor(cam.params[0]))
@@ -138,7 +141,9 @@ class Phototourism(DataParser):
             raise ValueError(f"Unknown dataparser split {split}")
 
         poses, _ = camera_utils.auto_orient_and_center_poses(
-            poses, method=self.config.orientation_method, center_method=self.config.center_method
+            poses,
+            method=self.config.orientation_method,
+            center_method=self.config.center_method,
         )
 
         # Scale poses
@@ -156,7 +161,11 @@ class Phototourism(DataParser):
         aabb_scale = self.config.scene_scale
         scene_box = SceneBox(
             aabb=torch.tensor(
-                [[-aabb_scale, -aabb_scale, -aabb_scale], [aabb_scale, aabb_scale, aabb_scale]], dtype=torch.float32
+                [
+                    [-aabb_scale, -aabb_scale, -aabb_scale],
+                    [aabb_scale, aabb_scale, aabb_scale],
+                ],
+                dtype=torch.float32,
             ),
             radius=aabb_scale,
             near=0.01,

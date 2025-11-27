@@ -21,7 +21,11 @@ from typing import Any, Callable, Dict, List, Optional, Union
 import torch
 
 
-def get_dict_to_torch(stuff: Any, device: Union[torch.device, str] = "cpu", exclude: Optional[List[str]] = None):
+def get_dict_to_torch(
+    stuff: Any,
+    device: Union[torch.device, str] = "cpu",
+    exclude: Optional[List[str]] = None,
+):
     """Set everything in the dict to the specified torch device.
 
     Args:

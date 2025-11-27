@@ -140,7 +140,11 @@ def vis_dataset(camera_origins: TensorType["num_cameras", 3], ray_bundle: RayBun
         margin=go.layout.Margin(l=50, r=50, b=100, t=100, pad=4),  # type: ignore
         scene=go.layout.Scene(  # type: ignore
             aspectmode="data",
-            camera=dict(up=dict(x=0, y=0, z=1), center=dict(x=0, y=0, z=0), eye=dict(x=1.25, y=1.25, z=1.25)),
+            camera=dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=1.25, y=1.25, z=1.25),
+            ),
         ),
     )
     fig = go.Figure(data=data, layout=layout)
@@ -165,7 +169,11 @@ def get_random_color(colormap: Optional[List[str]] = None, idx: Optional[int] = 
 
 
 def get_sphere(
-    radius: float, center: TensorType[3] = None, color: str = "black", opacity: float = 1.0, resolution: int = 32
+    radius: float,
+    center: TensorType[3] = None,
+    color: str = "black",
+    opacity: float = 1.0,
+    resolution: int = 32,
 ) -> go.Mesh3d:  # type: ignore
     """Returns a sphere object for plotting with plotly.
 
@@ -304,7 +312,10 @@ def get_gaussian_ellipsiod(
 
 
 def get_gaussian_ellipsoids_list(
-    gaussians: Gaussians, opacity: float = 0.5, color: str = "random", resolution: int = 20
+    gaussians: Gaussians,
+    opacity: float = 0.5,
+    color: str = "random",
+    resolution: int = 20,
 ) -> List[Union[go.Mesh3d, go.Scatter3d]]:  # type: ignore
     """Get a list of plotly meshes for frustums.
 
@@ -347,7 +358,10 @@ def get_gaussian_ellipsoids_list(
 
 
 def get_frustum_mesh(
-    frustum: Frustums, opacity: float = 0.3, color: str = "#DC203C", resolution: int = 20
+    frustum: Frustums,
+    opacity: float = 0.3,
+    color: str = "#DC203C",
+    resolution: int = 20,
 ) -> go.Mesh3d:  # type: ignore
     """Get a plotly mesh for a single frustum.
 
@@ -398,7 +412,10 @@ def get_frustum_mesh(
 
 
 def get_frustums_mesh_list(
-    frustums: Frustums, opacity: float = 1.0, color: str = "random", resolution: int = 20
+    frustums: Frustums,
+    opacity: float = 1.0,
+    color: str = "random",
+    resolution: int = 20,
 ) -> List[go.Mesh3d]:  # type: ignore
     """Get a list of plotly meshes for a list of frustums.
 

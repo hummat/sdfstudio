@@ -43,6 +43,7 @@ types.
 
 License: MIT
 """
+
 import struct
 import collections
 import datetime
@@ -64,6 +65,7 @@ version = (2, 8, 0)
 ##############################################################################
 # Ext Class
 ##############################################################################
+
 
 # Extension type for application-defined types and data
 class Ext(object):
@@ -99,13 +101,13 @@ class Ext(object):
         # Check type is type int and in range
         if not isinstance(type, int):
             raise TypeError("ext type is not type integer")
-        elif not (-2**7 <= type <= 2**7 - 1):
+        elif not (-(2**7) <= type <= 2**7 - 1):
             raise ValueError("ext type value {:d} is out of range (-128 to 127)".format(type))
         # Check data is type bytes or str
         elif sys.version_info[0] == 3 and not isinstance(data, bytes):
-            raise TypeError("ext data is not type \'bytes\'")
+            raise TypeError("ext data is not type 'bytes'")
         elif sys.version_info[0] == 2 and not isinstance(data, str):
-            raise TypeError("ext data is not type \'str\'")
+            raise TypeError("ext data is not type 'str'")
 
         self.type = type
         self.data = data
@@ -114,8 +116,7 @@ class Ext(object):
         """
         Compare this Ext object with another for equality.
         """
-        return isinstance(other, self.__class__) \
-            and self.type == other.type and self.data == other.data
+        return isinstance(other, self.__class__) and self.type == other.type and self.data == other.data
 
     def __ne__(self, other):
         """
@@ -128,8 +129,7 @@ class Ext(object):
         String representation of this Ext object.
         """
         s = "Ext Object (Type: {:d}, Data: ".format(self.type)
-        s += " ".join(["0x{:02x}".format(ord(self.data[i:i + 1]))
-                       for i in xrange(min(len(self.data), 8))])
+        s += " ".join(["0x{:02x}".format(ord(self.data[i : i + 1])) for i in xrange(min(len(self.data), 8))])
         if len(self.data) > 8:
             s += " ..."
         s += ")"
@@ -173,13 +173,16 @@ def ext_serializable(ext_type):
         ValueError:
             Ext type or class already registered.
     """
+
     def wrapper(cls):
         if not isinstance(ext_type, int):
             raise TypeError("Ext type is not type integer")
-        elif not (-2**7 <= ext_type <= 2**7 - 1):
+        elif not (-(2**7) <= ext_type <= 2**7 - 1):
             raise ValueError("Ext type value {:d} is out of range of -128 to 127".format(ext_type))
         elif ext_type in _ext_type_to_class:
-            raise ValueError("Ext type {:d} already registered with class {:s}".format(ext_type, repr(_ext_type_to_class[ext_type])))
+            raise ValueError(
+                "Ext type {:d} already registered with class {:s}".format(ext_type, repr(_ext_type_to_class[ext_type]))
+            )
         elif cls in _ext_class_to_type:
             raise ValueError("Class {:s} already registered with Ext type {:d}".format(repr(cls), ext_type))
 
@@ -287,13 +290,13 @@ def _pack_integer(obj, fp, options):
     if obj < 0:
         if obj >= -32:
             fp.write(struct.pack("b", obj))
-        elif obj >= -2**(8 - 1):
+        elif obj >= -(2 ** (8 - 1)):
             fp.write(b"\xd0" + struct.pack("b", obj))
-        elif obj >= -2**(16 - 1):
+        elif obj >= -(2 ** (16 - 1)):
             fp.write(b"\xd1" + struct.pack(">h", obj))
-        elif obj >= -2**(32 - 1):
+        elif obj >= -(2 ** (32 - 1)):
             fp.write(b"\xd2" + struct.pack(">i", obj))
-        elif obj >= -2**(64 - 1):
+        elif obj >= -(2 ** (64 - 1)):
             fp.write(b"\xd3" + struct.pack(">q", obj))
         else:
             raise UnsupportedTypeException("huge signed int")
@@ -321,7 +324,7 @@ def _pack_boolean(obj, fp, options):
 
 
 def _pack_float(obj, fp, options):
-    float_precision = options.get('force_float_precision', _float_precision)
+    float_precision = options.get("force_float_precision", _float_precision)
 
     if float_precision == "double":
         fp.write(b"\xcb" + struct.pack(">d", obj))
@@ -332,10 +335,10 @@ def _pack_float(obj, fp, options):
 
 
 def _pack_string(obj, fp, options):
-    obj = obj.encode('utf-8')
+    obj = obj.encode("utf-8")
     obj_len = len(obj)
     if obj_len < 32:
-        fp.write(struct.pack("B", 0xa0 | obj_len) + obj)
+        fp.write(struct.pack("B", 0xA0 | obj_len) + obj)
     elif obj_len < 2**8:
         fp.write(b"\xd9" + struct.pack("B", obj_len) + obj)
     elif obj_len < 2**16:
@@ -361,7 +364,7 @@ def _pack_binary(obj, fp, options):
 def _pack_oldspec_raw(obj, fp, options):
     obj_len = len(obj)
     if obj_len < 32:
-        fp.write(struct.pack("B", 0xa0 | obj_len) + obj)
+        fp.write(struct.pack("B", 0xA0 | obj_len) + obj)
     elif obj_len < 2**16:
         fp.write(b"\xda" + struct.pack(">H", obj_len) + obj)
     elif obj_len < 2**32:
@@ -373,21 +376,21 @@ def _pack_oldspec_raw(obj, fp, options):
 def _pack_ext(obj, fp, options):
     obj_len = len(obj.data)
     if obj_len == 1:
-        fp.write(b"\xd4" + struct.pack("B", obj.type & 0xff) + obj.data)
+        fp.write(b"\xd4" + struct.pack("B", obj.type & 0xFF) + obj.data)
     elif obj_len == 2:
-        fp.write(b"\xd5" + struct.pack("B", obj.type & 0xff) + obj.data)
+        fp.write(b"\xd5" + struct.pack("B", obj.type & 0xFF) + obj.data)
     elif obj_len == 4:
-        fp.write(b"\xd6" + struct.pack("B", obj.type & 0xff) + obj.data)
+        fp.write(b"\xd6" + struct.pack("B", obj.type & 0xFF) + obj.data)
     elif obj_len == 8:
-        fp.write(b"\xd7" + struct.pack("B", obj.type & 0xff) + obj.data)
+        fp.write(b"\xd7" + struct.pack("B", obj.type & 0xFF) + obj.data)
     elif obj_len == 16:
-        fp.write(b"\xd8" + struct.pack("B", obj.type & 0xff) + obj.data)
+        fp.write(b"\xd8" + struct.pack("B", obj.type & 0xFF) + obj.data)
     elif obj_len < 2**8:
-        fp.write(b"\xc7" + struct.pack("BB", obj_len, obj.type & 0xff) + obj.data)
+        fp.write(b"\xc7" + struct.pack("BB", obj_len, obj.type & 0xFF) + obj.data)
     elif obj_len < 2**16:
-        fp.write(b"\xc8" + struct.pack(">HB", obj_len, obj.type & 0xff) + obj.data)
+        fp.write(b"\xc8" + struct.pack(">HB", obj_len, obj.type & 0xFF) + obj.data)
     elif obj_len < 2**32:
-        fp.write(b"\xc9" + struct.pack(">IB", obj_len, obj.type & 0xff) + obj.data)
+        fp.write(b"\xc9" + struct.pack(">IB", obj_len, obj.type & 0xFF) + obj.data)
     else:
         raise UnsupportedTypeException("huge ext data")
 
@@ -411,7 +414,7 @@ def _pack_ext_timestamp(obj, fp, options):
         # 64-bit timestamp
         value = ((microseconds * 1000) << 34) | seconds
         fp.write(b"\xd7\xff" + struct.pack(">Q", value))
-    elif -2**63 <= abs(seconds) <= 2**63 - 1:
+    elif -(2**63) <= abs(seconds) <= 2**63 - 1:
         # 96-bit timestamp
         fp.write(b"\xc7\x0c\xff" + struct.pack(">Iq", microseconds * 1000, seconds))
     else:
@@ -447,6 +450,7 @@ def _pack_map(obj, fp, options):
     for k, v in obj.items():
         pack(k, fp, **options)
         pack(v, fp, **options)
+
 
 ########################################
 
@@ -492,7 +496,9 @@ def _pack2(obj, fp, **options):
         try:
             _pack_ext(Ext(_ext_class_to_type[obj.__class__], obj.packb()), fp, options)
         except AttributeError:
-            raise NotImplementedError("Ext serializable class {:s} is missing implementation of packb()".format(repr(obj.__class__)))
+            raise NotImplementedError(
+                "Ext serializable class {:s} is missing implementation of packb()".format(repr(obj.__class__))
+            )
     elif isinstance(obj, bool):
         _pack_boolean(obj, fp, options)
     elif isinstance(obj, (int, long)):  # noqa: F821
@@ -521,8 +527,7 @@ def _pack2(obj, fp, **options):
         if t:
             _pack_ext(ext_handlers[t](obj), fp, options)
         else:
-            raise UnsupportedTypeException(
-                "unsupported type: {:s}".format(str(type(obj))))
+            raise UnsupportedTypeException("unsupported type: {:s}".format(str(type(obj))))
     elif _ext_class_to_type:
         # Linear search for superclass
         t = next((t for t in _ext_class_to_type if isinstance(obj, t)), None)
@@ -530,7 +535,9 @@ def _pack2(obj, fp, **options):
             try:
                 _pack_ext(Ext(_ext_class_to_type[t], obj.packb()), fp, options)
             except AttributeError:
-                raise NotImplementedError("Ext serializable class {:s} is missing implementation of packb()".format(repr(t)))
+                raise NotImplementedError(
+                    "Ext serializable class {:s} is missing implementation of packb()".format(repr(t))
+                )
         else:
             raise UnsupportedTypeException("unsupported type: {:s}".format(str(type(obj))))
     else:
@@ -578,7 +585,9 @@ def _pack3(obj, fp, **options):
         try:
             _pack_ext(Ext(_ext_class_to_type[obj.__class__], obj.packb()), fp, options)
         except AttributeError:
-            raise NotImplementedError("Ext serializable class {:s} is missing implementation of packb()".format(repr(obj.__class__)))
+            raise NotImplementedError(
+                "Ext serializable class {:s} is missing implementation of packb()".format(repr(obj.__class__))
+            )
     elif isinstance(obj, bool):
         _pack_boolean(obj, fp, options)
     elif isinstance(obj, int):
@@ -586,7 +595,7 @@ def _pack3(obj, fp, **options):
     elif isinstance(obj, float):
         _pack_float(obj, fp, options)
     elif compatibility and isinstance(obj, str):
-        _pack_oldspec_raw(obj.encode('utf-8'), fp, options)
+        _pack_oldspec_raw(obj.encode("utf-8"), fp, options)
     elif compatibility and isinstance(obj, bytes):
         _pack_oldspec_raw(obj, fp, options)
     elif isinstance(obj, str):
@@ -607,8 +616,7 @@ def _pack3(obj, fp, **options):
         if t:
             _pack_ext(ext_handlers[t](obj), fp, options)
         else:
-            raise UnsupportedTypeException(
-                "unsupported type: {:s}".format(str(type(obj))))
+            raise UnsupportedTypeException("unsupported type: {:s}".format(str(type(obj))))
     elif _ext_class_to_type:
         # Linear search for superclass
         t = next((t for t in _ext_class_to_type if isinstance(obj, t)), None)
@@ -616,12 +624,13 @@ def _pack3(obj, fp, **options):
             try:
                 _pack_ext(Ext(_ext_class_to_type[t], obj.packb()), fp, options)
             except AttributeError:
-                raise NotImplementedError("Ext serializable class {:s} is missing implementation of packb()".format(repr(t)))
+                raise NotImplementedError(
+                    "Ext serializable class {:s} is missing implementation of packb()".format(repr(t))
+                )
         else:
             raise UnsupportedTypeException("unsupported type: {:s}".format(str(type(obj))))
     else:
-        raise UnsupportedTypeException(
-            "unsupported type: {:s}".format(str(type(obj))))
+        raise UnsupportedTypeException("unsupported type: {:s}".format(str(type(obj))))
 
 
 def _packb2(obj, **options):
@@ -687,6 +696,7 @@ def _packb3(obj, **options):
     _pack3(obj, fp, **options)
     return fp.getvalue()
 
+
 #############################################################################
 # Unpacking
 #############################################################################
@@ -711,67 +721,65 @@ def _read_except(fp, n):
 
 
 def _unpack_integer(code, fp, options):
-    if (ord(code) & 0xe0) == 0xe0:
+    if (ord(code) & 0xE0) == 0xE0:
         return struct.unpack("b", code)[0]
-    elif code == b'\xd0':
+    elif code == b"\xd0":
         return struct.unpack("b", _read_except(fp, 1))[0]
-    elif code == b'\xd1':
+    elif code == b"\xd1":
         return struct.unpack(">h", _read_except(fp, 2))[0]
-    elif code == b'\xd2':
+    elif code == b"\xd2":
         return struct.unpack(">i", _read_except(fp, 4))[0]
-    elif code == b'\xd3':
+    elif code == b"\xd3":
         return struct.unpack(">q", _read_except(fp, 8))[0]
     elif (ord(code) & 0x80) == 0x00:
         return struct.unpack("B", code)[0]
-    elif code == b'\xcc':
+    elif code == b"\xcc":
         return struct.unpack("B", _read_except(fp, 1))[0]
-    elif code == b'\xcd':
+    elif code == b"\xcd":
         return struct.unpack(">H", _read_except(fp, 2))[0]
-    elif code == b'\xce':
+    elif code == b"\xce":
         return struct.unpack(">I", _read_except(fp, 4))[0]
-    elif code == b'\xcf':
+    elif code == b"\xcf":
         return struct.unpack(">Q", _read_except(fp, 8))[0]
     raise Exception("logic error, not int: 0x{:02x}".format(ord(code)))
 
 
 def _unpack_reserved(code, fp, options):
-    if code == b'\xc1':
-        raise ReservedCodeException(
-            "encountered reserved code: 0x{:02x}".format(ord(code)))
-    raise Exception(
-        "logic error, not reserved code: 0x{:02x}".format(ord(code)))
+    if code == b"\xc1":
+        raise ReservedCodeException("encountered reserved code: 0x{:02x}".format(ord(code)))
+    raise Exception("logic error, not reserved code: 0x{:02x}".format(ord(code)))
 
 
 def _unpack_nil(code, fp, options):
-    if code == b'\xc0':
+    if code == b"\xc0":
         return None
     raise Exception("logic error, not nil: 0x{:02x}".format(ord(code)))
 
 
 def _unpack_boolean(code, fp, options):
-    if code == b'\xc2':
+    if code == b"\xc2":
         return False
-    elif code == b'\xc3':
+    elif code == b"\xc3":
         return True
     raise Exception("logic error, not boolean: 0x{:02x}".format(ord(code)))
 
 
 def _unpack_float(code, fp, options):
-    if code == b'\xca':
+    if code == b"\xca":
         return struct.unpack(">f", _read_except(fp, 4))[0]
-    elif code == b'\xcb':
+    elif code == b"\xcb":
         return struct.unpack(">d", _read_except(fp, 8))[0]
     raise Exception("logic error, not float: 0x{:02x}".format(ord(code)))
 
 
 def _unpack_string(code, fp, options):
-    if (ord(code) & 0xe0) == 0xa0:
-        length = ord(code) & ~0xe0
-    elif code == b'\xd9':
+    if (ord(code) & 0xE0) == 0xA0:
+        length = ord(code) & ~0xE0
+    elif code == b"\xd9":
         length = struct.unpack("B", _read_except(fp, 1))[0]
-    elif code == b'\xda':
+    elif code == b"\xda":
         length = struct.unpack(">H", _read_except(fp, 2))[0]
-    elif code == b'\xdb':
+    elif code == b"\xdb":
         length = struct.unpack(">I", _read_except(fp, 4))[0]
     else:
         raise Exception("logic error, not string: 0x{:02x}".format(ord(code)))
@@ -783,7 +791,7 @@ def _unpack_string(code, fp, options):
 
     data = _read_except(fp, length)
     try:
-        return bytes.decode(data, 'utf-8')
+        return bytes.decode(data, "utf-8")
     except UnicodeDecodeError:
         if options.get("allow_invalid_utf8"):
             return InvalidString(data)
@@ -791,11 +799,11 @@ def _unpack_string(code, fp, options):
 
 
 def _unpack_binary(code, fp, options):
-    if code == b'\xc4':
+    if code == b"\xc4":
         length = struct.unpack("B", _read_except(fp, 1))[0]
-    elif code == b'\xc5':
+    elif code == b"\xc5":
         length = struct.unpack(">H", _read_except(fp, 2))[0]
-    elif code == b'\xc6':
+    elif code == b"\xc6":
         length = struct.unpack(">I", _read_except(fp, 4))[0]
     else:
         raise Exception("logic error, not binary: 0x{:02x}".format(ord(code)))
@@ -804,21 +812,21 @@ def _unpack_binary(code, fp, options):
 
 
 def _unpack_ext(code, fp, options):
-    if code == b'\xd4':
+    if code == b"\xd4":
         length = 1
-    elif code == b'\xd5':
+    elif code == b"\xd5":
         length = 2
-    elif code == b'\xd6':
+    elif code == b"\xd6":
         length = 4
-    elif code == b'\xd7':
+    elif code == b"\xd7":
         length = 8
-    elif code == b'\xd8':
+    elif code == b"\xd8":
         length = 16
-    elif code == b'\xc7':
+    elif code == b"\xc7":
         length = struct.unpack("B", _read_except(fp, 1))[0]
-    elif code == b'\xc8':
+    elif code == b"\xc8":
         length = struct.unpack(">H", _read_except(fp, 2))[0]
-    elif code == b'\xc9':
+    elif code == b"\xc9":
         length = struct.unpack(">I", _read_except(fp, 4))[0]
     else:
         raise Exception("logic error, not ext: 0x{:02x}".format(ord(code)))
@@ -836,7 +844,11 @@ def _unpack_ext(code, fp, options):
         try:
             return _ext_type_to_class[ext_type].unpackb(ext_data)
         except AttributeError:
-            raise NotImplementedError("Ext serializable class {:s} is missing implementation of unpackb()".format(repr(_ext_type_to_class[ext_type])))
+            raise NotImplementedError(
+                "Ext serializable class {:s} is missing implementation of unpackb()".format(
+                    repr(_ext_type_to_class[ext_type])
+                )
+            )
 
     # Timestamp extension
     if ext_type == -1:
@@ -854,31 +866,29 @@ def _unpack_ext_timestamp(ext_data, options):
     elif obj_len == 8:
         # 64-bit timestamp
         value = struct.unpack(">Q", ext_data)[0]
-        seconds = value & 0x3ffffffff
+        seconds = value & 0x3FFFFFFFF
         microseconds = (value >> 34) // 1000
     elif obj_len == 12:
         # 96-bit timestamp
         seconds = struct.unpack(">q", ext_data[4:12])[0]
         microseconds = struct.unpack(">I", ext_data[0:4])[0] // 1000
     else:
-        raise UnsupportedTimestampException(
-            "unsupported timestamp with data length {:d}".format(len(ext_data)))
+        raise UnsupportedTimestampException("unsupported timestamp with data length {:d}".format(len(ext_data)))
 
-    return _epoch + datetime.timedelta(seconds=seconds,
-                                       microseconds=microseconds)
+    return _epoch + datetime.timedelta(seconds=seconds, microseconds=microseconds)
 
 
 def _unpack_array(code, fp, options):
-    if (ord(code) & 0xf0) == 0x90:
-        length = (ord(code) & ~0xf0)
-    elif code == b'\xdc':
+    if (ord(code) & 0xF0) == 0x90:
+        length = ord(code) & ~0xF0
+    elif code == b"\xdc":
         length = struct.unpack(">H", _read_except(fp, 2))[0]
-    elif code == b'\xdd':
+    elif code == b"\xdd":
         length = struct.unpack(">I", _read_except(fp, 4))[0]
     else:
         raise Exception("logic error, not array: 0x{:02x}".format(ord(code)))
 
-    if options.get('use_tuple'):
+    if options.get("use_tuple"):
         return tuple((_unpack(fp, options) for i in xrange(length)))
 
     return [_unpack(fp, options) for i in xrange(length)]
@@ -891,16 +901,16 @@ def _deep_list_to_tuple(obj):
 
 
 def _unpack_map(code, fp, options):
-    if (ord(code) & 0xf0) == 0x80:
-        length = (ord(code) & ~0xf0)
-    elif code == b'\xde':
+    if (ord(code) & 0xF0) == 0x80:
+        length = ord(code) & ~0xF0
+    elif code == b"\xde":
         length = struct.unpack(">H", _read_except(fp, 2))[0]
-    elif code == b'\xdf':
+    elif code == b"\xdf":
         length = struct.unpack(">I", _read_except(fp, 4))[0]
     else:
         raise Exception("logic error, not map: 0x{:02x}".format(ord(code)))
 
-    d = {} if not options.get('use_ordered_dict') else collections.OrderedDict()
+    d = {} if not options.get("use_ordered_dict") else collections.OrderedDict()
     for _ in xrange(length):
         # Unpack key
         k = _unpack(fp, options)
@@ -909,11 +919,9 @@ def _unpack_map(code, fp, options):
             # Attempt to convert list into a hashable tuple
             k = _deep_list_to_tuple(k)
         elif not isinstance(k, Hashable):
-            raise UnhashableKeyException(
-                "encountered unhashable key: \"{:s}\" ({:s})".format(str(k), str(type(k))))
+            raise UnhashableKeyException('encountered unhashable key: "{:s}" ({:s})'.format(str(k), str(type(k))))
         elif k in d:
-            raise DuplicateKeyException(
-                "encountered duplicate key: \"{:s}\" ({:s})".format(str(k), str(type(k))))
+            raise DuplicateKeyException('encountered duplicate key: "{:s}" ({:s})'.format(str(k), str(type(k))))
 
         # Unpack value
         v = _unpack(fp, options)
@@ -921,14 +929,14 @@ def _unpack_map(code, fp, options):
         try:
             d[k] = v
         except TypeError:
-            raise UnhashableKeyException(
-                "encountered unhashable key: \"{:s}\"".format(str(k)))
+            raise UnhashableKeyException('encountered unhashable key: "{:s}"'.format(str(k)))
     return d
 
 
 def _unpack(fp, options):
     code = _read_except(fp, 1)
     return _unpack_dispatch_table[code](code, fp, options)
+
 
 ########################################
 
@@ -1120,6 +1128,7 @@ def _unpackb3(s, **options):
         raise TypeError("packed data must be type 'bytes' or 'bytearray'")
     return _unpack(io.BytesIO(s), options)
 
+
 #############################################################################
 # Module Initialization
 #############################################################################
@@ -1147,6 +1156,7 @@ def __init():
     if sys.version_info[0] == 3:
         _utc_tzinfo = datetime.timezone.utc
     else:
+
         class UTC(datetime.tzinfo):
             ZERO = datetime.timedelta(0)
 
@@ -1195,53 +1205,53 @@ def __init():
 
     _unpack_dispatch_table = {}
     # Fix uint
-    for code in range(0, 0x7f + 1):
+    for code in range(0, 0x7F + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_integer
     # Fix map
-    for code in range(0x80, 0x8f + 1):
+    for code in range(0x80, 0x8F + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_map
     # Fix array
-    for code in range(0x90, 0x9f + 1):
+    for code in range(0x90, 0x9F + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_array
     # Fix str
-    for code in range(0xa0, 0xbf + 1):
+    for code in range(0xA0, 0xBF + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_string
     # Nil
-    _unpack_dispatch_table[b'\xc0'] = _unpack_nil
+    _unpack_dispatch_table[b"\xc0"] = _unpack_nil
     # Reserved
-    _unpack_dispatch_table[b'\xc1'] = _unpack_reserved
+    _unpack_dispatch_table[b"\xc1"] = _unpack_reserved
     # Boolean
-    _unpack_dispatch_table[b'\xc2'] = _unpack_boolean
-    _unpack_dispatch_table[b'\xc3'] = _unpack_boolean
+    _unpack_dispatch_table[b"\xc2"] = _unpack_boolean
+    _unpack_dispatch_table[b"\xc3"] = _unpack_boolean
     # Bin
-    for code in range(0xc4, 0xc6 + 1):
+    for code in range(0xC4, 0xC6 + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_binary
     # Ext
-    for code in range(0xc7, 0xc9 + 1):
+    for code in range(0xC7, 0xC9 + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_ext
     # Float
-    _unpack_dispatch_table[b'\xca'] = _unpack_float
-    _unpack_dispatch_table[b'\xcb'] = _unpack_float
+    _unpack_dispatch_table[b"\xca"] = _unpack_float
+    _unpack_dispatch_table[b"\xcb"] = _unpack_float
     # Uint
-    for code in range(0xcc, 0xcf + 1):
+    for code in range(0xCC, 0xCF + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_integer
     # Int
-    for code in range(0xd0, 0xd3 + 1):
+    for code in range(0xD0, 0xD3 + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_integer
     # Fixext
-    for code in range(0xd4, 0xd8 + 1):
+    for code in range(0xD4, 0xD8 + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_ext
     # String
-    for code in range(0xd9, 0xdb + 1):
+    for code in range(0xD9, 0xDB + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_string
     # Array
-    _unpack_dispatch_table[b'\xdc'] = _unpack_array
-    _unpack_dispatch_table[b'\xdd'] = _unpack_array
+    _unpack_dispatch_table[b"\xdc"] = _unpack_array
+    _unpack_dispatch_table[b"\xdd"] = _unpack_array
     # Map
-    _unpack_dispatch_table[b'\xde'] = _unpack_map
-    _unpack_dispatch_table[b'\xdf'] = _unpack_map
+    _unpack_dispatch_table[b"\xde"] = _unpack_map
+    _unpack_dispatch_table[b"\xdf"] = _unpack_map
     # Negative fixint
-    for code in range(0xe0, 0xff + 1):
+    for code in range(0xE0, 0xFF + 1):
         _unpack_dispatch_table[struct.pack("B", code)] = _unpack_integer
 
 

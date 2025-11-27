@@ -2,6 +2,7 @@
 """
 eval.py
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -73,7 +74,9 @@ class ExtractMesh:
             assert self.resolution % 512 == 0
 
             coarse_mask = pipeline.get_visibility_mask(
-                self.visibility_grid_resolution, self.valid_points_thres, self.sub_sample_factor
+                self.visibility_grid_resolution,
+                self.valid_points_thres,
+                self.sub_sample_factor,
             )
 
             def inv_contract(x):

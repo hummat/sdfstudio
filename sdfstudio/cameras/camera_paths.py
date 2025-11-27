@@ -42,7 +42,13 @@ def get_interpolated_camera_path(cameras: Cameras, steps: int) -> Cameras:
     poses = cameras.camera_to_worlds().cpu().numpy()
     poses, Ks = get_interpolated_poses_many(poses, Ks, steps_per_transition=steps)
 
-    cameras = Cameras(fx=Ks[:, 0, 0], fy=Ks[:, 1, 1], cx=Ks[0, 0, 2], cy=Ks[0, 1, 2], camera_to_worlds=poses)
+    cameras = Cameras(
+        fx=Ks[:, 0, 0],
+        fy=Ks[:, 1, 1],
+        cx=Ks[0, 0, 2],
+        cy=Ks[0, 1, 2],
+        camera_to_worlds=poses,
+    )
     return cameras
 
 
@@ -90,7 +96,11 @@ def get_spiral_path(
     local_c2whs = []
     for theta in torch.linspace(0.0, 2.0 * torch.pi * rots, steps + 1)[:-1]:
         center = (
-            torch.tensor([torch.cos(theta), -torch.sin(theta), -torch.sin(theta * zrate)], device=camera.device) * rad
+            torch.tensor(
+                [torch.cos(theta), -torch.sin(theta), -torch.sin(theta * zrate)],
+                device=camera.device,
+            )
+            * rad
         )
         lookat = center - target
         c2w = camera_utils.viewmatrix(lookat, up, center)
@@ -176,7 +186,11 @@ def focus_point_fn(poses: np.ndarray) -> np.ndarray:
 
 # https://github.com/google-research/multinerf/blob/47fad9688748b3cc962990c19898aff78b45968e/internal/camera_utils.py#L230
 def generate_ellipse_path(
-    cameras: Cameras, n_frames: int = 120, const_speed: bool = True, z_variation: float = 0.0, z_phase: float = 0.0
+    cameras: Cameras,
+    n_frames: int = 120,
+    const_speed: bool = True,
+    z_variation: float = 0.0,
+    z_phase: float = 0.0,
 ) -> np.ndarray:
     """Generate an elliptical render path based on the given poses."""
 

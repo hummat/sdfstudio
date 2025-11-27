@@ -55,7 +55,15 @@ class ExponentialDecaySchedule(lr_scheduler.LambdaLR):
 
     config: SchedulerConfig
 
-    def __init__(self, optimizer, lr_init, lr_final, max_steps, lr_delay_steps=0, lr_delay_mult=1.0) -> None:
+    def __init__(
+        self,
+        optimizer,
+        lr_init,
+        lr_final,
+        max_steps,
+        lr_delay_steps=0,
+        lr_delay_mult=1.0,
+    ) -> None:
         def func(step):
             if lr_delay_steps > 0:
                 delay_rate = lr_delay_mult + (1 - lr_delay_mult) * np.sin(
@@ -113,7 +121,14 @@ class DelayedExponentialScheduler(DelayerScheduler):
             lr_final,
             max_steps,
         )
-        super().__init__(optimizer, lr_init, lr_final, max_steps, delay_epochs, after_scheduler=after_scheduler)
+        super().__init__(
+            optimizer,
+            lr_init,
+            lr_final,
+            max_steps,
+            delay_epochs,
+            after_scheduler=after_scheduler,
+        )
 
 
 @dataclass
@@ -127,7 +142,11 @@ class MultiStepSchedulerConfig(InstantiateConfig):
         """Returns the instantiated object using the config."""
         return self._target(
             optimizer,
-            milestones=[self.max_steps // 2, self.max_steps * 3 // 4, self.max_steps * 9 // 10],
+            milestones=[
+                self.max_steps // 2,
+                self.max_steps * 3 // 4,
+                self.max_steps * 9 // 10,
+            ],
             gamma=0.33,
         )
 
@@ -181,7 +200,8 @@ class NeuSScheduler(lr_scheduler.LambdaLR):
             return learning_factor
 
         super().__init__(optimizer, lr_lambda=func)
-        
+
+
 @dataclass
 class MultiStepWarmupSchedulerConfig(InstantiateConfig):
     """Basic scheduler config with self-defined exponential decay schedule"""
@@ -190,15 +210,11 @@ class MultiStepWarmupSchedulerConfig(InstantiateConfig):
     warm_up_end: int = 5000
     milestones: List[int] = field(default_factory=lambda: [300000, 400000, 500000])
     gamma: float = 0.33
-    
+
     def setup(self, optimizer=None, **kwargs) -> Any:
         """Returns the instantiated object using the config."""
-        return self._target(
-            optimizer,
-            self.warm_up_end,
-            self.milestones,
-            self.gamma
-        )
+        return self._target(optimizer, self.warm_up_end, self.milestones, self.gamma)
+
 
 class MultiStepWarmupScheduler(lr_scheduler.LambdaLR):
     """Starts with a flat lr schedule until it reaches N epochs then applies a given scheduler"""
@@ -208,8 +224,8 @@ class MultiStepWarmupScheduler(lr_scheduler.LambdaLR):
             if step < warm_up_end:
                 learning_factor = step / warm_up_end
             else:
-                index = np.searchsorted(milestones, step, side='left')
-                learning_factor = gamma ** index
+                index = np.searchsorted(milestones, step, side="left")
+                learning_factor = gamma**index
             return learning_factor
 
         super().__init__(optimizer, lr_lambda=func)

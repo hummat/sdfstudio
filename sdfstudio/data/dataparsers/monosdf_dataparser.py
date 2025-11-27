@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Data parser for friends dataset"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -137,7 +138,10 @@ class MonoSDFDataParserConfig(DataParserConfig):
     The longest dimension of the Friends axis-aligned bbox will be scaled to this value.
     """
     center_crop_type: Literal[
-        "center_crop_for_replica", "center_crop_for_tnt", "center_crop_for_dtu", "no_crop"
+        "center_crop_for_replica",
+        "center_crop_for_tnt",
+        "center_crop_for_dtu",
+        "no_crop",
     ] = "center_crop_for_dtu"
     """center crop type as monosdf, we should create a dataset that don't need this"""
     load_pairs: bool = False
@@ -300,7 +304,10 @@ class MonoSDFScene(DataParser):
         # cameras.rescale_output_resolution(scaling_factor=1.0 / self.config.downscale_factor)
         if self.config.include_mono_prior:
             additional_inputs_dict = {
-                "cues": {"func": get_depths_and_normals, "kwargs": {"depths": depth_images, "normals": normal_images}}
+                "cues": {
+                    "func": get_depths_and_normals,
+                    "kwargs": {"depths": depth_images, "normals": normal_images},
+                }
             }
         else:
             additional_inputs_dict = {}
@@ -319,7 +326,8 @@ class MonoSDFScene(DataParser):
                 pairs_srcs.append(sources_array)
             pairs_srcs = torch.tensor(pairs_srcs)
             all_imgs = torch.stack(
-                [get_image(image_filename) for image_filename in sorted(image_filenames)], axis=0
+                [get_image(image_filename) for image_filename in sorted(image_filenames)],
+                axis=0,
             ).cuda()
 
             additional_inputs_dict["pairs"] = {

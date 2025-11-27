@@ -17,7 +17,9 @@ from dataclasses import dataclass
 from typing import Optional
 
 from sdfstudio.process_data import equirect_utils, process_data_utils
-from sdfstudio.process_data.colmap_converter_to_nerfstudio_dataset import ColmapConverterToNerfstudioDataset
+from sdfstudio.process_data.colmap_converter_to_nerfstudio_dataset import (
+    ColmapConverterToNerfstudioDataset,
+)
 from sdfstudio.utils.rich_utils import CONSOLE
 
 
@@ -58,7 +60,8 @@ class ImagesToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
             pers_size = equirect_utils.compute_resolution_from_equirect(self.data, self.images_per_equirect)
             CONSOLE.log(f"Generating {self.images_per_equirect} {pers_size} sized images per equirectangular image")
             self.data = equirect_utils.generate_planar_projections_from_equirectangular(
-                self.data, pers_size, self.images_per_equirect, self.crop_factor)
+                self.data, pers_size, self.images_per_equirect, self.crop_factor
+            )
 
             self.camera_type = "perspective"
 
@@ -79,7 +82,8 @@ class ImagesToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
                 keep_image_dir=False,
             )
             image_rename_map = dict(
-                (a.relative_to(self.data).as_posix(), b.name) for a, b in image_rename_map_paths.items())
+                (a.relative_to(self.data).as_posix(), b.name) for a, b in image_rename_map_paths.items()
+            )
             if self.eval_data is not None:
                 eval_image_rename_map_paths, crop_factors = process_data_utils.copy_images(
                     self.eval_data,
@@ -92,7 +96,8 @@ class ImagesToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
                     keep_image_dir=True,
                 )
                 eval_image_rename_map = dict(
-                    (a.relative_to(self.eval_data).as_posix(), b.name) for a, b in eval_image_rename_map_paths.items())
+                    (a.relative_to(self.eval_data).as_posix(), b.name) for a, b in eval_image_rename_map_paths.items()
+                )
                 image_rename_map.update(eval_image_rename_map)
 
             num_frames = len(image_rename_map)

@@ -75,9 +75,24 @@ def polycam_to_json(
             frame["depth_file_path"] = f"./depth/frame_{i + 1:05d}{depth_filenames[i].suffix}"
         # Transform matrix to sdfstudio format. Please refer to the documentation for coordinate system conventions.
         frame["transform_matrix"] = [
-            [frame_json["t_20"], frame_json["t_21"], frame_json["t_22"], frame_json["t_23"]],
-            [frame_json["t_00"], frame_json["t_01"], frame_json["t_02"], frame_json["t_03"]],
-            [frame_json["t_10"], frame_json["t_11"], frame_json["t_12"], frame_json["t_13"]],
+            [
+                frame_json["t_20"],
+                frame_json["t_21"],
+                frame_json["t_22"],
+                frame_json["t_23"],
+            ],
+            [
+                frame_json["t_00"],
+                frame_json["t_01"],
+                frame_json["t_02"],
+                frame_json["t_03"],
+            ],
+            [
+                frame_json["t_10"],
+                frame_json["t_11"],
+                frame_json["t_12"],
+                frame_json["t_13"],
+            ],
             [0.0, 0.0, 0.0, 1.0],
         ]
         frames.append(frame)
@@ -94,7 +109,10 @@ def polycam_to_json(
         points = vert_points[tri_ids.flatten()]  # get the 3D positions of the vertices
         uvs = np.asarray(mesh.triangle_uvs)  # get the uv coords of the vertices
         # convert uv coord to texture integer index
-        tex_ids = (uvs[:, 1] * textures.shape[0]).astype(int), (uvs[:, 0] * textures.shape[1]).astype(int)
+        tex_ids = (
+            (uvs[:, 1] * textures.shape[0]).astype(int),
+            (uvs[:, 0] * textures.shape[1]).astype(int),
+        )
         colors = textures[tex_ids[0], tex_ids[1]]
         pointcloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
         pointcloud.colors = o3d.utility.Vector3dVector(colors.astype(np.float64) / 255.0)

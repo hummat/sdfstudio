@@ -156,7 +156,8 @@ class ExportTSDFMesh(Exporter):
         if self.texture_method == "nerf":
             # load the mesh from the tsdf export
             mesh = get_mesh_from_filename(
-                str(self.output_dir / "tsdf_mesh.ply"), target_num_faces=self.target_num_faces
+                str(self.output_dir / "tsdf_mesh.ply"),
+                target_num_faces=self.target_num_faces,
             )
             CONSOLE.print("Texturing mesh with NeRF")
             texture_utils.export_textured_mesh(
@@ -219,7 +220,10 @@ class ExportPoissonMesh(Exporter):
             pixel_area = torch.ones_like(origins[..., :1])
             camera_indices = torch.zeros_like(origins[..., :1])
             ray_bundle = RayBundle(
-                origins=origins, directions=directions, pixel_area=pixel_area, camera_indices=camera_indices
+                origins=origins,
+                directions=directions,
+                pixel_area=pixel_area,
+                camera_indices=camera_indices,
             )
             outputs = pipeline.model(ray_bundle)
             if self.normal_output_name not in outputs:
@@ -289,7 +293,8 @@ class ExportPoissonMesh(Exporter):
         if self.texture_method == "nerf":
             # load the mesh from the poisson reconstruction
             mesh = get_mesh_from_filename(
-                str(self.output_dir / "poisson_mesh.ply"), target_num_faces=self.target_num_faces
+                str(self.output_dir / "poisson_mesh.ply"),
+                target_num_faces=self.target_num_faces,
             )
             CONSOLE.print("Texturing mesh with NeRF")
             texture_utils.export_textured_mesh(

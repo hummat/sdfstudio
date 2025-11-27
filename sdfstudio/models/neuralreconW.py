@@ -53,7 +53,8 @@ class NeuralReconWModel(NeuSModel):
 
         # voxel surface bybrid sampler from NeuralReconW
         self.sampler = NeuralReconWSampler(
-            aabb=self.scene_box.aabb, coarse_binary_grid=self.scene_box.coarse_binary_gird
+            aabb=self.scene_box.aabb,
+            coarse_binary_grid=self.scene_box.coarse_binary_gird,
         )
         # Neural Reconstruction in the wild use sphere collider so we overwrite it here
         self.collider = SphereCollider(radius=1.0, soft_intersection=False)

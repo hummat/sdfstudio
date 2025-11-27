@@ -76,7 +76,6 @@ class NeRFModel(Model):
         self.field_fine = None
         self.temporal_distortion = None
 
-
         super().__init__(
             config=config,
             **kwargs,
@@ -88,10 +87,18 @@ class NeRFModel(Model):
 
         # fields
         position_encoding = NeRFEncoding(
-            in_dim=3, num_frequencies=10, min_freq_exp=0.0, max_freq_exp=8.0, include_input=True
+            in_dim=3,
+            num_frequencies=10,
+            min_freq_exp=0.0,
+            max_freq_exp=8.0,
+            include_input=True,
         )
         direction_encoding = NeRFEncoding(
-            in_dim=3, num_frequencies=4, min_freq_exp=0.0, max_freq_exp=4.0, include_input=True
+            in_dim=3,
+            num_frequencies=4,
+            min_freq_exp=0.0,
+            max_freq_exp=4.0,
+            include_input=True,
         )
 
         self.field_coarse = NeRFField(
@@ -136,7 +143,6 @@ class NeRFModel(Model):
         return param_groups
 
     def get_outputs(self, ray_bundle: RayBundle):
-
         if self.field_coarse is None or self.field_fine is None:
             raise ValueError("populate_fields() must be called before get_outputs")
 
@@ -236,5 +242,9 @@ class NeRFModel(Model):
             "fine_ssim": float(fine_ssim),
             "fine_lpips": float(fine_lpips),
         }
-        images_dict = {"img": combined_rgb, "accumulation": combined_acc, "depth": combined_depth}
+        images_dict = {
+            "img": combined_rgb,
+            "accumulation": combined_acc,
+            "depth": combined_depth,
+        }
         return metrics_dict, images_dict

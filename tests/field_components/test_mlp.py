@@ -1,6 +1,7 @@
 """
 MLP Test
 """
+
 import torch
 from torch import nn
 
@@ -15,7 +16,11 @@ def test_mlp():
     layer_width = 32
     out_activation = nn.ReLU()
     mlp = MLP(
-        in_dim=in_dim, out_dim=out_dim, num_layers=num_layers, layer_width=layer_width, out_activation=out_activation
+        in_dim=in_dim,
+        out_dim=out_dim,
+        num_layers=num_layers,
+        layer_width=layer_width,
+        out_activation=out_activation,
     )
     assert mlp.get_out_dim() == out_dim
 

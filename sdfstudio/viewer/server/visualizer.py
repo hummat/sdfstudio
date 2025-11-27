@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Code to connect and send commands to the viewer.
-"""
+"""Code to connect and send commands to the viewer."""
 
 import sys
 from threading import Thread
@@ -117,7 +116,10 @@ class Viewer:
     """
 
     def __init__(
-        self, zmq_port: Optional[int] = None, window: Optional[ViewerWindow] = None, ip_address: str = "127.0.0.1"
+        self,
+        zmq_port: Optional[int] = None,
+        window: Optional[ViewerWindow] = None,
+        ip_address: str = "127.0.0.1",
     ):
         if zmq_port is None and window is None:
             raise ValueError("Must specify either zmq_port or window.")

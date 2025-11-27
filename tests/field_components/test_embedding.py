@@ -1,6 +1,7 @@
 """
 Embedding tests
 """
+
 from sdfstudio.field_components.embedding import Embedding
 
 

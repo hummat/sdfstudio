@@ -8,18 +8,26 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import torch
 
+from scripts.train import train_loop
 from sdfstudio.configs.base_config import Config
 from sdfstudio.configs.method_configs import method_configs
 from sdfstudio.data.dataparsers.blender_dataparser import BlenderDataParserConfig
-from scripts.train import train_loop
+
+try:
+    import tinycudann
+
+    TCNN_EXISTS = True
+except ImportError:
+    TCNN_EXISTS = False
 
 BLACKLIST = ["base", "semantic-nerfw", "instant-ngp", "nerfacto", "phototourism"]
 
 
 def set_reduced_config(config: Config):
     """Reducing the config settings to speedup test"""
-    config.machine.num_gpus = 0
+    config.machine.num_gpus = torch.cuda.device_count()
     config.trainer.max_num_iterations = 2
     # reduce dataset factors; set dataset to test
     config.pipeline.datamanager.dataparser = BlenderDataParserConfig(data=Path("tests/data/lego_test"))
@@ -39,13 +47,14 @@ def set_reduced_config(config: Config):
     config.viewer.enable = False
 
     # model specific config settings
-    if config.method_name == "instant-ngp":
+    if config.method_name == "instant-ngp" and not TCNN_EXISTS:
         config.pipeline.model.field_implementation = "torch"
 
     return config
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+@torch.cuda.amp.autocast(enabled=False)
 def test_train():
     """test run train script works properly"""
     all_config_names = method_configs.keys()
@@ -57,7 +66,8 @@ def test_train():
         config = method_configs[config_name]
         config = set_reduced_config(config)
 
-        train_loop(local_rank=0, world_size=0, config=config)
+        world_size = config.machine.num_gpus * config.machine.num_machines
+        train_loop(local_rank=0, world_size=world_size, config=config)
 
 
 if __name__ == "__main__":

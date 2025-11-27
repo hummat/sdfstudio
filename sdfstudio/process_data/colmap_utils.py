@@ -28,10 +28,16 @@ from packaging.version import Version
 from rich.progress import track
 
 from sdfstudio.cameras.camera_utils import adjust_intrinsics_for_crop
+
 # TODO(1480) use pycolmap instead of colmap_parsing_utils
 # import pycolmap
-from sdfstudio.data.utils.colmap_utils import (qvec2rotmat, read_cameras_binary, read_images_binary,
-                                               read_points3D_binary, read_points3D_text)
+from sdfstudio.data.utils.colmap_utils import (
+    qvec2rotmat,
+    read_cameras_binary,
+    read_images_binary,
+    read_points3D_binary,
+    read_points3D_text,
+)
 from sdfstudio.process_data.process_data_utils import CameraModel
 from sdfstudio.utils import colormaps
 from sdfstudio.utils.rich_utils import CONSOLE, status
@@ -74,9 +80,9 @@ def get_vocab_tree() -> Path:
             total_length = r.headers.get("content-length")
             assert total_length is not None
             for chunk in track(
-                    r.iter_content(chunk_size=1024),
-                    total=int(total_length) / 1024 + 1,
-                    description="Downloading vocab tree...",
+                r.iter_content(chunk_size=1024),
+                total=int(total_length) / 1024 + 1,
+                description="Downloading vocab tree...",
             ):
                 if chunk:
                     f.write(chunk)
@@ -126,7 +132,11 @@ def run_colmap(
     if camera_mask_path is not None:
         feature_extractor_cmd.append(f"--ImageReader.camera_mask_path {camera_mask_path}")
     feature_extractor_cmd = " ".join(feature_extractor_cmd)
-    with status(msg="[bold yellow]Running COLMAP feature extractor...", spinner="moon", verbose=verbose):
+    with status(
+        msg="[bold yellow]Running COLMAP feature extractor...",
+        spinner="moon",
+        verbose=verbose,
+    ):
         run_command(feature_extractor_cmd, verbose=verbose)
 
     CONSOLE.log("[bold green]:tada: Done extracting COLMAP features.")
@@ -141,7 +151,11 @@ def run_colmap(
         vocab_tree_filename = get_vocab_tree()
         feature_matcher_cmd.append(f'--VocabTreeMatching.vocab_tree_path "{vocab_tree_filename}"')
     feature_matcher_cmd = " ".join(feature_matcher_cmd)
-    with status(msg="[bold yellow]Running COLMAP feature matcher...", spinner="runner", verbose=verbose):
+    with status(
+        msg="[bold yellow]Running COLMAP feature matcher...",
+        spinner="runner",
+        verbose=verbose,
+    ):
         run_command(feature_matcher_cmd, verbose=verbose)
     CONSOLE.log("[bold green]:tada: Done matching COLMAP features.")
 
@@ -160,9 +174,9 @@ def run_colmap(
     mapper_cmd = " ".join(mapper_cmd)
 
     with status(
-            msg="[bold yellow]Running COLMAP bundle adjustment... (This may take a while)",
-            spinner="circle",
-            verbose=verbose,
+        msg="[bold yellow]Running COLMAP bundle adjustment... (This may take a while)",
+        spinner="circle",
+        verbose=verbose,
     ):
         run_command(mapper_cmd, verbose=verbose)
     CONSOLE.log("[bold green]:tada: Done COLMAP bundle adjustment.")
@@ -383,15 +397,15 @@ def parse_colmap_camera_params(camera) -> Dict[str, Any]:
 
 
 def colmap_to_json(
-        recon_dir: Path,
-        output_dir: Path,
-        camera_mask_path: Optional[Path] = None,
-        image_id_to_depth_path: Optional[Dict[int, Path]] = None,
-        image_rename_map: Optional[Dict[str, str]] = None,
-        ply_filename="sparse_pc.ply",
-        keep_original_world_coordinate: bool = False,
-        use_single_camera_mode: bool = True,
-        crop_factor: Union[Tuple[float, float, float, float], List] = (0.0, 0.0, 0.0, 0.0),
+    recon_dir: Path,
+    output_dir: Path,
+    camera_mask_path: Optional[Path] = None,
+    image_id_to_depth_path: Optional[Dict[int, Path]] = None,
+    image_rename_map: Optional[Dict[str, str]] = None,
+    ply_filename="sparse_pc.ply",
+    keep_original_world_coordinate: bool = False,
+    use_single_camera_mode: bool = True,
+    crop_factor: Union[Tuple[float, float, float, float], List] = (0.0, 0.0, 0.0, 0.0),
 ) -> int:
     """Converts COLMAP's cameras.bin and images.bin to a JSON file.
 
@@ -481,8 +495,13 @@ def colmap_to_json(
 
         if not use_single_camera_mode:  # add the camera parameters for this frame
             out = parse_colmap_camera_params(cam_id_to_camera[im_data.camera_id])
-            w, h, cx, cy = adjust_intrinsics_for_crop(out["w"], out["h"], out["cx"], out["cy"],
-                                                      crop_factor[i] if isinstance(crop_factor, list) else crop_factor)
+            w, h, cx, cy = adjust_intrinsics_for_crop(
+                out["w"],
+                out["h"],
+                out["cx"],
+                out["cy"],
+                crop_factor[i] if isinstance(crop_factor, list) else crop_factor,
+            )
             out.update({"w": w, "h": h, "cx": cx, "cy": cy})
             frame.update(out)
 
@@ -572,9 +591,11 @@ def create_sfm_depth(
     H = cam_id_to_camera[CAMERA_ID].height
 
     if verbose:
-        iter_images = track(im_id_to_image.items(),
-                            total=len(im_id_to_image.items()),
-                            description="Creating depth maps ...")
+        iter_images = track(
+            im_id_to_image.items(),
+            total=len(im_id_to_image.items()),
+            description="Creating depth maps ...",
+        )
     else:
         iter_images = iter(im_id_to_image.items())
 
@@ -612,8 +633,16 @@ def create_sfm_depth(
 
         # TODO(1480) END use pycolmap API
 
-        idx = np.where((z >= min_depth) & (z <= max_depth) & (errors <= max_repoj_err) & (n_visible >= min_n_visible) &
-                       (uv[:, 0] >= 0) & (uv[:, 0] < W) & (uv[:, 1] >= 0) & (uv[:, 1] < H))
+        idx = np.where(
+            (z >= min_depth)
+            & (z <= max_depth)
+            & (errors <= max_repoj_err)
+            & (n_visible >= min_n_visible)
+            & (uv[:, 0] >= 0)
+            & (uv[:, 0] < W)
+            & (uv[:, 1] >= 0)
+            & (uv[:, 1] < H)
+        )
         z = z[idx]
         uv = uv[idx]
 
@@ -679,8 +708,12 @@ def get_matching_summary(num_initial_frames: int, num_matched_frames: int) -> st
     return f"[bold green]COLMAP found poses for {num_matched_frames / num_initial_frames * 100:.2f}% of the images."
 
 
-def create_ply_from_colmap(filename: str, recon_dir: Path, output_dir: Path, applied_transform: Union[torch.Tensor,
-                                                                                                      None]) -> None:
+def create_ply_from_colmap(
+    filename: str,
+    recon_dir: Path,
+    output_dir: Path,
+    applied_transform: Union[torch.Tensor, None],
+) -> None:
     """Writes a ply file from colmap.
 
     Args:

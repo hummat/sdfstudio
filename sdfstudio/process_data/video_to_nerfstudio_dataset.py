@@ -19,7 +19,9 @@ from dataclasses import dataclass
 from typing import Literal, Optional
 
 from sdfstudio.process_data import equirect_utils, process_data_utils
-from sdfstudio.process_data.colmap_converter_to_nerfstudio_dataset import ColmapConverterToNerfstudioDataset
+from sdfstudio.process_data.colmap_converter_to_nerfstudio_dataset import (
+    ColmapConverterToNerfstudioDataset,
+)
 from sdfstudio.utils.rich_utils import CONSOLE
 
 

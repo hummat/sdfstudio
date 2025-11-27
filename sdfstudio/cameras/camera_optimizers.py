@@ -89,7 +89,8 @@ class CameraOptimizer(nn.Module):
         if config.position_noise_std != 0.0 or config.orientation_noise_std != 0.0:
             assert config.position_noise_std >= 0.0 and config.orientation_noise_std >= 0.0
             std_vector = torch.tensor(
-                [config.position_noise_std] * 3 + [config.orientation_noise_std] * 3, device=device
+                [config.position_noise_std] * 3 + [config.orientation_noise_std] * 3,
+                device=device,
             )
             self.pose_noise = exp_map_SE3(torch.normal(torch.zeros((num_cameras, 6), device=device), std_vector))
         else:

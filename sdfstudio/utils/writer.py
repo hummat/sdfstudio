@@ -15,19 +15,20 @@
 """
 Generic Writer class
 """
+
 from __future__ import annotations
 
 import enum
 from abc import abstractmethod
 from pathlib import Path
 from time import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import torch
 import wandb
 from rich.console import Console
-from torch.utils.tensorboard import SummaryWriter
 from torch import Tensor
+from torch.utils.tensorboard import SummaryWriter
 
 from sdfstudio.configs import base_config as cfg
 from sdfstudio.utils.decorators import check_main_thread, decorate_all
@@ -64,7 +65,7 @@ class EventType(enum.Enum):
 
 
 @check_main_thread
-def put_image(name, image: Tensor, step: int):
+def put_image(name: str | EventName, image: Tensor, step: int):
     """Setter function to place images into the queue to be written out
 
     Args:
@@ -74,11 +75,18 @@ def put_image(name, image: Tensor, step: int):
     if isinstance(name, EventName):
         name = name.value
 
-    EVENT_STORAGE.append({"name": name, "write_type": EventType.IMAGE, "event": image.detach().cpu(), "step": step})
+    EVENT_STORAGE.append(
+        {
+            "name": name,
+            "write_type": EventType.IMAGE,
+            "event": image.detach().cpu(),
+            "step": step,
+        }
+    )
 
 
 @check_main_thread
-def put_scalar(name: str, scalar: Any, step: int):
+def put_scalar(name: str | EventName, scalar: Any, step: int):
     """Setter function to place scalars into the queue to be written out
 
     Args:
@@ -93,7 +101,7 @@ def put_scalar(name: str, scalar: Any, step: int):
 
 
 @check_main_thread
-def put_dict(name: str, scalar_dict: Dict[str, Any], step: int):
+def put_dict(name: str | EventName, scalar_dict: dict[str, Any], step: int):
     """Setter function to place a dictionary of scalars into the queue to be written out
 
     Args:
@@ -105,7 +113,7 @@ def put_dict(name: str, scalar_dict: Dict[str, Any], step: int):
 
 
 @check_main_thread
-def put_config(name: str, config_dict: Dict[str, Any], step: int):
+def put_config(name: str | EventName, config_dict: dict[str, Any], step: int):
     """Setter function to place a dictionary of scalars into the queue to be written out
 
     Args:
@@ -113,11 +121,24 @@ def put_config(name: str, config_dict: Dict[str, Any], step: int):
         scalar_dict: values to write out
         step: step associated with dict
     """
-    EVENT_STORAGE.append({"name": name, "write_type": EventType.CONFIG, "event": config_dict, "step": step})
+    EVENT_STORAGE.append(
+        {
+            "name": name,
+            "write_type": EventType.CONFIG,
+            "event": config_dict,
+            "step": step,
+        }
+    )
 
 
 @check_main_thread
-def put_time(name: str, duration: float, step: int, avg_over_steps: bool = True, update_eta: bool = False):
+def put_time(
+    name: str | EventName,
+    duration: float,
+    step: int,
+    avg_over_steps: bool = True,
+    update_eta: bool = False,
+):
     """Setter function to place a time element into the queue to be written out.
     Processes the time info according to the options.
 
@@ -166,7 +187,11 @@ def write_out_storage():
     EVENT_STORAGE.clear()
 
 
-def setup_local_writer(config: cfg.LoggingConfig, max_iter: int, banner_messages: Optional[List[str]] = None) -> None:
+def setup_local_writer(
+    config: cfg.LoggingConfig,
+    max_iter: int,
+    banner_messages: list[str] | None = None,
+) -> None:
     """Initialization of all event writers specified in config
 
     Args:
@@ -227,7 +252,7 @@ class Writer:
         raise NotImplementedError
 
     @abstractmethod
-    def write_scalar(self, name: str, scalar: Union[float, torch.Tensor], step: int) -> None:
+    def write_scalar(self, name: str, scalar: float | torch.Tensor, step: int) -> None:
         """Required method to write a single scalar value to the logger
 
         Args:
@@ -238,7 +263,7 @@ class Writer:
         raise NotImplementedError
 
     @check_main_thread
-    def write_scalar_dict(self, name: str, scalar_dict: Dict[str, Any], step: int) -> None:
+    def write_scalar_dict(self, name: str, scalar_dict: dict[str, Any], step: int) -> None:
         """Function that writes out all scalars from a given dictionary to the logger
 
         Args:
@@ -291,10 +316,10 @@ class WandbWriter(Writer):
         image = torch.permute(image, (2, 0, 1))
         wandb.log({name: wandb.Image(image)}, step=step)
 
-    def write_scalar(self, name: str, scalar: Union[float, torch.Tensor], step: int) -> None:
+    def write_scalar(self, name: str, scalar: float | torch.Tensor, step: int) -> None:
         wandb.log({name: scalar}, step=step)
 
-    def write_config(self, name: str, config_dict: Dict[str, Any], step: int):
+    def write_config(self, name: str, config_dict: dict[str, Any], step: int):
         # pylint: disable=unused-argument
         # pylint: disable=no-self-use
         """Function that writes out the config to wandb
@@ -316,10 +341,10 @@ class TensorboardWriter(Writer):
         image = to8b(image)
         self.tb_writer.add_image(name, image, step, dataformats="HWC")
 
-    def write_scalar(self, name: str, scalar: Union[float, torch.Tensor], step: int) -> None:
+    def write_scalar(self, name: str, scalar: float | torch.Tensor, step: int) -> None:
         self.tb_writer.add_scalar(name, scalar, step)
 
-    def write_config(self, name: str, config_dict: Dict[str, Any], step: int):  # pylint: disable=unused-argument
+    def write_config(self, name: str, config_dict: dict[str, Any], step: int):  # pylint: disable=unused-argument
         """Function that writes out the config to tensorboard
 
         Args:
@@ -367,7 +392,7 @@ class LocalWriter:
         banner_messages: list of messages to always display at bottom of screen
     """
 
-    def __init__(self, config: cfg.LocalWriterConfig, banner_messages: Optional[List[str]] = None):
+    def __init__(self, config: cfg.LocalWriterConfig, banner_messages: list[str] | None = None):
         self.config = config
         self.stats_to_track = [name.value for name in config.stats_to_track]
         self.keys = set()
@@ -396,7 +421,7 @@ class LocalWriter:
             self._update_header(latest_map, new_key)
             self._print_stats(latest_map)
 
-    def write_config(self, name: str, config_dict: Dict[str, Any], step: int):
+    def write_config(self, name: str, config_dict: dict[str, Any], step: int):
         """Function that writes out the config to local
 
         Args:
@@ -444,7 +469,7 @@ class LocalWriter:
         """
         step = GLOBAL_BUFFER["step"]
         fraction_done = step / GLOBAL_BUFFER["max_iter"]
-        curr_mssg = f"{step} ({fraction_done*100:.02f}%)"
+        curr_mssg = f"{step} ({fraction_done * 100:.02f}%)"
         curr_mssg = f"{curr_mssg:<20}"
         for name, v in latest_map.items():
             if name in self.stats_to_track:

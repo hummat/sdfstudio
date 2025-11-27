@@ -51,11 +51,17 @@ output_path.mkdir(parents=True, exist_ok=True)
 
 # load color
 color_path = input_path / "frames" / "color"
-color_paths = sorted(glob.glob(os.path.join(color_path, "*.jpg")), key=lambda x: int(os.path.basename(x)[:-4]))
+color_paths = sorted(
+    glob.glob(os.path.join(color_path, "*.jpg")),
+    key=lambda x: int(os.path.basename(x)[:-4]),
+)
 
 # load depth
 depth_path = input_path / "frames" / "depth"
-depth_paths = sorted(glob.glob(os.path.join(depth_path, "*.png")), key=lambda x: int(os.path.basename(x)[:-4]))
+depth_paths = sorted(
+    glob.glob(os.path.join(depth_path, "*.png")),
+    key=lambda x: int(os.path.basename(x)[:-4]),
+)
 
 
 # load intrinsic
@@ -65,7 +71,10 @@ camera_intrinsic = np.loadtxt(intrinsic_path)
 # load pose
 pose_path = input_path / "frames" / "pose"
 poses = []
-pose_paths = sorted(glob.glob(os.path.join(pose_path, "*.txt")), key=lambda x: int(os.path.basename(x)[:-4]))
+pose_paths = sorted(
+    glob.glob(os.path.join(pose_path, "*.txt")),
+    key=lambda x: int(os.path.basename(x)[:-4]),
+)
 for pose_path in pose_paths:
     c2w = np.loadtxt(pose_path)
     poses.append(c2w)
@@ -107,7 +116,6 @@ K = camera_intrinsic
 frames = []
 out_index = 0
 for idx, (valid, pose, image_path, depth_path) in enumerate(zip(valid_poses, poses, color_paths, depth_paths)):
-
     if idx % 10 != 0:
         continue
     if not valid:

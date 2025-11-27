@@ -141,7 +141,6 @@ K = camera_intrinsic
 frames = []
 out_index = 0
 for idx, (valid, pose, image_path, depth_path) in enumerate(zip(valid_poses, poses, color_paths, depth_paths)):
-
     if idx % 10 != 0:
         continue
     if not valid:
@@ -181,7 +180,11 @@ for idx, (valid, pose, image_path, depth_path) in enumerate(zip(valid_poses, pos
         np.save(output_path / frame["sensor_depth_path"], depth_maps)
 
         # color map gt depth for visualization
-        plt.imsave(output_path / frame["sensor_depth_path"].replace(".npy", ".png"), depth_maps, cmap="viridis")
+        plt.imsave(
+            output_path / frame["sensor_depth_path"].replace(".npy", ".png"),
+            depth_maps,
+            cmap="viridis",
+        )
 
     frames.append(frame)
     out_index += 1

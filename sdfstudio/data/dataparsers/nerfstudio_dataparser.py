@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Data parser for sdfstudio datasets. """
+"""Data parser for sdfstudio datasets."""
 
 from __future__ import annotations
 
@@ -146,15 +146,11 @@ class Nerfstudio(DataParser):
                 mask_filenames.append(mask_fname)
         if num_skipped_image_filenames >= 0:
             CONSOLE.log(f"Skipping {num_skipped_image_filenames} files in dataset split {split}.")
-        assert (
-            len(image_filenames) != 0
-        ), """
+        assert len(image_filenames) != 0, """
         No image files found. 
         You should check the file_paths in the transforms.json file to make sure they are correct.
         """
-        assert len(mask_filenames) == 0 or (
-            len(mask_filenames) == len(image_filenames)
-        ), """
+        assert len(mask_filenames) == 0 or (len(mask_filenames) == len(image_filenames)), """
         Different number of image and mask filenames.
         You should check that mask_path is specified for every frame (or zero frames) in transforms.json.
         """
@@ -206,7 +202,9 @@ class Nerfstudio(DataParser):
         scale_factor *= self.config.scale_factor
         poses[:, :3, 3] *= scale_factor
 
-        CONSOLE.log(f"Near plane: {torch.norm(poses[:, :3, 3], dim=1).min()}, Far plane: {torch.norm(poses[:, :3, 3], dim=1).max()}")
+        CONSOLE.log(
+            f"Near plane: {torch.norm(poses[:, :3, 3], dim=1).min()}, Far plane: {torch.norm(poses[:, :3, 3], dim=1).max()}"
+        )
 
         # Choose image_filenames and poses based on split, but after auto orient and scaling the poses.
         image_filenames = [image_filenames[i] for i in indices]
@@ -218,7 +216,11 @@ class Nerfstudio(DataParser):
         aabb_scale = self.config.scene_scale
         scene_box = SceneBox(
             aabb=torch.tensor(
-                [[-aabb_scale, -aabb_scale, -aabb_scale], [aabb_scale, aabb_scale, aabb_scale]], dtype=torch.float32
+                [
+                    [-aabb_scale, -aabb_scale, -aabb_scale],
+                    [aabb_scale, aabb_scale, aabb_scale],
+                ],
+                dtype=torch.float32,
             )
         )
 
@@ -264,12 +266,16 @@ class Nerfstudio(DataParser):
         if "applied_transform" in meta:
             applied_transform = torch.tensor(meta["applied_transform"], dtype=transform_matrix.dtype)
             transform_matrix = transform_matrix @ torch.cat(
-                [applied_transform, torch.tensor([[0, 0, 0, 1]], dtype=transform_matrix.dtype)], 0
+                [
+                    applied_transform,
+                    torch.tensor([[0, 0, 0, 1]], dtype=transform_matrix.dtype),
+                ],
+                0,
             )
         if "applied_scale" in meta:
             applied_scale = float(meta["applied_scale"])
             scale_factor *= applied_scale
-        
+
         dataparser_outputs = DataparserOutputs(
             image_filenames=image_filenames,
             cameras=cameras,
@@ -293,7 +299,7 @@ class Nerfstudio(DataParser):
                 while True:
                     if (max_res / 2 ** (df)) < MAX_AUTO_RESOLUTION:
                         break
-                    if not (self.config.data / f"{downsample_folder_prefix}{2**(df+1)}" / filepath.name).exists():
+                    if not (self.config.data / f"{downsample_folder_prefix}{2 ** (df + 1)}" / filepath.name).exists():
                         break
                     df += 1
 

@@ -187,10 +187,18 @@ class SurfaceModel(Model):
             )
         elif self.config.background_model == "mlp":
             position_encoding = NeRFEncoding(
-                in_dim=3, num_frequencies=10, min_freq_exp=0.0, max_freq_exp=9.0, include_input=True
+                in_dim=3,
+                num_frequencies=10,
+                min_freq_exp=0.0,
+                max_freq_exp=9.0,
+                include_input=True,
             )
             direction_encoding = NeRFEncoding(
-                in_dim=3, num_frequencies=4, min_freq_exp=0.0, max_freq_exp=3.0, include_input=True
+                in_dim=3,
+                num_frequencies=4,
+                min_freq_exp=0.0,
+                max_freq_exp=3.0,
+                include_input=True,
             )
 
             self.field_background = NeRFField(
@@ -216,17 +224,25 @@ class SurfaceModel(Model):
         self.renderer_normal = SemanticRenderer()
         # patch warping
         self.patch_warping = PatchWarping(
-            patch_size=self.config.patch_size, valid_angle_thres=self.config.patch_warp_angle_thres
+            patch_size=self.config.patch_size,
+            valid_angle_thres=self.config.patch_warp_angle_thres,
         )
 
         # losses
         self.rgb_loss = L1Loss()
-        self.s3im_loss = S3IM(s3im_kernel_size=self.config.s3im_kernel_size, s3im_stride=self.config.s3im_stride, s3im_repeat_time=self.config.s3im_repeat_time, s3im_patch_height=self.config.s3im_patch_height)
+        self.s3im_loss = S3IM(
+            s3im_kernel_size=self.config.s3im_kernel_size,
+            s3im_stride=self.config.s3im_stride,
+            s3im_repeat_time=self.config.s3im_repeat_time,
+            s3im_patch_height=self.config.s3im_patch_height,
+        )
 
         self.eikonal_loss = MSELoss()
         self.depth_loss = ScaleAndShiftInvariantLoss(alpha=0.5, scales=1)
         self.patch_loss = MultiViewLoss(
-            patch_size=self.config.patch_size, topk=self.config.topk, min_patch_variance=self.config.min_patch_variance
+            patch_size=self.config.patch_size,
+            topk=self.config.topk,
+            min_patch_variance=self.config.min_patch_variance,
         )
         self.sensor_depth_loss = SensorDepthLoss(truncation=self.config.sensor_depth_truncation)
 
@@ -335,17 +351,19 @@ class SurfaceModel(Model):
             # merge background color to foreground color
             rgb = rgb + bg_transmittance * rgb_bg
 
-        outputs.update({
-            "rgb": rgb,
-            "accumulation": accumulation,
-            "depth": depth,
-            "normal": normal,
-            "weights": weights,
-            "ray_points": self.scene_contraction(
-                ray_samples.frustums.get_start_positions()
-            ),  # used for creating visiblity mask
-            "directions_norm": ray_bundle.directions_norm,  # used to scale z_vals for free space and sdf loss
-        })
+        outputs.update(
+            {
+                "rgb": rgb,
+                "accumulation": accumulation,
+                "depth": depth,
+                "normal": normal,
+                "weights": weights,
+                "ray_points": self.scene_contraction(
+                    ray_samples.frustums.get_start_positions()
+                ),  # used for creating visiblity mask
+                "directions_norm": ray_bundle.directions_norm,  # used to scale z_vals for free space and sdf loss
+            }
+        )
 
         if self.training:
             grad_points = field_outputs[FieldHeadNames.GRADIENT]
@@ -439,7 +457,11 @@ class SurfaceModel(Model):
 
                 mask = torch.ones_like(depth_gt).reshape(1, 32, -1).bool()
                 loss_dict["depth_loss"] = (
-                    self.depth_loss(depth_pred.reshape(1, 32, -1), (depth_gt * 50 + 0.5).reshape(1, 32, -1), mask)
+                    self.depth_loss(
+                        depth_pred.reshape(1, 32, -1),
+                        (depth_gt * 50 + 0.5).reshape(1, 32, -1),
+                        mask,
+                    )
                     * self.config.mono_depth_loss_mult
                 )
 

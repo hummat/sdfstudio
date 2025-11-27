@@ -14,7 +14,6 @@
 
 """TensoRF Field"""
 
-
 from typing import Optional
 
 import torch
@@ -75,10 +74,16 @@ class TensoRFField(Field):
         if self.use_sh:
             self.sh = SHEncoding(sh_levels)
             self.B = nn.Linear(
-                in_features=self.color_encoding.get_out_dim(), out_features=3 * self.sh.get_out_dim(), bias=False
+                in_features=self.color_encoding.get_out_dim(),
+                out_features=3 * self.sh.get_out_dim(),
+                bias=False,
             )
         else:
-            self.B = nn.Linear(in_features=self.color_encoding.get_out_dim(), out_features=appearance_dim, bias=False)
+            self.B = nn.Linear(
+                in_features=self.color_encoding.get_out_dim(),
+                out_features=appearance_dim,
+                bias=False,
+            )
 
         self.field_output_rgb = RGBFieldHead(in_dim=self.mlp_head.get_out_dim(), activation=nn.Sigmoid())
 

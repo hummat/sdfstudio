@@ -33,7 +33,10 @@ def run_command(cmd: str, verbose=False) -> Optional[str]:
     """
     out = subprocess.run(cmd, capture_output=not verbose, shell=True, check=False)
     if out.returncode != 0:
-        CONSOLE.rule("[bold red] :skull: :skull: :skull: ERROR :skull: :skull: :skull: ", style="red")
+        CONSOLE.rule(
+            "[bold red] :skull: :skull: :skull: ERROR :skull: :skull: :skull: ",
+            style="red",
+        )
         CONSOLE.print(f"[bold red]Error running command: {cmd}")
         CONSOLE.rule(style="red")
         CONSOLE.print(out.stderr.decode("utf-8"))

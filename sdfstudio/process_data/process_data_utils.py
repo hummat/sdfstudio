@@ -18,9 +18,10 @@ import random
 import re
 import shutil
 import sys
+from collections import OrderedDict
 from enum import Enum
 from pathlib import Path
-from typing import List, Literal, Optional, OrderedDict, Tuple, Union
+from typing import Literal
 
 import cv2
 import imageio
@@ -61,7 +62,7 @@ CAMERA_MODELS = {
 }
 
 
-def list_images(data: Path, recursive: bool = True) -> List[Path]:
+def list_images(data: Path, recursive: bool = True) -> list[Path]:
     """Lists all supported images in a directory
 
     Args:
@@ -76,7 +77,7 @@ def list_images(data: Path, recursive: bool = True) -> List[Path]:
     return image_paths
 
 
-def get_image_filenames(directory: Path, max_num_images: int = -1) -> Tuple[List[Path], int]:
+def get_image_filenames(directory: Path, max_num_images: int = -1) -> tuple[list[Path], int]:
     """Returns a list of image filenames in a directory.
 
     Args:
@@ -122,12 +123,12 @@ def convert_video_to_images(
     image_dir: Path,
     num_frames_target: int,
     num_downscales: int,
-    crop_factor: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
+    crop_factor: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
     verbose: bool = False,
     image_prefix: str = "frame_",
     keep_image_dir: bool = False,
-    random_seed: Optional[int] = None,
-) -> Tuple[List[str], int]:
+    random_seed: int | None = None,
+) -> tuple[list[str], int]:
     """Converts a video into a sequence of images.
 
     Args:
@@ -187,8 +188,12 @@ def convert_video_to_images(
         for dir in downscale_dirs:
             dir.mkdir(parents=True, exist_ok=True)
 
-        downscale_chain = (f"split={num_downscales + 1}" + "".join([f"[t{i}]" for i in range(num_downscales + 1)]) +
-                           ";" + ";".join(downscale_chains))
+        downscale_chain = (
+            f"split={num_downscales + 1}"
+            + "".join([f"[t{i}]" for i in range(num_downscales + 1)])
+            + ";"
+            + ";".join(downscale_chains)
+        )
 
         ffmpeg_cmd += " -vsync vfr"
 
@@ -197,7 +202,7 @@ def convert_video_to_images(
         if random_seed:
             random.seed(random_seed)
             frame_indices = sorted(random.sample(range(num_frames), num_frames_target))
-            select_cmd = "select='" + "+".join([f"eq(n\,{idx})" for idx in frame_indices]) + "',setpts=N/TB,"
+            select_cmd = "select='" + "+".join([f"eq(n,{idx})" for idx in frame_indices]) + "',setpts=N/TB,"
             CONSOLE.print(f"Extracting {num_frames_target} frames using seed {random_seed} random selection.")
         elif spacing > 1:
             CONSOLE.print(f"Extracting {math.ceil(num_frames / spacing)} frames in evenly spaced intervals")
@@ -208,7 +213,8 @@ def convert_video_to_images(
             select_cmd = ""
 
         downscale_cmd = f' -filter_complex "{select_cmd}{crop_cmd}{downscale_chain}"' + "".join(
-            [f' -map "[out{i}]" "{downscale_paths[i]}"' for i in range(num_downscales + 1)])
+            [f' -map "[out{i}]" "{downscale_paths[i]}"' for i in range(num_downscales + 1)]
+        )
 
         ffmpeg_cmd += downscale_cmd
 
@@ -224,18 +230,23 @@ def convert_video_to_images(
 
 
 def copy_images_list(
-    image_paths: List[Path],
+    image_paths: list[Path],
     image_dir: Path,
     num_downscales: int,
     image_prefix: str = "frame_",
-    crop_border_pixels: Optional[int] = None,
-    crop_factor: Union[Tuple[float, float, float, float], Literal["auto"]] = (0.0, 0.0, 0.0, 0.0),
+    crop_border_pixels: int | None = None,
+    crop_factor: tuple[float, float, float, float] | Literal["auto"] = (
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ),
     verbose: bool = False,
     keep_image_dir: bool = False,
-    upscale_factor: Optional[int] = None,
+    upscale_factor: int | None = None,
     nearest_neighbor: bool = False,
     same_dimensions: bool = True,
-) -> Tuple[List[Path], List]:
+) -> tuple[list[Path], list]:
     """Copy all images in a list of Paths. Useful for filtering from a directory.
     Args:
         image_paths: List of Paths of images to copy to a new directory.
@@ -321,8 +332,12 @@ def copy_images_list(
     for dir in downscale_dirs:
         dir.mkdir(parents=True, exist_ok=True)
 
-    downscale_chain = (f"split={num_downscales + 1}" + "".join([f"[t{i}]" for i in range(num_downscales + 1)]) + ";" +
-                       ";".join(downscale_chains))
+    downscale_chain = (
+        f"split={num_downscales + 1}"
+        + "".join([f"[t{i}]" for i in range(num_downscales + 1)])
+        + ";"
+        + ";".join(downscale_chains)
+    )
 
     num_frames = len(image_paths)
     # ffmpeg batch commands assume all images are the same dimensions.
@@ -347,10 +362,12 @@ def copy_images_list(
         if upscale_factor is not None:
             select_cmd = f"[0:v]scale=iw*{upscale_factor}:ih*{upscale_factor}:flags=neighbor[upscaled];[upscaled]"
 
-        downscale_cmd = f' -filter_complex "{select_cmd}{crop_cmd}{downscale_chain}"' + "".join([
-            f' -map "[out{i}]" -q:v 2 "{downscale_dirs[i] / f"{framename}{copied_image_paths[0].suffix}"}"'
-            for i in range(num_downscales + 1)
-        ])
+        downscale_cmd = f' -filter_complex "{select_cmd}{crop_cmd}{downscale_chain}"' + "".join(
+            [
+                f' -map "[out{i}]" -q:v 2 "{downscale_dirs[i] / f"{framename}{copied_image_paths[0].suffix}"}"'
+                for i in range(num_downscales + 1)
+            ]
+        )
 
         ffmpeg_cmd += downscale_cmd
         if verbose:
@@ -371,12 +388,12 @@ def copy_images_list(
 
 
 def copy_and_upscale_polycam_depth_maps_list(
-    polycam_depth_image_filenames: List[Path],
+    polycam_depth_image_filenames: list[Path],
     depth_dir: Path,
     num_downscales: int,
-    crop_border_pixels: Optional[int] = None,
+    crop_border_pixels: int | None = None,
     verbose: bool = False,
-) -> List[Path]:
+) -> list[Path]:
     """
     Copy depth maps to working location and upscale them to match the RGB images dimensions and finally crop them
     equally as RGB Images.
@@ -392,9 +409,9 @@ def copy_and_upscale_polycam_depth_maps_list(
 
     # copy and upscale them to new directory
     with status(
-            msg="[bold yellow] Upscaling depth maps...",
-            spinner="growVertical",
-            verbose=verbose,
+        msg="[bold yellow] Upscaling depth maps...",
+        spinner="growVertical",
+        verbose=verbose,
     ):
         upscale_factor = 2**POLYCAM_UPSCALING_TIMES
         assert upscale_factor > 1
@@ -420,10 +437,15 @@ def copy_images(
     image_prefix: str = "frame_",
     verbose: bool = False,
     keep_image_dir: bool = False,
-    crop_factor: Union[Tuple[float, float, float, float], Literal["auto"]] = (0.0, 0.0, 0.0, 0.0),
+    crop_factor: tuple[float, float, float, float] | Literal["auto"] = (
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    ),
     num_downscales: int = 0,
     same_dimensions: bool = True,
-) -> Tuple[OrderedDict[Path, Path], List]:
+) -> tuple[OrderedDict[Path, Path], list]:
     """Copy images from a directory to a new directory.
 
     Args:
@@ -453,7 +475,9 @@ def copy_images(
             num_downscales=num_downscales,
             same_dimensions=same_dimensions,
         )
-        path_map = OrderedDict((original_path, new_path) for original_path, new_path in zip(image_paths, copied_images))
+        path_map = OrderedDict(
+            (original_path, new_path) for original_path, new_path in zip(image_paths, copied_images, strict=False)
+        )
         return path_map, crop_factors
 
 
@@ -482,9 +506,9 @@ def downscale_images(
         return "No downscaling performed."
 
     with status(
-            msg="[bold yellow]Downscaling images...",
-            spinner="growVertical",
-            verbose=verbose,
+        msg="[bold yellow]Downscaling images...",
+        spinner="growVertical",
+        verbose=verbose,
     ):
         downscale_factors = [2**i for i in range(num_downscales + 1)[1:]]
         for downscale_factor in downscale_factors:
@@ -536,33 +560,26 @@ def find_tool_feature_matcher_combination(
         "disk+lightglue",
         "superpoint+lightglue",
     ],
-) -> Union[
-        Tuple[None, None, None],
-        Tuple[
-            Literal["colmap", "hloc"],
-            Literal[
-                "sift",
-                "superpoint_aachen",
-                "superpoint_max",
-                "superpoint_inloc",
-                "r2d2",
-                "d2net-ss",
-                "sosnet",
-                "disk",
-            ],
-            Literal[
-                "NN",
-                "superglue",
-                "superglue-fast",
-                "NN-superpoint",
-                "NN-ratio",
-                "NN-mutual",
-                "adalam",
-                "disk+lightglue",
-                "superpoint+lightglue",
-            ],
+) -> (
+    tuple[None, None, None]
+    | tuple[
+        Literal["colmap", "hloc"],
+        Literal[
+            "sift", "superpoint_aachen", "superpoint_max", "superpoint_inloc", "r2d2", "d2net-ss", "sosnet", "disk"
         ],
-]:
+        Literal[
+            "NN",
+            "superglue",
+            "superglue-fast",
+            "NN-superpoint",
+            "NN-ratio",
+            "NN-mutual",
+            "adalam",
+            "disk+lightglue",
+            "superpoint+lightglue",
+        ],
+    ]
+):
     """Find a valid combination of sfm tool, feature type, and matcher type.
     Basically, replace the default parameters 'any' by usable value
 
@@ -598,7 +615,7 @@ def find_tool_feature_matcher_combination(
     return (None, None, None)
 
 
-def generate_circle_mask(height: int, width: int, percent_radius) -> Optional[np.ndarray]:
+def generate_circle_mask(height: int, width: int, percent_radius) -> np.ndarray | None:
     """generate a circle mask of the given size.
 
     Args:
@@ -621,7 +638,7 @@ def generate_circle_mask(height: int, width: int, percent_radius) -> Optional[np
     return mask
 
 
-def generate_crop_mask(height: int, width: int, crop_factor: Tuple[float, float, float, float]) -> Optional[np.ndarray]:
+def generate_crop_mask(height: int, width: int, crop_factor: tuple[float, float, float, float]) -> np.ndarray | None:
     """generate a crop mask of the given size.
 
     Args:
@@ -643,16 +660,16 @@ def generate_crop_mask(height: int, width: int, crop_factor: Tuple[float, float,
     bottom = int(bottom * height)
     left = int(left * width)
     right = int(right * width)
-    mask[top:height - bottom, left:width - right] = 1.0
+    mask[top : height - bottom, left : width - right] = 1.0
     return mask
 
 
 def generate_mask(
     height: int,
     width: int,
-    crop_factor: Tuple[float, float, float, float],
+    crop_factor: tuple[float, float, float, float],
     percent_radius: float,
-) -> Optional[np.ndarray]:
+) -> np.ndarray | None:
     """generate a mask of the given size.
 
     Args:
@@ -674,11 +691,11 @@ def generate_mask(
 
 
 def save_mask(
-        image_dir: Path,
-        num_downscales: int,
-        crop_factor: Tuple[float, float, float, float] = (0, 0, 0, 0),
-        percent_radius: float = 1.0,
-) -> Optional[Path]:
+    image_dir: Path,
+    num_downscales: int,
+    crop_factor: tuple[float, float, float, float] = (0, 0, 0, 0),
+    percent_radius: float = 1.0,
+) -> Path | None:
     """Save a mask for each image in the image directory.
 
     Args:
@@ -715,7 +732,9 @@ def save_mask(
     return mask_path / "mask.png"
 
 
-def compute_crop_factor_from_bounding_box(alpha_mask: np.ndarray) -> tuple[float, float, float, float]:
+def compute_crop_factor_from_bounding_box(
+    alpha_mask: np.ndarray,
+) -> tuple[float, float, float, float]:
     rows = np.any(alpha_mask > 0, axis=1)
     cols = np.any(alpha_mask > 0, axis=0)
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Data parser for friends dataset"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -273,7 +274,10 @@ class SDFStudio(DataParser):
                     )
                 else:
                     # filenames format is 000000_foreground_mask.png
-                    foreground_mask = np.array(Image.open(self.config.data / frame["foreground_mask"]), dtype="uint8")
+                    foreground_mask = np.array(
+                        Image.open(self.config.data / frame["foreground_mask"]),
+                        dtype="uint8",
+                    )
                 foreground_mask = foreground_mask[..., :1]
                 foreground_mask_images.append(torch.from_numpy(foreground_mask).float() / 255.0)
 
@@ -308,8 +312,7 @@ class SDFStudio(DataParser):
                 orientation_method = self.config.orientation_method
 
             camera_to_worlds, transform = camera_utils.auto_orient_and_center_poses(
-                camera_to_worlds,
-                method=orientation_method
+                camera_to_worlds, method=orientation_method
             )
 
             # we should also transform normal accordingly
@@ -400,9 +403,10 @@ class SDFStudio(DataParser):
                 pairs_srcs.append(sources_array)
             pairs_srcs = torch.tensor(pairs_srcs)
             # TODO: check correctness of sorting
-            all_imgs = torch.stack([get_image(image_filename) for image_filename in sorted(image_filenames)], axis=0)[
-                indices
-            ].cuda()
+            all_imgs = torch.stack(
+                [get_image(image_filename) for image_filename in sorted(image_filenames)],
+                axis=0,
+            )[indices].cuda()
 
             additional_inputs_dict["pairs"] = {
                 "func": get_src_from_pairs,

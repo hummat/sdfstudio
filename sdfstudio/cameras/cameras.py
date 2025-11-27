@@ -15,6 +15,7 @@
 """
 Camera Models
 """
+
 import base64
 import math
 from dataclasses import dataclass
@@ -165,9 +166,7 @@ class Cameras(TensorDataclass):
 
     def _init_get_camera_type(
         self,
-        camera_type: Union[
-            TensorType, TensorType, int, List[CameraType], CameraType
-        ],
+        camera_type: Union[TensorType, TensorType, int, List[CameraType], CameraType],
     ) -> TensorType:
         """
         Parses the __init__() argument camera_type
@@ -188,9 +187,9 @@ class Cameras(TensorDataclass):
         elif isinstance(camera_type, int):
             camera_type = torch.tensor([camera_type], device=self.device)
         elif isinstance(camera_type, torch.Tensor):
-            assert not torch.is_floating_point(
-                camera_type
-            ), f"camera_type tensor must be of type int, not: {camera_type.dtype}"
+            assert not torch.is_floating_point(camera_type), (
+                f"camera_type tensor must be of type int, not: {camera_type.dtype}"
+            )
             camera_type = camera_type.to(self.device)
             if camera_type.ndim == 0 or camera_type.shape[-1] != 1:
                 camera_type = camera_type.unsqueeze(-1)
@@ -273,9 +272,7 @@ class Cameras(TensorDataclass):
         w_jagged = not torch.all(self.width == self.width.view(-1)[0])
         return h_jagged or w_jagged
 
-    def get_image_coords(
-        self, pixel_offset: float = 0.5, index: Optional[Tuple] = None
-    ) -> TensorType:
+    def get_image_coords(self, pixel_offset: float = 0.5, index: Optional[Tuple] = None) -> TensorType:
         """This gets the image coordinates of one of the cameras in this object.
 
         If no index is specified, it will return the maximum possible sized height / width image coordinate map,
@@ -378,14 +375,14 @@ class Cameras(TensorDataclass):
 
         # If the camera indices are an int, then we need to make sure that the camera batch is 1D
         if isinstance(camera_indices, int):
-            assert (
-                len(cameras.shape) == 1
-            ), "camera_indices must be a tensor if cameras are batched with more than 1 batch dimension"
+            assert len(cameras.shape) == 1, (
+                "camera_indices must be a tensor if cameras are batched with more than 1 batch dimension"
+            )
             camera_indices = torch.tensor([camera_indices], device=cameras.device)
 
-        assert camera_indices.shape[-1] == len(
-            cameras.shape
-        ), "camera_indices must have shape (num_rays:..., num_cameras_batch_dims)"
+        assert camera_indices.shape[-1] == len(cameras.shape), (
+            "camera_indices must have shape (num_rays:..., num_cameras_batch_dims)"
+        )
 
         # If keep_shape is True, then we need to make sure that the camera indices in question
         # are all the same height and width and can actually be batched while maintaining the image
@@ -443,7 +440,11 @@ class Cameras(TensorDataclass):
         # raybundle.shape == (num_rays) when done
         # pylint: disable=protected-access
         raybundle = cameras._generate_rays_from_coords(
-            camera_indices, coords, camera_opt_to_camera, distortion_params_delta, disable_distortion=disable_distortion
+            camera_indices,
+            coords,
+            camera_opt_to_camera,
+            distortion_params_delta,
+            disable_distortion=disable_distortion,
         )
 
         # If we have mandated that we don't keep the shape, then we flatten
@@ -549,8 +550,14 @@ class Cameras(TensorDataclass):
         # Get all our focal lengths, principal points and make sure they are the right shapes
         y = coords[..., 0]  # (num_rays,) get rid of the last dimension
         x = coords[..., 1]  # (num_rays,) get rid of the last dimension
-        fx, fy = self.fx[true_indices].squeeze(-1), self.fy[true_indices].squeeze(-1)  # (num_rays,)
-        cx, cy = self.cx[true_indices].squeeze(-1), self.cy[true_indices].squeeze(-1)  # (num_rays,)
+        fx, fy = (
+            self.fx[true_indices].squeeze(-1),
+            self.fy[true_indices].squeeze(-1),
+        )  # (num_rays,)
+        cx, cy = (
+            self.cx[true_indices].squeeze(-1),
+            self.cy[true_indices].squeeze(-1),
+        )  # (num_rays,)
         assert (
             y.shape == num_rays_shape
             and x.shape == num_rays_shape
@@ -647,7 +654,11 @@ class Cameras(TensorDataclass):
             directions_stack[..., 2][mask] = torch.masked_select(-torch.cos(theta) * torch.sin(phi), mask).float()
 
         for value in cam_types:
-            if value not in [CameraType.PERSPECTIVE.value, CameraType.FISHEYE.value, CameraType.EQUIRECTANGULAR.value]:
+            if value not in [
+                CameraType.PERSPECTIVE.value,
+                CameraType.FISHEYE.value,
+                CameraType.EQUIRECTANGULAR.value,
+            ]:
                 raise ValueError(f"Camera type {value} not supported.")
 
         assert directions_stack.shape == (3,) + num_rays_shape + (3,)
@@ -696,7 +707,10 @@ class Cameras(TensorDataclass):
         )
 
     def to_json(
-        self, camera_idx: int, image: Optional[TensorType] = None, max_size: Optional[int] = None
+        self,
+        camera_idx: int,
+        image: Optional[TensorType] = None,
+        max_size: Optional[int] = None,
     ) -> Dict:
         """Convert a camera to a json dictionary.
 
@@ -744,9 +758,7 @@ class Cameras(TensorDataclass):
         K[..., 2, 2] = 1.0
         return K
 
-    def rescale_output_resolution(
-        self, scaling_factor: Union[TensorType, TensorType, float, int]
-    ) -> None:
+    def rescale_output_resolution(self, scaling_factor: Union[TensorType, TensorType, float, int]) -> None:
         """Rescale the output resolution of the cameras.
 
         Args:
@@ -756,7 +768,10 @@ class Cameras(TensorDataclass):
             scaling_factor = torch.tensor([scaling_factor]).to(self.device).broadcast_to((self.cx.shape))
         elif isinstance(scaling_factor, torch.Tensor) and scaling_factor.shape == self.shape:
             scaling_factor = scaling_factor.unsqueeze(-1)
-        elif isinstance(scaling_factor, torch.Tensor) and scaling_factor.shape == (*self.shape, 1):
+        elif isinstance(scaling_factor, torch.Tensor) and scaling_factor.shape == (
+            *self.shape,
+            1,
+        ):
             pass
         else:
             raise ValueError(

@@ -18,8 +18,9 @@ from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
 from sdfstudio.process_data import colmap_utils, hloc_utils, process_data_utils
-from sdfstudio.process_data.base_converter_to_nerfstudio_dataset import \
-    BaseConverterToNerfstudioDataset
+from sdfstudio.process_data.base_converter_to_nerfstudio_dataset import (
+    BaseConverterToNerfstudioDataset,
+)
 from sdfstudio.process_data.process_data_utils import CAMERA_MODELS
 from sdfstudio.utils import install_checks
 from sdfstudio.utils.rich_utils import CONSOLE
@@ -88,7 +89,12 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
     """Number of samples per image to take from each equirectangular image.
        Used only when camera-type is equirectangular.
     """
-    crop_factor: Union[Tuple[float, float, float, float], Literal["auto"]] = (0.0, 0.0, 0.0, 0.0)
+    crop_factor: Union[Tuple[float, float, float, float], Literal["auto"]] = (
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+    )
     """Portion of the image to crop. All values should be in [0,1]. (top, bottom, left, right)"""
     crop_bottom: float = 0.0
     """Portion of the image to crop from the bottom.
@@ -150,7 +156,7 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
                         f"Matching ratio of {num_matched_frames}/{num_frames} is below the minimum of {self.min_match_ratio}"
                     )
                 elif self.min_match_ratio:
-                    summary_log.append(f"Sufficient matching ratio: {num_matched_frames/num_frames}")
+                    summary_log.append(f"Sufficient matching ratio: {num_matched_frames / num_frames}")
                 else:
                     summary_log.append(f"Colmap matched {num_matched_frames} images")
             summary_log.append(colmap_utils.get_matching_summary(num_frames, num_matched_frames))
@@ -171,8 +177,9 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
             depth_dir = self.output_dir / "depth"
             depth_dir.mkdir(parents=True, exist_ok=True)
             image_id_to_depth_path = colmap_utils.create_sfm_depth(
-                recon_dir=self.absolute_colmap_model_path if self.skip_colmap else self.output_dir /
-                self.default_colmap_path(),
+                recon_dir=self.absolute_colmap_model_path
+                if self.skip_colmap
+                else self.output_dir / self.default_colmap_path(),
                 output_dir=depth_dir,
                 include_depth_debug=self.include_depth_debug,
                 input_images_dir=self.image_dir,
@@ -185,7 +192,8 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
                     folder_name="depths",
                     nearest_neighbor=True,
                     verbose=self.verbose,
-                ))
+                )
+            )
             return image_id_to_depth_path, summary_log
         return None, summary_log
 
@@ -200,8 +208,9 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
             sfm_tool,
             feature_type,
             matcher_type,
-        ) = process_data_utils.find_tool_feature_matcher_combination(self.sfm_tool, self.feature_type,
-                                                                     self.matcher_type)
+        ) = process_data_utils.find_tool_feature_matcher_combination(
+            self.sfm_tool, self.feature_type, self.matcher_type
+        )
         # check that sfm_tool is hloc if using refine_pixsfm
         if self.refine_pixsfm:
             assert sfm_tool == "hloc", "refine_pixsfm only works with sfm_tool hloc"

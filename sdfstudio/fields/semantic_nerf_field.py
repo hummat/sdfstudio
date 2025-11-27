@@ -15,6 +15,7 @@
 """
 Semantic NeRF field implementation.
 """
+
 from typing import Dict, Optional, Tuple
 
 import torch
@@ -85,7 +86,8 @@ class SemanticNerfField(Field):
         self.field_head_density = DensityFieldHead(in_dim=self.mlp_base.get_out_dim())
         self.field_head_rgb = RGBFieldHead(in_dim=self.mlp_head.get_out_dim())
         self.field_head_semantic = SemanticFieldHead(
-            in_dim=self.mlp_semantic.get_out_dim(), num_classes=self.num_semantic_classes
+            in_dim=self.mlp_semantic.get_out_dim(),
+            num_classes=self.num_semantic_classes,
         )
 
     def get_density(self, ray_samples: RaySamples):

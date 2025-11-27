@@ -1,4 +1,5 @@
 """Download datasets and specific captures from the datasets."""
+
 from __future__ import annotations
 
 import os
@@ -136,7 +137,12 @@ class NerfstudioDownload(DatasetDownload):
                     download_capture_name(save_dir, "sdfstudio", capture_name, nerfstudio_file_ids)
             return
 
-        download_capture_name(save_dir, "sdfstudio", self.capture_name, capture_name_to_file_id=nerfstudio_file_ids)
+        download_capture_name(
+            save_dir,
+            "sdfstudio",
+            self.capture_name,
+            capture_name_to_file_id=nerfstudio_file_ids,
+        )
 
 
 record3d_file_ids = {
@@ -153,7 +159,12 @@ class Record3dDownload(DatasetDownload):
     capture_name: Record3dCaptureName = "bear"
 
     def download(self, save_dir: Path):
-        download_capture_name(save_dir, "record3d", self.capture_name, capture_name_to_file_id=record3d_file_ids)
+        download_capture_name(
+            save_dir,
+            "record3d",
+            self.capture_name,
+            capture_name_to_file_id=record3d_file_ids,
+        )
 
 
 @dataclass
@@ -211,9 +222,9 @@ class PhototourismDownload(DatasetDownload):
                     PhototourismDownload(capture_name=capture_name).download(save_dir)
             return
 
-        assert (
-            self.capture_name in phototourism_downloads
-        ), f"Capture name {self.capture_name} not found in {phototourism_downloads.keys()}"
+        assert self.capture_name in phototourism_downloads, (
+            f"Capture name {self.capture_name} not found in {phototourism_downloads.keys()}"
+        )
         url = phototourism_downloads[self.capture_name]
         target_path = str(save_dir / f"phototourism/{self.capture_name}")
         os.makedirs(target_path, exist_ok=True)
@@ -268,9 +279,9 @@ class SDFstudioDemoDownload(DatasetDownload):
                     SDFstudioDemoDownload(dataset_name=dataset_name).download(save_dir)
             return
 
-        assert (
-            self.dataset_name in sdfstudio_downloads
-        ), f"Capture name {self.dataset_name} not found in {sdfstudio_downloads.keys()}"
+        assert self.dataset_name in sdfstudio_downloads, (
+            f"Capture name {self.dataset_name} not found in {sdfstudio_downloads.keys()}"
+        )
 
         url = sdfstudio_downloads[self.dataset_name]
 

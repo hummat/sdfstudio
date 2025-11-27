@@ -59,7 +59,12 @@ class NeuSFactoModelConfig(NeuSModelConfig):
     proposal_net_args_list: List[Dict] = field(
         default_factory=lambda: [
             {"hidden_dim": 16, "log2_hashmap_size": 17, "num_levels": 5, "max_res": 64},
-            {"hidden_dim": 16, "log2_hashmap_size": 17, "num_levels": 5, "max_res": 256},
+            {
+                "hidden_dim": 16,
+                "log2_hashmap_size": 17,
+                "num_levels": 5,
+                "max_res": 256,
+            },
         ]
     )
     """Arguments for the proposal density fields."""
@@ -119,7 +124,9 @@ class NeuSFactoModel(NeuSModel):
             assert len(self.config.proposal_net_args_list) == 1, "Only one proposal network is allowed."
             prop_net_args = self.config.proposal_net_args_list[0]
             network = HashMLPDensityField(
-                self.scene_box.aabb, spatial_distortion=self.scene_contraction, **prop_net_args
+                self.scene_box.aabb,
+                spatial_distortion=self.scene_contraction,
+                **prop_net_args,
             )
             self.proposal_networks.append(network)
             self.density_fns.extend([network.density_fn for _ in range(num_prop_nets)])

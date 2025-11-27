@@ -15,6 +15,7 @@
 """
 Helper for Lie group operations. Currently only used for pose optimization.
 """
+
 import torch
 from torch import Tensor
 
@@ -46,7 +47,13 @@ def exp_map_SO3xR3(tangent_vector: Tensor) -> Tensor:  # pylint: disable=invalid
     skews[:, 2, 1] = log_rot[:, 0]
     skews_square = torch.bmm(skews, skews)
 
-    ret = torch.zeros(tangent_vector.shape[0], 3, 4, dtype=tangent_vector.dtype, device=tangent_vector.device)
+    ret = torch.zeros(
+        tangent_vector.shape[0],
+        3,
+        4,
+        dtype=tangent_vector.dtype,
+        device=tangent_vector.device,
+    )
     ret[:, :3, :3] = (
         fac1[:, None, None] * skews
         + fac2[:, None, None] * skews_square

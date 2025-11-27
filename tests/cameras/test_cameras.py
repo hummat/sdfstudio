@@ -1,6 +1,7 @@
 """
 Test the camera classes.
 """
+
 import dataclasses
 from itertools import product
 
@@ -39,7 +40,12 @@ CX_YS = [
     torch.ones(BATCH_SIZE, 1) * CX_Y,
     torch.ones((BATCH_SIZE, BATCH_SIZE, 1)) * CX_Y,
 ]
-DISTORTION_PARAMS = [None, torch.zeros(6), torch.zeros((BATCH_SIZE, 6)), torch.zeros((BATCH_SIZE, BATCH_SIZE, 6))]
+DISTORTION_PARAMS = [
+    None,
+    torch.zeros(6),
+    torch.zeros((BATCH_SIZE, 6)),
+    torch.zeros((BATCH_SIZE, BATCH_SIZE, 6)),
+]
 camera_types = [
     1,
     torch.tensor([1]),
@@ -231,7 +237,11 @@ def check_generate_rays_shape():
             coord.broadcast_to(5, 2),
             torch.Size((5,)),
         ),  # [0]th camera and selected coords, output is [5] dimensional since extra batch dim is provided in inputs
-        (0, coord.broadcast_to(5, 2), torch.Size((5,))),  # First camera and selected coords, output is [5] dimensional
+        (
+            0,
+            coord.broadcast_to(5, 2),
+            torch.Size((5,)),
+        ),  # First camera and selected coords, output is [5] dimensional
         (
             torch.zeros(5, 1),
             None,
@@ -296,7 +306,10 @@ def _check_cam_shapes(cam: Cameras, _batch_size):
     assert cam.cy.shape == (*_batch_size, 1)
     assert cam.height.shape == (*_batch_size, 1)
     assert cam.width.shape == (*_batch_size, 1)
-    assert cam.distortion_params is None or cam.distortion_params.shape == (*_batch_size, 6)
+    assert cam.distortion_params is None or cam.distortion_params.shape == (
+        *_batch_size,
+        6,
+    )
     assert cam.camera_type.shape == (*_batch_size, 1)
     return True
 

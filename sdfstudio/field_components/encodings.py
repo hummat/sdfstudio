@@ -199,7 +199,8 @@ class NeRFEncoding(Encoding):
             input_var = torch.diagonal(covs, dim1=-2, dim2=-1)[..., :, None] * freqs[None, :] ** 2
             input_var = input_var.reshape((*input_var.shape[:-2], -1))
             encoded_inputs = expected_sin(
-                torch.cat([scaled_inputs, scaled_inputs + torch.pi / 2.0], dim=-1), torch.cat(2 * [input_var], dim=-1)
+                torch.cat([scaled_inputs, scaled_inputs + torch.pi / 2.0], dim=-1),
+                torch.cat(2 * [input_var], dim=-1),
             )
 
         if self.include_input:
@@ -217,7 +218,13 @@ class RFFEncoding(Encoding):
         include_input: Append the input coordinate to the encoding
     """
 
-    def __init__(self, in_dim: int, num_frequencies: int, scale: float, include_input: bool = False) -> None:
+    def __init__(
+        self,
+        in_dim: int,
+        num_frequencies: int,
+        scale: float,
+        include_input: bool = False,
+    ) -> None:
         super().__init__(in_dim)
 
         self.num_frequencies = num_frequencies
@@ -256,7 +263,8 @@ class RFFEncoding(Encoding):
         else:
             input_var = torch.sum((covs @ self.b_matrix) * self.b_matrix, -2)
             encoded_inputs = expected_sin(
-                torch.cat([scaled_inputs, scaled_inputs + torch.pi / 2.0], dim=-1), torch.cat(2 * [input_var], dim=-1)
+                torch.cat([scaled_inputs, scaled_inputs + torch.pi / 2.0], dim=-1),
+                torch.cat(2 * [input_var], dim=-1),
             )
 
         if self.include_input:
@@ -290,7 +298,6 @@ class HashEncoding(Encoding):
         implementation: Literal["tcnn", "torch"] = "tcnn",
         interpolation: Optional[Literal["Nearest", "Linear", "Smoothstep"]] = None,
     ) -> None:
-
         super().__init__(in_dim=3)
         self.num_levels = num_levels
         self.features_per_level = features_per_level
@@ -327,9 +334,9 @@ class HashEncoding(Encoding):
             )
 
         if not TCNN_EXISTS or self.tcnn_encoding is None:
-            assert (
-                interpolation is None or interpolation == "Linear"
-            ), f"interpolation '{interpolation}' is not supported for torch encoding backend"
+            assert interpolation is None or interpolation == "Linear", (
+                f"interpolation '{interpolation}' is not supported for torch encoding backend"
+            )
 
     def get_out_dim(self) -> int:
         return self.num_levels * self.features_per_level
@@ -446,7 +453,10 @@ class TensorCPEncoding(Encoding):
         """
 
         self.line_coef.data = F.interpolate(
-            self.line_coef.data, size=(resolution, 1), mode="bilinear", align_corners=True
+            self.line_coef.data,
+            size=(resolution, 1),
+            mode="bilinear",
+            align_corners=True,
         )
 
         self.resolution = resolution
@@ -581,12 +591,23 @@ class TensorVMEncoding(Encoding):
             resolution: Target resolution.
         """
         plane_coef = F.interpolate(
-            self.plane_coef.data, size=(resolution, resolution), mode="bilinear", align_corners=True
+            self.plane_coef.data,
+            size=(resolution, resolution),
+            mode="bilinear",
+            align_corners=True,
         )
-        line_coef = F.interpolate(self.line_coef.data, size=(resolution, 1), mode="bilinear", align_corners=True)
+        line_coef = F.interpolate(
+            self.line_coef.data,
+            size=(resolution, 1),
+            mode="bilinear",
+            align_corners=True,
+        )
 
         # TODO(ethan): are these torch.nn.Parameters needed?
-        self.plane_coef, self.line_coef = torch.nn.Parameter(plane_coef), torch.nn.Parameter(line_coef)
+        self.plane_coef, self.line_coef = (
+            torch.nn.Parameter(plane_coef),
+            torch.nn.Parameter(line_coef),
+        )
         self.resolution = resolution
 
 
@@ -636,7 +657,6 @@ class PeriodicVolumeEncoding(Encoding):
         hash_init_scale: float = 0.001,
         smoothstep: bool = False,
     ) -> None:
-
         super().__init__(in_dim=3)
         self.num_levels = num_levels
         self.features_per_level = features_per_level
@@ -675,11 +695,7 @@ class PeriodicVolumeEncoding(Encoding):
         x = in_tensor
         x %= self.periodic_volume_resolution
         # xyz to index
-        x = (
-            x[..., 0] * (self.periodic_volume_resolution**2)
-            + x[..., 1] * (self.periodic_volume_resolution)
-            + x[..., 2]
-        )
+        x = x[..., 0] * (self.periodic_volume_resolution**2) + x[..., 1] * (self.periodic_volume_resolution) + x[..., 2]
         # offset by feature levels
         x += self.hash_offset.to(x.device)
 

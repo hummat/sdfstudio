@@ -40,9 +40,7 @@ from sdfstudio.utils.rich_utils import get_progress
 CONSOLE = Console(width=120)
 
 
-def get_parallelogram_area(
-    p: TensorType, v0: TensorType, v1: TensorType
-) -> TensorType:
+def get_parallelogram_area(p: TensorType, v0: TensorType, v1: TensorType) -> TensorType:
     """Given three 2D points, return the area defined by the parallelogram. I.e., 2x the triangle area.
 
     Args:
@@ -62,7 +60,9 @@ def get_texture_image(num_pixels_w, num_pixels_h, device):
     px_h = 1.0 / num_pixels_h
     uv_indices = torch.stack(
         torch.meshgrid(
-            torch.arange(num_pixels_w, device=device), torch.arange(num_pixels_h, device=device), indexing="xy"
+            torch.arange(num_pixels_w, device=device),
+            torch.arange(num_pixels_h, device=device),
+            indexing="xy",
         ),
         dim=-1,
     )
@@ -255,7 +255,12 @@ def unwrap_mesh_with_xatlas(
     # render uv maps
     vertices_tc = vertices_tc * 2.0 - 1.0  # uvs to range [-1, 1]
     vertices_tc = torch.cat(
-        (vertices_tc, torch.zeros_like(vertices_tc[..., :1]), torch.ones_like(vertices_tc[..., :1])), dim=-1
+        (
+            vertices_tc,
+            torch.zeros_like(vertices_tc[..., :1]),
+            torch.ones_like(vertices_tc[..., :1]),
+        ),
+        dim=-1,
     )  # [num_verts, 4]
 
     texture_coordinates = torch.from_numpy(uvs[indices]).to(device)  # (num_faces, 3, 2)
@@ -392,7 +397,7 @@ def export_textured_mesh(
     camera_indices = torch.zeros_like(origins[..., 0:1])
     nears = torch.zeros_like(origins[..., 0:1])
     fars = torch.ones_like(origins[..., 0:1]) * raylen
-    directions_norm = torch.ones_like(origins[..., 0:1]) # for surface model
+    directions_norm = torch.ones_like(origins[..., 0:1])  # for surface model
     camera_ray_bundle = RayBundle(
         origins=origins,
         directions=directions,
@@ -453,7 +458,11 @@ def export_textured_mesh(
     file_mtl.close()
 
     # create the .obj file
-    lines_obj = ["# Generated with sdfstudio", "mtllib material_0.mtl", "usemtl material_0"]
+    lines_obj = [
+        "# Generated with sdfstudio",
+        "mtllib material_0.mtl",
+        "usemtl material_0",
+    ]
     lines_obj = [line + "\n" for line in lines_obj]
     file_obj = open(output_dir / "mesh.obj", "w", encoding="utf-8")  # pylint: disable=consider-using-with
     file_obj.writelines(lines_obj)

@@ -27,6 +27,7 @@ from sdfstudio.configs.base_config import InstantiateConfig
 from sdfstudio.cameras.rays import Frustums, RaySamples
 from sdfstudio.field_components.field_heads import FieldHeadNames
 
+
 # Field related configs
 @dataclass
 class FieldConfig(InstantiateConfig):
@@ -79,12 +80,14 @@ class Field(nn.Module):
         """
         assert self._sample_locations is not None, "Sample locations must be set before calling get_normals."
         assert self._density_before_activation is not None, "Density must be set before calling get_normals."
-        assert (
-            self._sample_locations.shape[:-1] == self._density_before_activation.shape[:-1]
-        ), "Sample locations and density must have the same shape besides the last dimension."
+        assert self._sample_locations.shape[:-1] == self._density_before_activation.shape[:-1], (
+            "Sample locations and density must have the same shape besides the last dimension."
+        )
 
         self._density_before_activation.backward(
-            gradient=torch.ones_like(self._density_before_activation), inputs=self._sample_locations, retain_graph=True
+            gradient=torch.ones_like(self._density_before_activation),
+            inputs=self._sample_locations,
+            retain_graph=True,
         )
         normals = -torch.nn.functional.normalize(self._sample_locations.grad, dim=-1)
         return normals

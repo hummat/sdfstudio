@@ -22,7 +22,13 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 import torch
-from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    TaskProgressColumn,
+    TextColumn,
+    TimeRemainingColumn,
+)
 
 from sdfstudio.utils.rich_utils import CONSOLE, ItersPerSecColumn
 
@@ -53,7 +59,10 @@ def euler_rodriguez_rotation_matrix(axis: torch.Tensor, theta: torch.Tensor) -> 
 
 
 def remap_cubic(
-    img: torch.Tensor, map_x: torch.Tensor, map_y: torch.Tensor, border_mode: str = "border"
+    img: torch.Tensor,
+    map_x: torch.Tensor,
+    map_y: torch.Tensor,
+    border_mode: str = "border",
 ) -> torch.Tensor:
     """Remap image using bicubic interpolation.
 
@@ -211,7 +220,9 @@ def _crop_bottom(bound_arr: list, fov: int, crop_factor: float) -> List[float]:
 
 
 def _crop_bound_arr_vertical(
-    bound_arr: list, fov: int, crop_factor: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    bound_arr: list,
+    fov: int,
+    crop_factor: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
 ) -> list:
     """Returns a list of vertical bounds adjusted for cropping.
 
@@ -311,7 +322,15 @@ def generate_planar_projections_from_equirectangular(
                 count = 0
                 for u_deg, v_deg in yaw_pitch_pairs:
                     omnicv_pers_tensor = (
-                        equirect2persp(im, fov, u_deg, v_deg, planar_image_size[1], planar_image_size[0]) * 255.0
+                        equirect2persp(
+                            im,
+                            fov,
+                            u_deg,
+                            v_deg,
+                            planar_image_size[1],
+                            planar_image_size[0],
+                        )
+                        * 255.0
                     )
                     pers_image = omnicv_pers_tensor.squeeze().permute(1, 2, 0).type(torch.uint8).to("cpu").numpy()
                     cv2.imwrite(f"{output_dir}/{i[:-4]}_{count}.jpg", pers_image)

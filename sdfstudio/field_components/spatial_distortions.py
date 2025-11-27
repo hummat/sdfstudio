@@ -26,9 +26,7 @@ from sdfstudio.utils.math import Gaussians
 class SpatialDistortion(nn.Module):
     """Apply spatial distortions"""
 
-    def forward(
-        self, positions: Union[TensorType, Gaussians]
-    ) -> Union[TensorType, Gaussians]:
+    def forward(self, positions: Union[TensorType, Gaussians]) -> Union[TensorType, Gaussians]:
         """
         Args:
             positions: Sample to distort

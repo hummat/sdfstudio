@@ -77,7 +77,11 @@ class SceneBox:
 
     def to_json(self) -> Dict:
         """Returns a json object from the Python object."""
-        return {"type": "aabb", "min_point": self.aabb[0].tolist(), "max_point": self.aabb[1].tolist()}
+        return {
+            "type": "aabb",
+            "min_point": self.aabb[0].tolist(),
+            "max_point": self.aabb[1].tolist(),
+        }
 
     @staticmethod
     def from_json(json_: Dict) -> "SceneBox":

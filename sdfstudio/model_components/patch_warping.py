@@ -25,7 +25,10 @@ from sdfstudio.cameras.rays import RaySamples
 
 
 def get_intersection_points(
-    ray_samples: RaySamples, sdf: torch.Tensor, normal: torch.Tensor, in_image_mask: torch.Tensor
+    ray_samples: RaySamples,
+    sdf: torch.Tensor,
+    normal: torch.Tensor,
+    in_image_mask: torch.Tensor,
 ):
     """compute intersection points
 
@@ -43,7 +46,13 @@ def get_intersection_points(
     # last dimension
     n_rays, n_samples = ray_samples.shape
     starts = ray_samples.frustums.starts
-    sign_matrix = torch.cat([torch.sign(sdf[:, :-1, 0] * sdf[:, 1:, 0]), torch.ones(n_rays, 1).to(sdf.device)], dim=-1)
+    sign_matrix = torch.cat(
+        [
+            torch.sign(sdf[:, :-1, 0] * sdf[:, 1:, 0]),
+            torch.ones(n_rays, 1).to(sdf.device),
+        ],
+        dim=-1,
+    )
     cost_matrix = sign_matrix * torch.arange(n_samples, 0, -1).float().to(sdf.device)
 
     # Get first sign change and mask for values where a.) a sign changed
@@ -91,7 +100,10 @@ def get_intersection_points(
 
 
 def get_homography(
-    intersection_points: torch.Tensor, normal: torch.Tensor, cameras: Cameras, valid_angle_thres: float = 0.3
+    intersection_points: torch.Tensor,
+    normal: torch.Tensor,
+    cameras: Cameras,
+    valid_angle_thres: float = 0.3,
 ):
     """get homography
 
@@ -140,7 +152,12 @@ def get_homography(
 class PatchWarping(nn.Module):
     """Standard patch warping."""
 
-    def __init__(self, patch_size: int = 31, pixel_offset: float = 0.5, valid_angle_thres: float = 0.3):
+    def __init__(
+        self,
+        patch_size: int = 31,
+        pixel_offset: float = 0.5,
+        valid_angle_thres: float = 0.3,
+    ):
         super().__init__()
 
         self.patch_size = patch_size
@@ -149,7 +166,9 @@ class PatchWarping(nn.Module):
 
         # generate pattern
         patch_coords = torch.meshgrid(
-            torch.arange(-half_size, half_size + 1), torch.arange(-half_size, half_size + 1), indexing="xy"
+            torch.arange(-half_size, half_size + 1),
+            torch.arange(-half_size, half_size + 1),
+            indexing="xy",
         )
 
         patch_coords = torch.stack(patch_coords, dim=-1) + pixel_offset  # stored as (y, x) coordinates
@@ -164,7 +183,6 @@ class PatchWarping(nn.Module):
         images: torch.Tensor,
         pix_indices: torch.Tensor,
     ):
-
         device = sdf.device
 
         cameras = cameras.to(device)
@@ -238,5 +256,8 @@ class PatchWarping(nn.Module):
                 .reshape(vis_patch_num * self.patch_size, -1, 3)
             )
 
-            cv2.imwrite("vis.png", (image.detach().cpu().numpy() * 255).astype(np.uint8)[..., ::-1])
+            cv2.imwrite(
+                "vis.png",
+                (image.detach().cpu().numpy() * 255).astype(np.uint8)[..., ::-1],
+            )
         return rgb, valid

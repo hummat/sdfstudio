@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Data parser for friends dataset"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -60,7 +61,6 @@ class Friends(DataParser):
     config: FriendsDataParserConfig
 
     def _generate_dataparser_outputs(self, split="train"):  # pylint: disable=unused-argument,too-many-statements
-
         cameras_json = load_from_json(self.config.data / "cameras.json")
         frames = cameras_json["frames"]
         bbox = torch.tensor(cameras_json["bbox"])
@@ -126,7 +126,12 @@ class Friends(DataParser):
             panoptic_classes = load_from_json(self.config.data / "panoptic_classes.json")
             classes = panoptic_classes["thing"]
             colors = torch.tensor(panoptic_classes["thing_colors"], dtype=torch.float32) / 255.0
-            semantics = Semantics(filenames=filenames, classes=classes, colors=colors, mask_classes=["person"])
+            semantics = Semantics(
+                filenames=filenames,
+                classes=classes,
+                colors=colors,
+                mask_classes=["person"],
+            )
 
         assert torch.all(cx[0] == cx), "Not all cameras have the same cx. Our Cameras class does not support this."
         assert torch.all(cy[0] == cy), "Not all cameras have the same cy. Our Cameras class does not support this."

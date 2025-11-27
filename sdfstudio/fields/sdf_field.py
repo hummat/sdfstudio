@@ -18,15 +18,14 @@ Field for compound nerf model, adds scene contraction and image embeddings to in
 
 import math
 from dataclasses import dataclass, field
-from functools import partial
-from typing import Optional, Type, Union
+from typing import Literal
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 from torch.nn.parameter import Parameter
-from typing_extensions import Literal
 
 from sdfstudio.cameras.rays import RaySamples
 from sdfstudio.field_components.embedding import Embedding
@@ -54,9 +53,7 @@ class LaplaceDensity(nn.Module):  # alpha * Laplace(loc=0, scale=beta).cdf(-sdf)
         self.register_parameter("beta_min", nn.Parameter(beta_min * torch.ones(1), requires_grad=False))
         self.register_parameter("beta", nn.Parameter(init_val * torch.ones(1), requires_grad=True))
 
-    def forward(
-        self, sdf: TensorType, beta: Union[TensorType, None] = None
-    ) -> TensorType:
+    def forward(self, sdf: TensorType, beta: TensorType | None = None) -> TensorType:
         """convert sdf value to density value with beta, if beta is missing, then use learable beta"""
 
         if beta is None:
@@ -79,9 +76,7 @@ class SigmoidDensity(nn.Module):  # alpha * Laplace(loc=0, scale=beta).cdf(-sdf)
         self.register_parameter("beta_min", nn.Parameter(beta_min * torch.ones(1), requires_grad=False))
         self.register_parameter("beta", nn.Parameter(init_val * torch.ones(1), requires_grad=True))
 
-    def forward(
-        self, sdf: TensorType, beta: Union[TensorType, None] = None
-    ) -> TensorType:
+    def forward(self, sdf: TensorType, beta: TensorType | None = None) -> TensorType:
         """convert sdf value to density value with beta, if beta is missing, then use learable beta"""
 
         if beta is None:
@@ -122,7 +117,7 @@ class SingleVarianceNetwork(nn.Module):
 class SDFFieldConfig(FieldConfig):
     """Nerfacto Model Config"""
 
-    _target: Type = field(default_factory=lambda: SDFField)
+    _target: type = field(default_factory=lambda: SDFField)
     num_layers: int = 8
     """Number of layers for geometric network"""
     hidden_dim: int = 256
@@ -202,7 +197,7 @@ class SDFField(Field):
         aabb,
         num_images: int,
         use_average_appearance_embedding: bool = False,
-        spatial_distortion: Optional[SpatialDistortion] = None,
+        spatial_distortion: SpatialDistortion | None = None,
     ) -> None:
         super().__init__()
         self.config = config
@@ -219,10 +214,10 @@ class SDFField(Field):
         self.divide_factor = self.config.divide_factor
 
         self.num_levels = self.config.num_levels
-        self.max_res = self.config.max_res 
-        self.base_res = self.config.base_res 
-        self.log2_hashmap_size = self.config.log2_hashmap_size 
-        self.features_per_level = self.config.hash_features_per_level 
+        self.max_res = self.config.max_res
+        self.base_res = self.config.base_res
+        self.log2_hashmap_size = self.config.log2_hashmap_size
+        self.features_per_level = self.config.hash_features_per_level
         use_hash = True
         smoothstep = self.config.hash_smoothstep
         self.growth_factor = np.exp((np.log(self.max_res) - np.log(self.base_res)) / (self.num_levels - 1))
@@ -377,12 +372,12 @@ class SDFField(Field):
 
     def update_mask(self, level: int):
         self.hash_encoding_mask[:] = 1.0
-        self.hash_encoding_mask[level * self.features_per_level:] = 0
-        
+        self.hash_encoding_mask[level * self.features_per_level :] = 0
+
     def forward_geonetwork(self, inputs):
         """forward the geonetwork"""
         if self.use_grid_feature:
-            #TODO normalize inputs depending on the whether we model the background or not
+            # TODO normalize inputs depending on the whether we model the background or not
             positions = (inputs + 2.0) / 4.0
             # positions = (inputs + 1.0) / 2.0
             feature = self.encoding(positions)
@@ -394,7 +389,7 @@ class SDFField(Field):
         pe = self.position_encoding(inputs)
         if not self.config.use_position_encoding:
             pe = torch.zeros_like(pe)
-        
+
         inputs = torch.cat((inputs, pe, feature), dim=-1)
 
         x = inputs
@@ -475,7 +470,7 @@ class SDFField(Field):
         density = self.laplace_density(sdf)
         return density, geo_feature
 
-    @torch.amp.autocast(device_type="cuda", enabled=False)
+    @torch.cuda.amp.autocast(enabled=False)
     def get_alpha(self, ray_samples: RaySamples, sdf=None, gradients=None):
         """compute alpha from sdf as in NeuS"""
         if sdf is None or gradients is None:
@@ -599,7 +594,7 @@ class SDFField(Field):
         rgb = self.sigmoid(h)
 
         # Adapted from https://github.com/google-research/multinerf/blob/main/internal/image.py#L48
-        def linear_to_srgb(linear: TensorType, eps: Optional[float] = None) -> TensorType:
+        def linear_to_srgb(linear: TensorType, eps: float | None = None) -> TensorType:
             if eps is None:
                 eps = torch.finfo(linear.dtype).eps
             srgb0 = (323 / 25) * linear
@@ -621,16 +616,15 @@ class SDFField(Field):
         # Apply padding, mapping color to [-rgb_padding, 1+rgb_padding].
         rgb = rgb * (1 + 2 * self.config.rgb_padding) - self.config.rgb_padding
         if self.config.use_diffuse_color:
-            return (rgb,
-                    linear_to_srgb(2 * diffuse_linear).clamp(0, 1),
-                    linear_to_srgb(specular_linear).clamp(0, 1),
-                    linear_to_srgb(tint).clamp(0, 1))
+            return (
+                rgb,
+                linear_to_srgb(2 * diffuse_linear).clamp(0, 1),
+                linear_to_srgb(specular_linear).clamp(0, 1),
+                linear_to_srgb(tint).clamp(0, 1),
+            )
         return rgb
 
-    def get_outputs(self,
-                    ray_samples: RaySamples,
-                    return_alphas: bool = False,
-                    return_occupancy: bool = False):
+    def get_outputs(self, ray_samples: RaySamples, return_alphas: bool = False, return_occupancy: bool = False):
         """compute output of ray samples"""
         if ray_samples.camera_indices is None:
             raise AttributeError("Camera indices are not provided.")
@@ -660,7 +654,9 @@ class SDFField(Field):
                 skip_spatial_distortion=True,
                 return_sdf=True,
             )
-            sampled_sdf = sampled_sdf.view(-1, *ray_samples.frustums.directions.shape[:-1]).permute(1, 2, 0).contiguous()
+            sampled_sdf = (
+                sampled_sdf.view(-1, *ray_samples.frustums.directions.shape[:-1]).permute(1, 2, 0).contiguous()
+            )
         else:
             d_output = torch.ones_like(sdf, requires_grad=False, device=sdf.device)
             gradients = torch.autograd.grad(
@@ -676,11 +672,13 @@ class SDFField(Field):
         rgb = self.get_colors(inputs, directions_flat, gradients, geo_feature, camera_indices)
         if isinstance(rgb, tuple):
             rgb, diffuse, specular, tint = rgb
-            outputs.update({
-                "diffuse": diffuse.view(*ray_samples.frustums.directions.shape[:-1], -1),
-                "specular": specular.view(*ray_samples.frustums.directions.shape[:-1], -1),
-                "tint": tint.view(*ray_samples.frustums.directions.shape[:-1], -1)
-            })
+            outputs.update(
+                {
+                    "diffuse": diffuse.view(*ray_samples.frustums.directions.shape[:-1], -1),
+                    "specular": specular.view(*ray_samples.frustums.directions.shape[:-1], -1),
+                    "tint": tint.view(*ray_samples.frustums.directions.shape[:-1], -1),
+                }
+            )
 
         density = self.laplace_density(sdf)
 
@@ -690,7 +688,7 @@ class SDFField(Field):
         gradients = gradients.view(*ray_samples.frustums.directions.shape[:-1], -1)
         normals = F.normalize(gradients, p=2, dim=-1)
         points_norm = points_norm.view(*ray_samples.frustums.directions.shape[:-1], -1)
-        
+
         outputs.update(
             {
                 FieldHeadNames.RGB: rgb,

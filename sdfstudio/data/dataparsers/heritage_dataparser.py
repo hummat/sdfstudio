@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Phototourism dataset parser. Datasets and documentation here: http://phototour.cs.washington.edu/datasets/"""
+
 from __future__ import annotations
 
 import math
@@ -107,7 +108,6 @@ class Heritage(DataParser):
 
     # pylint: disable=too-many-statements
     def _generate_dataparser_outputs(self, split="train"):
-
         config_path = self.data / "config.yaml"
 
         with open(config_path, "r") as yamlfile:
@@ -156,7 +156,10 @@ class Heritage(DataParser):
 
             assert cam.model == "PINHOLE", "Only pinhole (perspective) camera model is supported at the moment"
 
-            pose = torch.cat([torch.tensor(img.qvec2rotmat()), torch.tensor(img.tvec.reshape(3, 1))], dim=1)
+            pose = torch.cat(
+                [torch.tensor(img.qvec2rotmat()), torch.tensor(img.tvec.reshape(3, 1))],
+                dim=1,
+            )
             pose = torch.cat([pose, torch.tensor([[0.0, 0.0, 0.0, 1.0]])], dim=0)
             poses.append(torch.linalg.inv(pose))
             fxs.append(torch.tensor(cam.params[0]))
@@ -331,7 +334,11 @@ class Heritage(DataParser):
         aabb_scale = self.config.scene_scale
         scene_box = SceneBox(
             aabb=torch.tensor(
-                [[-aabb_scale, -aabb_scale, -aabb_scale], [aabb_scale, aabb_scale, aabb_scale]], dtype=torch.float32
+                [
+                    [-aabb_scale, -aabb_scale, -aabb_scale],
+                    [aabb_scale, aabb_scale, aabb_scale],
+                ],
+                dtype=torch.float32,
             ),
             coarse_binary_gird=mask,
         )
@@ -363,7 +370,14 @@ class Heritage(DataParser):
             cameras=cameras,
             scene_box=scene_box,
             additional_inputs={
-                "masks": {"func": get_masks, "kwargs": {"masks": masks, "fg_masks": fg_masks, "sparse_pts": sparse_pts}}
+                "masks": {
+                    "func": get_masks,
+                    "kwargs": {
+                        "masks": masks,
+                        "fg_masks": fg_masks,
+                        "sparse_pts": sparse_pts,
+                    },
+                }
             },
         )
 

@@ -25,7 +25,11 @@ parser.set_defaults(task="NONE")
 parser.add_argument("--img_path", dest="img_path", help="path to rgb image")
 parser.set_defaults(im_name="NONE")
 
-parser.add_argument("--output_path", dest="output_path", help="path to where output image should be stored")
+parser.add_argument(
+    "--output_path",
+    dest="output_path",
+    help="path to where output image should be stored",
+)
 parser.set_defaults(store_name="NONE")
 
 args = parser.parse_args()
@@ -71,7 +75,7 @@ if args.task == "normal":
     model.load_state_dict(state_dict)
     model.to(device)
     """
-    model = torch.hub.load('alexsax/omnidata_models', 'surface_normal_dpt_hybrid_384').to(device)
+    model = torch.hub.load("alexsax/omnidata_models", "surface_normal_dpt_hybrid_384").to(device)
     trans_totensor = transforms.Compose(
         [
             transforms.Resize(image_size, interpolation=PIL.Image.BILINEAR),
@@ -96,7 +100,7 @@ elif args.task == "depth":
     model.load_state_dict(state_dict)
     model.to(device)
     """
-    model = torch.hub.load('alexsax/omnidata_models', 'depth_dpt_hybrid_384').to(device)
+    model = torch.hub.load("alexsax/omnidata_models", "depth_dpt_hybrid_384").to(device)
     trans_totensor = transforms.Compose(
         [
             transforms.Resize(image_size, interpolation=PIL.Image.BILINEAR),
@@ -127,7 +131,7 @@ def standardize_depth_map(img, mask_valid=None, trunc_value=0.1):
     if num_nan > 0:
         sorted_img = sorted_img[:-num_nan]
     # Remove outliers
-    trunc_img = sorted_img[int(trunc_value * len(sorted_img)):int((1 - trunc_value) * len(sorted_img))]
+    trunc_img = sorted_img[int(trunc_value * len(sorted_img)) : int((1 - trunc_value) * len(sorted_img))]
     trunc_mean = trunc_img.mean()
     trunc_var = trunc_img.var()
     eps = 1e-6

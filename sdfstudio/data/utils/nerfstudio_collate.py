@@ -23,6 +23,7 @@ from typing import Callable, Dict, Union
 
 import torch
 import torch.utils.data
+
 string_classes = str
 
 from sdfstudio.cameras.cameras import Cameras
@@ -30,14 +31,12 @@ from sdfstudio.utils.images import BasicImages
 
 # pylint: disable=implicit-str-concat
 NERFSTUDIO_COLLATE_ERR_MSG_FORMAT = (
-    "default_collate: batch must contain tensors, numpy arrays, numbers, " "dicts, lists or anything in {}; found {}"
+    "default_collate: batch must contain tensors, numpy arrays, numbers, dicts, lists or anything in {}; found {}"
 )
 np_str_obj_array_pattern = re.compile(r"[SaUO]")
 
 
-def nerfstudio_collate(
-    batch, extra_mappings: Union[Dict[type, Callable], None] = None
-):  # pylint: disable=too-many-return-statements
+def nerfstudio_collate(batch, extra_mappings: Union[Dict[type, Callable], None] = None):  # pylint: disable=too-many-return-statements
     r"""
     This is the default pytorch collate function, but with support for sdfstudio types. All documentation
     below is copied straight over from pytorch's default_collate function, python version 3.8.13,
@@ -158,8 +157,10 @@ def nerfstudio_collate(
         assert all((isinstance(cam, Cameras) for cam in batch))
         assert all((cam.distortion_params is None for cam in batch)) or all(
             (cam.distortion_params is not None for cam in batch)
-        ), "All cameras must have distortion parameters or none of them should have distortion parameters.\
+        ), (
+            "All cameras must have distortion parameters or none of them should have distortion parameters.\
             Generalized batching will be supported in the future."
+        )
 
         # If no batch dimension exists, then we need to stack everything and create a batch dimension on 0th dim
         if elem.shape == ():

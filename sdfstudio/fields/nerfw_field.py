@@ -118,7 +118,9 @@ class VanillaNerfWField(Field):
         return density, base_mlp_out
 
     def get_outputs(
-        self, ray_samples: RaySamples, density_embedding: Optional[TensorType[..., "embedding_size"]] = None
+        self,
+        ray_samples: RaySamples,
+        density_embedding: Optional[TensorType[..., "embedding_size"]] = None,
     ) -> Dict[FieldHeadNames, TensorType]:
         """Returns the outputs of the NeRF-W field.
 

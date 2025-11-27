@@ -108,7 +108,10 @@ class CacheDataloader(DataLoader):
                 results.append(res)
 
             for res in track(
-                results, description="Loading data batch", transient=True, disable=(self.num_images_to_sample_from == 1)
+                results,
+                description="Loading data batch",
+                transient=True,
+                disable=(self.num_images_to_sample_from == 1),
             ):
                 batch_list.append(res.result())
 

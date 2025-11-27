@@ -18,13 +18,13 @@ Collection of sampling strategies
 
 import math
 from abc import abstractmethod
-from typing import Callable, List, Optional, Tuple, Union
+from collections.abc import Callable
 
 import nerfacc
 import torch
 from nerfacc import OccGridEstimator as OccupancyGrid
-from torch import nn
 from torch import Tensor as TensorType
+from torch import nn
 
 from sdfstudio.cameras.rays import Frustums, RayBundle, RaySamples
 
@@ -38,16 +38,16 @@ class Sampler(nn.Module):
 
     def __init__(
         self,
-        num_samples: Optional[int] = None,
+        num_samples: int | None = None,
     ) -> None:
         super().__init__()
         self.num_samples = num_samples
 
     @abstractmethod
-    def generate_ray_samples(self) -> RaySamples:
+    def generate_ray_samples(self) -> RaySamples | tuple:
         """Generate Ray Samples"""
 
-    def forward(self, *args, **kwargs) -> RaySamples:
+    def forward(self, *args, **kwargs) -> RaySamples | tuple:
         """Generate ray samples"""
         return self.generate_ray_samples(*args, **kwargs)
 
@@ -67,7 +67,7 @@ class SpacedSampler(Sampler):
         self,
         spacing_fn: Callable,
         spacing_fn_inv: Callable,
-        num_samples: Optional[int] = None,
+        num_samples: int | None = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -79,8 +79,8 @@ class SpacedSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: Optional[RayBundle] = None,
-        num_samples: Optional[int] = None,
+        ray_bundle: RayBundle | None = None,
+        num_samples: int | None = None,
     ) -> RaySamples:
         """Generates position samples accoring to spacing function.
 
@@ -138,7 +138,7 @@ class UniformSampler(SpacedSampler):
 
     def __init__(
         self,
-        num_samples: Optional[int] = None,
+        num_samples: int | None = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -162,7 +162,7 @@ class LinearDisparitySampler(SpacedSampler):
 
     def __init__(
         self,
-        num_samples: Optional[int] = None,
+        num_samples: int | None = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -185,7 +185,7 @@ class SqrtSampler(SpacedSampler):
 
     def __init__(
         self,
-        num_samples: Optional[int] = None,
+        num_samples: int | None = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -208,7 +208,7 @@ class LogSampler(SpacedSampler):
 
     def __init__(
         self,
-        num_samples: Optional[int] = None,
+        num_samples: int | None = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -234,7 +234,7 @@ class UniformLinDispPiecewiseSampler(SpacedSampler):
 
     def __init__(
         self,
-        num_samples: Optional[int] = None,
+        num_samples: int | None = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -260,7 +260,7 @@ class PDFSampler(Sampler):
 
     def __init__(
         self,
-        num_samples: Optional[int] = None,
+        num_samples: int | None = None,
         train_stratified: bool = True,
         single_jitter: bool = False,
         include_original: bool = True,
@@ -274,10 +274,10 @@ class PDFSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: Optional[RayBundle] = None,
-        ray_samples: Optional[RaySamples] = None,
+        ray_bundle: RayBundle | None = None,
+        ray_samples: RaySamples | None = None,
         weights: TensorType = None,
-        num_samples: Optional[int] = None,
+        num_samples: int | None = None,
         eps: float = 1e-5,
     ) -> RaySamples:
         """Generates position samples given a distribution.
@@ -328,9 +328,9 @@ class PDFSampler(Sampler):
             u = u.expand(size=(*cdf.shape[:-1], num_bins))
         u = u.contiguous()
 
-        assert (
-            ray_samples.spacing_starts is not None and ray_samples.spacing_ends is not None
-        ), "ray_sample spacing_starts and spacing_ends must be provided"
+        assert ray_samples.spacing_starts is not None and ray_samples.spacing_ends is not None, (
+            "ray_sample spacing_starts and spacing_ends must be provided"
+        )
         assert ray_samples.spacing_to_euclidean_fn is not None, "ray_samples.spacing_to_euclidean_fn must be provided"
         existing_bins = torch.cat(
             [
@@ -382,11 +382,10 @@ class VolumetricSampler(Sampler):
 
     def __init__(
         self,
-        occupancy_grid: Optional[OccupancyGrid] = None,
-        density_fn: Optional[Callable[[TensorType], TensorType]] = None,
-        scene_aabb: Optional[TensorType] = None,
+        occupancy_grid: OccupancyGrid | None = None,
+        density_fn: Callable[[TensorType], TensorType] | None = None,
+        scene_aabb: TensorType | None = None,
     ) -> None:
-
         super().__init__()
         self.scene_aabb = scene_aabb
         self.density_fn = density_fn
@@ -395,7 +394,7 @@ class VolumetricSampler(Sampler):
             self.scene_aabb = self.scene_aabb.to("cuda").flatten()
         print(self.scene_aabb)
 
-    def get_sigma_fn(self, origins, directions) -> Optional[Callable]:
+    def get_sigma_fn(self, origins, directions) -> Callable | None:
         """Returns a function that returns the density of a point.
         Args:
             origins: Origins of rays
@@ -428,10 +427,10 @@ class VolumetricSampler(Sampler):
         ray_bundle: RayBundle,
         render_step_size: float,
         near_plane: float = 0.0,
-        far_plane: Optional[float] = None,
+        far_plane: float | None = None,
         cone_angle: float = 0.0,
         alpha_thre: float = 1e-2,
-    ) -> Tuple[RaySamples, TensorType]:
+    ) -> tuple[RaySamples, TensorType]:
         """Generate ray samples in a bounding box.
         Args:
             ray_bundle: Rays to generate samples for
@@ -499,7 +498,7 @@ class ProposalNetworkSampler(Sampler):
 
     def __init__(
         self,
-        num_proposal_samples_per_ray: Tuple[int, ...] = (64,),
+        num_proposal_samples_per_ray: tuple[int, ...] = (64,),
         num_nerf_samples_per_ray: int = 32,
         num_proposal_network_iterations: int = 2,
         use_uniform_sampler: bool = False,
@@ -536,9 +535,9 @@ class ProposalNetworkSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: Optional[RayBundle] = None,
-        density_fns: Optional[List[Callable]] = None,
-    ) -> Tuple[RaySamples, List, List]:
+        ray_bundle: RayBundle | None = None,
+        density_fns: list[Callable] | None = None,
+    ) -> tuple[RaySamples, list, list]:
         assert ray_bundle is not None
         assert density_fns is not None
 
@@ -612,11 +611,11 @@ class ErrorBoundedSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: Optional[RayBundle] = None,
-        density_fn: Optional[Callable] = None,
-        sdf_fn: Optional[Callable] = None,
+        ray_bundle: RayBundle | None = None,
+        density_fn: Callable | None = None,
+        sdf_fn: Callable | None = None,
         return_eikonal_points: bool = True,
-    ) -> Union[Tuple[RaySamples, torch.Tensor], RaySamples]:
+    ) -> tuple[RaySamples, torch.Tensor] | RaySamples:
         assert ray_bundle is not None
         assert density_fn is not None
         assert sdf_fn is not None
@@ -638,7 +637,6 @@ class ErrorBoundedSampler(Sampler):
 
         # Algorithm 1
         while not_converge and total_iters < self.max_total_iters:
-
             with torch.no_grad():
                 new_sdf = sdf_fn(new_samples)
 
@@ -676,7 +674,10 @@ class ErrorBoundedSampler(Sampler):
                 weights = (torch.clamp(torch.exp(error_integral), max=1.0e6) - 1.0) * transmittance[..., 0]
 
                 new_samples = self.pdf_sampler(
-                    ray_bundle, ray_samples, weights.unsqueeze(-1), num_samples=self.num_samples_eval
+                    ray_bundle,
+                    ray_samples,
+                    weights.unsqueeze(-1),
+                    num_samples=self.num_samples_eval,
                 )
 
                 ray_samples, sorted_index = self.merge_ray_samples(ray_bundle, ray_samples, new_samples)
@@ -746,7 +747,11 @@ class ErrorBoundedSampler(Sampler):
 
         integral_estimation = torch.cumsum(delta_density[..., :-1], dim=-1)
         integral_estimation = torch.cat(
-            [torch.zeros((*integral_estimation.shape[:1], 1), device=densities.device), integral_estimation], dim=-1
+            [
+                torch.zeros((*integral_estimation.shape[:1], 1), device=densities.device),
+                integral_estimation,
+            ],
+            dim=-1,
         )
 
         error_per_section = torch.exp(-d_star / beta) * (deltas**2.0) / (4 * beta**2)
@@ -755,7 +760,12 @@ class ErrorBoundedSampler(Sampler):
 
         return bound_opacity.max(-1)[0]
 
-    def merge_ray_samples(self, ray_bundle: RayBundle, ray_samples_1: RaySamples, ray_samples_2: RaySamples):
+    def merge_ray_samples(
+        self,
+        ray_bundle: RayBundle,
+        ray_samples_1: RaySamples,
+        ray_samples_2: RaySamples,
+    ):
         """Merge two set of ray samples and return sorted index which can be used to merge sdf values
 
         Args:
@@ -766,7 +776,10 @@ class ErrorBoundedSampler(Sampler):
         starts_1 = ray_samples_1.spacing_starts[..., 0]
         starts_2 = ray_samples_2.spacing_starts[..., 0]
 
-        ends = torch.maximum(ray_samples_1.spacing_ends[..., -1:, 0], ray_samples_2.spacing_ends[..., -1:, 0])
+        ends = torch.maximum(
+            ray_samples_1.spacing_ends[..., -1:, 0],
+            ray_samples_2.spacing_ends[..., -1:, 0],
+        )
 
         bins, sorted_index = torch.sort(torch.cat([starts_1, starts_2], -1), -1)
 
@@ -846,10 +859,10 @@ class NeuSSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: Optional[RayBundle] = None,
-        sdf_fn: Optional[Callable] = None,
-        ray_samples: Optional[RaySamples] = None,
-    ) -> Union[Tuple[RaySamples, torch.Tensor], RaySamples]:
+        ray_bundle: RayBundle | None = None,
+        sdf_fn: Callable | None = None,
+        ray_samples: RaySamples | None = None,
+    ) -> tuple[RaySamples, torch.Tensor] | RaySamples:
         assert ray_bundle is not None
         assert sdf_fn is not None
 
@@ -864,7 +877,6 @@ class NeuSSampler(Sampler):
         base_variance = self.base_variance
 
         while total_iters < self.num_upsample_steps:
-
             with torch.no_grad():
                 new_sdf = sdf_fn(new_samples)
 
@@ -877,7 +889,9 @@ class NeuSSampler(Sampler):
 
             # compute with fix variances
             alphas = self.rendering_sdf_with_fixed_inv_s(
-                ray_samples, sdf.reshape(ray_samples.shape), inv_s=base_variance * 2**total_iters
+                ray_samples,
+                sdf.reshape(ray_samples.shape),
+                inv_s=base_variance * 2**total_iters,
             )
 
             weights = ray_samples.get_weights_from_alphas(alphas[..., None])
@@ -988,15 +1002,18 @@ class UniSurfSampler(Sampler):
     def step_cb(self, step):
         """Callback to register a training step has passed. This is used to keep track of the sampling schedule"""
         self._step = step
-        self.delta = max(self.interval_start * math.exp(-1 * self.interval_decay * self._step), self.interval_end)
+        self.delta = max(
+            self.interval_start * math.exp(-1 * self.interval_decay * self._step),
+            self.interval_end,
+        )
 
     def generate_ray_samples(
         self,
-        ray_bundle: Optional[RayBundle] = None,
-        occupancy_fn: Optional[RayBundle] = None,
-        sdf_fn: Optional[Callable] = None,
+        ray_bundle: RayBundle | None = None,
+        occupancy_fn: RayBundle | None = None,
+        sdf_fn: Callable | None = None,
         return_surface_points: bool = False,
-    ) -> Union[Tuple[RaySamples, torch.Tensor], RaySamples]:
+    ) -> tuple[RaySamples, torch.Tensor] | RaySamples:
         assert ray_bundle is not None
         assert sdf_fn is not None
 
@@ -1031,7 +1048,11 @@ class UniSurfSampler(Sampler):
         n_rays, n_samples = ray_samples.shape
         starts = ray_samples.frustums.starts
         sign_matrix = torch.cat(
-            [torch.sign(sdf[:, :-1, 0] * sdf[:, 1:, 0]), torch.ones(n_rays, 1).to(sdf.device)], dim=-1
+            [
+                torch.sign(sdf[:, :-1, 0] * sdf[:, 1:, 0]),
+                torch.ones(n_rays, 1).to(sdf.device),
+            ],
+            dim=-1,
         )
         cost_matrix = sign_matrix * torch.arange(n_samples, 0, -1).float().to(sdf.device)
 
@@ -1093,7 +1114,10 @@ class UniSurfSampler(Sampler):
         return ray_samples
 
     def merge_ray_samples_in_eculidean(
-        self, ray_bundle: RayBundle, ray_samples_1: RaySamples, ray_samples_2: RaySamples
+        self,
+        ray_bundle: RayBundle,
+        ray_samples_1: RaySamples,
+        ray_samples_2: RaySamples,
     ):
         """Merge two set of ray samples and return sorted index which can be used to merge sdf values
 
@@ -1131,8 +1155,8 @@ class UniSurfSampler(Sampler):
 
     def secant_method(
         self,
-        ray_bundle: Optional[RayBundle] = None,
-        sdf_fn: Optional[Callable] = None,
+        ray_bundle: RayBundle | None = None,
+        sdf_fn: Callable | None = None,
     ):
         """run secant method to refine surface points"""
         raise NotImplementedError
@@ -1214,7 +1238,11 @@ class NeuralReconWSampler(Sampler):
         if step >= self.steps_per_grid_update and step % self.steps_per_grid_update == 0:
             device = self.coarse_offset_cube.device
 
-            mask = torch.zeros((self.grid_size**3, self.fine_grid_size**3), dtype=torch.bool, device=device)
+            mask = torch.zeros(
+                (self.grid_size**3, self.fine_grid_size**3),
+                dtype=torch.bool,
+                device=device,
+            )
 
             occupied_voxel = self.coarse_offset_cube[self._binary.reshape(-1)]
             fine_voxel = occupied_voxel[:, None] + self.fine_offset_cube[None, :]
@@ -1248,9 +1276,9 @@ class NeuralReconWSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: Optional[RayBundle] = None,
-        sdf_fn: Optional[Callable] = None,
-    ) -> Union[Tuple[RaySamples, torch.Tensor], RaySamples]:
+        ray_bundle: RayBundle | None = None,
+        sdf_fn: Callable | None = None,
+    ) -> tuple[RaySamples, torch.Tensor] | RaySamples:
         assert ray_bundle is not None
         assert sdf_fn is not None
 
@@ -1353,7 +1381,10 @@ class NeuSAccSampler(Sampler):
         self.neus_sampler = neus_sampler
 
         self.grid = nerfacc.OccupancyGrid(aabb.reshape(-1), resolution=self.resolution)
-        self.register_buffer("_binary", torch.ones((self.grid_size, self.grid_size, self.grid_size), dtype=torch.bool))
+        self.register_buffer(
+            "_binary",
+            torch.ones((self.grid_size, self.grid_size, self.grid_size), dtype=torch.bool),
+        )
         self.register_buffer("_update_counter", torch.zeros(1, dtype=torch.int32))
 
         self.init_grid_coordinate()
@@ -1362,13 +1393,19 @@ class NeuSAccSampler(Sampler):
         # coarse grid coordinates
         aabb = self.aabb
         offset_x = torch.linspace(
-            aabb[0, 0] + self.voxel_size / 2.0, aabb[1, 0] - self.voxel_size / 2.0, self.grid_size
+            aabb[0, 0] + self.voxel_size / 2.0,
+            aabb[1, 0] - self.voxel_size / 2.0,
+            self.grid_size,
         )
         offset_y = torch.linspace(
-            aabb[0, 1] + self.voxel_size / 2.0, aabb[1, 1] - self.voxel_size / 2.0, self.grid_size
+            aabb[0, 1] + self.voxel_size / 2.0,
+            aabb[1, 1] - self.voxel_size / 2.0,
+            self.grid_size,
         )
         offset_z = torch.linspace(
-            aabb[0, 2] + self.voxel_size / 2.0, aabb[1, 2] - self.voxel_size / 2.0, self.grid_size
+            aabb[0, 2] + self.voxel_size / 2.0,
+            aabb[1, 2] - self.voxel_size / 2.0,
+            self.grid_size,
         )
         x, y, z = torch.meshgrid(offset_x, offset_y, offset_z, indexing="ij")
         cube_coordinate = torch.stack([x, y, z], dim=-1).reshape(-1, 3)
@@ -1386,7 +1423,6 @@ class NeuSAccSampler(Sampler):
         assert inv_s is not None
 
         if step >= self.steps_warpup and step % self.steps_per_grid_update == 0:
-
             mask = self._binary.reshape(-1)
             # TODO voxels can't be recovered once it is pruned
             occupied_voxel = self.cube_coordinate[mask.reshape(-1)]
@@ -1456,10 +1492,10 @@ class NeuSAccSampler(Sampler):
     @torch.no_grad()
     def generate_ray_samples(
         self,
-        ray_bundle: Optional[RayBundle] = None,
-        sdf_fn: Optional[Callable] = None,
-        alpha_fn: Optional[Callable] = None,
-    ) -> Union[Tuple[RaySamples, torch.Tensor], RaySamples]:
+        ray_bundle: RayBundle | None = None,
+        sdf_fn: Callable | None = None,
+        alpha_fn: Callable | None = None,
+    ) -> tuple[RaySamples, torch.Tensor] | RaySamples:
         assert ray_bundle is not None
         assert sdf_fn is not None
 

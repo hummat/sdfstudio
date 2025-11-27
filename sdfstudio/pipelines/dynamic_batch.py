@@ -55,9 +55,9 @@ class DynamicBatchPipeline(VanillaPipeline):
         local_rank: int = 0,
     ):
         super().__init__(config, device, test_mode, world_size, local_rank)
-        assert isinstance(
-            self.datamanager, VanillaDataManager
-        ), "DynamicBatchPipeline only works with VanillaDataManager."
+        assert isinstance(self.datamanager, VanillaDataManager), (
+            "DynamicBatchPipeline only works with VanillaDataManager."
+        )
 
         self.dynamic_num_rays_per_batch = self.config.target_num_samples // self.config.max_num_samples_per_ray
         self._update_pixel_samplers()

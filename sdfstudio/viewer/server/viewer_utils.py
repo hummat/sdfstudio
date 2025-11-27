@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Code to interface with the `vis/` (the JS viewer).
-"""
+"""Code to interface with the `vis/` (the JS viewer)."""
+
 from __future__ import annotations
 
 import base64
@@ -529,7 +529,10 @@ class ViewerState:
             image_width: resolution of the current view
         """
         writer.put_time(
-            name=EventName.VIS_RAYS_PER_SEC, duration=num_rays / render_time, step=self.step, avg_over_steps=True
+            name=EventName.VIS_RAYS_PER_SEC,
+            duration=num_rays / render_time,
+            step=self.step,
+            avg_over_steps=True,
         )
         is_training = self.vis["renderingState/isTraining"].read()
         self.vis["renderingState/eval_res"].write(f"{image_height}x{image_width}px")
@@ -621,9 +624,9 @@ class ViewerState:
 
         # check if output_type is not in list
         if output_type not in self.output_list:
-            assert (
-                NotImplementedError
-            ), f"Output {attempted_output_type} not in list. Tried to reformat as {output_type} but still not found."
+            assert NotImplementedError, (
+                f"Output {attempted_output_type} not in list. Tried to reformat as {output_type} but still not found."
+            )
         return output_type
 
     @profiler.time_function
@@ -727,5 +730,8 @@ class ViewerState:
             colors = graph.colors if hasattr(graph, "colors") else None
             self._send_output_to_viewer(outputs, colors=colors)
             self._update_viewer_stats(
-                vis_t.duration, num_rays=len(camera_ray_bundle), image_height=image_height, image_width=image_width
+                vis_t.duration,
+                num_rays=len(camera_ray_bundle),
+                image_height=image_height,
+                image_width=image_width,
             )

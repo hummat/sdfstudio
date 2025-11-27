@@ -26,6 +26,7 @@ Example:
     rgb = rgb_renderer(rgb=field_outputs[FieldHeadNames.RGB], weights=weights)
 
 """
+
 import math
 from typing import Optional, Union
 
@@ -45,7 +46,10 @@ class RGBRenderer(nn.Module):
         background_color: Background color as RGB. Uses random colors if None.
     """
 
-    def __init__(self, background_color: Union[Literal["random", "last_sample"], TensorType] = "random") -> None:
+    def __init__(
+        self,
+        background_color: Union[Literal["random", "last_sample"], TensorType] = "random",
+    ) -> None:
         super().__init__()
         self.background_color = background_color
 
@@ -110,7 +114,11 @@ class RGBRenderer(nn.Module):
         """
 
         rgb = self.combine_rgb(
-            rgb, weights, background_color=self.background_color, ray_indices=ray_indices, num_rays=num_rays
+            rgb,
+            weights,
+            background_color=self.background_color,
+            ray_indices=ray_indices,
+            num_rays=num_rays,
         )
         if not self.training:
             torch.clamp_(rgb, min=0.0, max=1.0)
@@ -264,9 +272,7 @@ class UncertaintyRenderer(nn.Module):
     """Calculate uncertainty along the ray."""
 
     @classmethod
-    def forward(
-        cls, betas: TensorType, weights: TensorType
-    ) -> TensorType:
+    def forward(cls, betas: TensorType, weights: TensorType) -> TensorType:
         """Calculate uncertainty along the ray.
 
         Args:

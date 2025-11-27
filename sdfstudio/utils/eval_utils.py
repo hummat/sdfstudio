@@ -15,6 +15,7 @@
 """
 Evaluation utils
 """
+
 from __future__ import annotations
 
 import os
@@ -47,7 +48,10 @@ def eval_load_checkpoint(config: cfg.TrainerConfig, pipeline: Pipeline) -> Path:
         # NOTE: this is specific to the checkpoint name format
         if not os.path.exists(config.load_dir):
             CONSOLE.rule("Error", style="red")
-            CONSOLE.print(f"No checkpoint directory found at {config.load_dir}, ", justify="center")
+            CONSOLE.print(
+                f"No checkpoint directory found at {config.load_dir}, ",
+                justify="center",
+            )
             CONSOLE.print(
                 "Please make sure the checkpoint exists, they should be generated periodically during training",
                 justify="center",

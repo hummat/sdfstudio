@@ -143,7 +143,11 @@ def read_cameras_binary(path_to_model_file):
             num_params = CAMERA_MODEL_IDS[model_id].num_params
             params = read_next_bytes(fid, num_bytes=8 * num_params, format_char_sequence="d" * num_params)
             cameras[camera_id] = Camera(
-                id=camera_id, model=model_name, width=width, height=height, params=np.array(params)
+                id=camera_id,
+                model=model_name,
+                width=width,
+                height=height,
+                params=np.array(params),
             )
         assert len(cameras) == num_cameras
     return cameras
@@ -242,7 +246,11 @@ def read_images_binary(path_to_model_file):
                 current_char = read_next_bytes(fid, 1, "c")[0]
             image_name = image_name.decode("utf-8")
             num_points2D = read_next_bytes(fid, num_bytes=8, format_char_sequence="Q")[0]
-            x_y_id_s = read_next_bytes(fid, num_bytes=24 * num_points2D, format_char_sequence="ddq" * num_points2D)
+            x_y_id_s = read_next_bytes(
+                fid,
+                num_bytes=24 * num_points2D,
+                format_char_sequence="ddq" * num_points2D,
+            )
             xys = np.column_stack([tuple(map(float, x_y_id_s[0::3])), tuple(map(float, x_y_id_s[1::3]))])
             point3D_ids = np.array(tuple(map(int, x_y_id_s[2::3])))
             images[image_id] = Image(
@@ -330,7 +338,12 @@ def read_points3D_text(path):
                 image_ids = np.array(tuple(map(int, elems[8::2])))
                 point2D_idxs = np.array(tuple(map(int, elems[9::2])))
                 points3D[point3D_id] = Point3D(
-                    id=point3D_id, xyz=xyz, rgb=rgb, error=error, image_ids=image_ids, point2D_idxs=point2D_idxs
+                    id=point3D_id,
+                    xyz=xyz,
+                    rgb=rgb,
+                    error=error,
+                    image_ids=image_ids,
+                    point2D_idxs=point2D_idxs,
                 )
     return points3D
 
@@ -351,11 +364,20 @@ def read_points3D_binary(path_to_model_file):
             rgb = np.array(binary_point_line_properties[4:7])
             error = np.array(binary_point_line_properties[7])
             track_length = read_next_bytes(fid, num_bytes=8, format_char_sequence="Q")[0]
-            track_elems = read_next_bytes(fid, num_bytes=8 * track_length, format_char_sequence="ii" * track_length)
+            track_elems = read_next_bytes(
+                fid,
+                num_bytes=8 * track_length,
+                format_char_sequence="ii" * track_length,
+            )
             image_ids = np.array(tuple(map(int, track_elems[0::2])))
             point2D_idxs = np.array(tuple(map(int, track_elems[1::2])))
             points3D[point3D_id] = Point3D(
-                id=point3D_id, xyz=xyz, rgb=rgb, error=error, image_ids=image_ids, point2D_idxs=point2D_idxs
+                id=point3D_id,
+                xyz=xyz,
+                rgb=rgb,
+                error=error,
+                image_ids=image_ids,
+                point2D_idxs=point2D_idxs,
             )
     return points3D
 

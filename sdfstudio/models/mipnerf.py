@@ -15,6 +15,7 @@
 """
 Implementation of mip-NeRF.
 """
+
 from __future__ import annotations
 
 from typing import Dict, List, Tuple
@@ -61,14 +62,24 @@ class MipNerfModel(Model):
 
         # setting up fields
         position_encoding = NeRFEncoding(
-            in_dim=3, num_frequencies=16, min_freq_exp=0.0, max_freq_exp=16.0, include_input=True
+            in_dim=3,
+            num_frequencies=16,
+            min_freq_exp=0.0,
+            max_freq_exp=16.0,
+            include_input=True,
         )
         direction_encoding = NeRFEncoding(
-            in_dim=3, num_frequencies=4, min_freq_exp=0.0, max_freq_exp=4.0, include_input=True
+            in_dim=3,
+            num_frequencies=4,
+            min_freq_exp=0.0,
+            max_freq_exp=4.0,
+            include_input=True,
         )
 
         self.field = NeRFField(
-            position_encoding=position_encoding, direction_encoding=direction_encoding, use_integrated_encoding=True
+            position_encoding=position_encoding,
+            direction_encoding=direction_encoding,
+            use_integrated_encoding=True,
         )
 
         # samplers
@@ -96,7 +107,6 @@ class MipNerfModel(Model):
         return param_groups
 
     def get_outputs(self, ray_bundle: RayBundle):
-
         if self.field is None:
             raise ValueError("populate_fields() must be called before get_outputs")
 
@@ -188,5 +198,9 @@ class MipNerfModel(Model):
             "fine_ssim": float(fine_ssim.item()),
             "fine_lpips": float(fine_lpips.item()),
         }
-        images_dict = {"img": combined_rgb, "accumulation": combined_acc, "depth": combined_depth}
+        images_dict = {
+            "img": combined_rgb,
+            "accumulation": combined_acc,
+            "depth": combined_depth,
+        }
         return metrics_dict, images_dict

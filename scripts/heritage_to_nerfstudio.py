@@ -40,7 +40,6 @@ palette = np.array(palette)
 
 
 def show_result(seg):
-
     color_seg = np.zeros((seg.shape[0], seg.shape[1], 3), dtype=np.uint8)
     for label, color in enumerate(palette):
         color_seg[seg == label, :] = color
@@ -61,7 +60,10 @@ class Renderer:
         self.scene.clear()
         self.scene.add(mesh)
         cam = pyrender.IntrinsicsCamera(
-            cx=intrinsics[0, 2], cy=intrinsics[1, 2], fx=intrinsics[0, 0], fy=intrinsics[1, 1]
+            cx=intrinsics[0, 2],
+            cy=intrinsics[1, 2],
+            fx=intrinsics[0, 0],
+            fy=intrinsics[1, 1],
         )
         self.scene.add(cam, pose=self.fix_pose(pose))
         # flags = pyrender.constants.RenderFlags.OFFSCREEN
@@ -216,7 +218,10 @@ def colmap_to_json(
 
         assert cam.model == "PINHOLE", "Only pinhole (perspective) camera model is supported at the moment"
 
-        pose = torch.cat([torch.tensor(img.qvec2rotmat()), torch.tensor(img.tvec.reshape(3, 1))], dim=1)
+        pose = torch.cat(
+            [torch.tensor(img.qvec2rotmat()), torch.tensor(img.tvec.reshape(3, 1))],
+            dim=1,
+        )
         pose = torch.cat([pose, torch.tensor([[0.0, 0.0, 0.0, 1.0]])], dim=0)
         poses.append(torch.linalg.inv(pose))
         fxs.append(torch.tensor(cam.params[0]))
@@ -262,7 +267,12 @@ def colmap_to_json(
         # ['person', 'car', 'bicycle', 'minibike'] with id [12, 20,127,116]
         # ['sky'] = 2
         # new mask [80, 83, 43, 41, 115, 110]
-        semantic_ids_to_skip = [12, 20, 127, 116]  # + [80, 83, 43, 41, 115, 110]  # + [2]
+        semantic_ids_to_skip = [
+            12,
+            20,
+            127,
+            116,
+        ]  # + [80, 83, 43, 41, 115, 110]  # + [2]
         mask = np.stack([mask != semantic_id for semantic_id in semantic_ids_to_skip])  # + mask2
 
         mask = mask.all(axis=0)

@@ -55,9 +55,7 @@ class AABBBoxCollider(SceneCollider):
         self.scene_box = scene_box
         self.near_plane = near_plane
 
-    def _intersect_with_aabb(
-        self, rays_o: TensorType, rays_d: TensorType, aabb: TensorType
-    ):
+    def _intersect_with_aabb(self, rays_o: TensorType, rays_d: TensorType, aabb: TensorType):
         """Returns collection of valid rays within a specified near/far bounding box along with a mask
         specifying which rays are valid
 
@@ -80,10 +78,18 @@ class AABBBoxCollider(SceneCollider):
         t6 = (aabb[1, 2] - rays_o[:, 2:3]) * dir_fraction[:, 2:3]
 
         nears = torch.max(
-            torch.cat([torch.minimum(t1, t2), torch.minimum(t3, t4), torch.minimum(t5, t6)], dim=1), dim=1
+            torch.cat(
+                [torch.minimum(t1, t2), torch.minimum(t3, t4), torch.minimum(t5, t6)],
+                dim=1,
+            ),
+            dim=1,
         ).values
         fars = torch.min(
-            torch.cat([torch.maximum(t1, t2), torch.maximum(t3, t4), torch.maximum(t5, t6)], dim=1), dim=1
+            torch.cat(
+                [torch.maximum(t1, t2), torch.maximum(t3, t4), torch.maximum(t5, t6)],
+                dim=1,
+            ),
+            dim=1,
         ).values
 
         # clamp to near plane

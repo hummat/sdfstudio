@@ -54,7 +54,10 @@ def test_multiply():
     )
 
     translation_rotation_pose = poses.multiply(pose_a, pose_b)
-    assert torch.allclose(translation_rotation_pose, (poses.to4x4(pose_a) @ poses.to4x4(pose_b))[:, :3, :4])
+    assert torch.allclose(
+        translation_rotation_pose,
+        (poses.to4x4(pose_a) @ poses.to4x4(pose_b))[:, :3, :4],
+    )
 
 
 def test_inverse():

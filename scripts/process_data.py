@@ -25,14 +25,21 @@ import numpy as np
 import tyro
 from typing_extensions import Annotated
 
-from sdfstudio.process_data import (metashape_utils, odm_utils, polycam_utils, process_data_utils, realitycapture_utils,
-                                    record3d_utils)
-from sdfstudio.process_data.colmap_converter_to_nerfstudio_dataset import \
-    BaseConverterToNerfstudioDataset
-from sdfstudio.process_data.images_to_nerfstudio_dataset import \
-    ImagesToNerfstudioDataset
-from sdfstudio.process_data.video_to_nerfstudio_dataset import \
-    VideoToNerfstudioDataset
+from sdfstudio.process_data import (
+    metashape_utils,
+    odm_utils,
+    polycam_utils,
+    process_data_utils,
+    realitycapture_utils,
+    record3d_utils,
+)
+from sdfstudio.process_data.colmap_converter_to_nerfstudio_dataset import (
+    BaseConverterToNerfstudioDataset,
+)
+from sdfstudio.process_data.images_to_nerfstudio_dataset import (
+    ImagesToNerfstudioDataset,
+)
+from sdfstudio.process_data.video_to_nerfstudio_dataset import VideoToNerfstudioDataset
 from sdfstudio.utils.rich_utils import CONSOLE
 
 
@@ -99,7 +106,8 @@ class ProcessRecord3D(BaseConverterToNerfstudioDataset):
         if self.max_dataset_size > 0:
             summary_log.append(
                 "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
-                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images.")
+                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
+            )
 
         metadata_path = self.data / "metadata.json"
         record3d_utils.record3d_to_json(
@@ -216,7 +224,8 @@ class ProcessPolycam(BaseConverterToNerfstudioDataset):
                 output_dir=self.output_dir,
                 min_blur_score=self.min_blur_score,
                 crop_border_pixels=self.crop_border_pixels,
-            ))
+            )
+        )
 
         CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
 
@@ -299,7 +308,8 @@ class ProcessMetashape(BaseConverterToNerfstudioDataset, _NoDefaultProcessMetash
             summary_log.append(f"Started with {num_frames} images out of {num_orig_images} total")
             summary_log.append(
                 "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
-                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images.")
+                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
+            )
         else:
             summary_log.append(f"Started with {num_frames} images")
 
@@ -314,7 +324,8 @@ class ProcessMetashape(BaseConverterToNerfstudioDataset, _NoDefaultProcessMetash
                 output_dir=self.output_dir,
                 ply_filename=self.ply,
                 verbose=self.verbose,
-            ))
+            )
+        )
 
         CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
 
@@ -394,7 +405,8 @@ class ProcessRealityCapture(BaseConverterToNerfstudioDataset, _NoDefaultProcessR
             summary_log.append(f"Started with {num_frames} images out of {num_orig_images} total")
             summary_log.append(
                 "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
-                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images.")
+                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
+            )
         else:
             summary_log.append(f"Started with {num_frames} images")
 
@@ -409,7 +421,8 @@ class ProcessRealityCapture(BaseConverterToNerfstudioDataset, _NoDefaultProcessR
                 ply_filename=self.ply,
                 output_dir=self.output_dir,
                 verbose=self.verbose,
-            ))
+            )
+        )
 
         CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
 
@@ -461,8 +474,9 @@ class ProcessODM(BaseConverterToNerfstudioDataset):
         summary_log = []
 
         # Copy images to output directory
-        image_filenames, num_orig_images = process_data_utils.get_image_filenames(orig_images_dir,
-                                                                                  self.max_dataset_size)
+        image_filenames, num_orig_images = process_data_utils.get_image_filenames(
+            orig_images_dir, self.max_dataset_size
+        )
         copied_image_paths = process_data_utils.copy_images_list(
             image_filenames,
             image_dir=image_dir,
@@ -479,7 +493,8 @@ class ProcessODM(BaseConverterToNerfstudioDataset):
             summary_log.append(f"Started with {num_frames} images out of {num_orig_images} total")
             summary_log.append(
                 "To change the size of the dataset add the argument [yellow]--max_dataset_size[/yellow] to "
-                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images.")
+                f"larger than the current value ({self.max_dataset_size}), or -1 to use all images."
+            )
         else:
             summary_log.append(f"Started with {num_frames} images")
 
@@ -495,7 +510,8 @@ class ProcessODM(BaseConverterToNerfstudioDataset):
                 reconstruction_file=reconstruction_file,
                 output_dir=self.output_dir,
                 verbose=self.verbose,
-            ))
+            )
+        )
 
         CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
 
@@ -506,9 +522,7 @@ class ProcessODM(BaseConverterToNerfstudioDataset):
 
 @dataclass
 class NotInstalled:
-
-    def main(self) -> None:
-        ...
+    def main(self) -> None: ...
 
 
 Commands = Union[
@@ -528,8 +542,7 @@ except ImportError:
     projectaria_tools = None
 
 if projectaria_tools is not None:
-    from sdfstudio.scripts.datasets.process_project_aria import \
-        ProcessProjectAria
+    from sdfstudio.scripts.datasets.process_project_aria import ProcessProjectAria
 
     # Note that Union[A, Union[B, C]] == Union[A, B, C].
     Commands = Union[Commands, Annotated[ProcessProjectAria, tyro.conf.subcommand(name="aria")]]
@@ -540,8 +553,7 @@ else:
             NotInstalled,
             tyro.conf.subcommand(
                 name="aria",
-                description=
-                "**Not installed.** Processing Project Aria data requires `pip install projectaria_tools'[all]'`.",
+                description="**Not installed.** Processing Project Aria data requires `pip install projectaria_tools'[all]'`.",
             ),
         ],
     ]

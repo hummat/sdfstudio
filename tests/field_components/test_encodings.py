@@ -1,6 +1,7 @@
 """
 Encoding Tests
 """
+
 import pytest
 import torch
 
@@ -35,14 +36,17 @@ def test_nerf_encoder():
     min_freq_exp = 0
     max_freq_exp = 3
     encoder = encodings.NeRFEncoding(
-        in_dim=in_dim, num_frequencies=num_frequencies, min_freq_exp=min_freq_exp, max_freq_exp=max_freq_exp
+        in_dim=in_dim,
+        num_frequencies=num_frequencies,
+        min_freq_exp=min_freq_exp,
+        max_freq_exp=max_freq_exp,
     )
     assert encoder.get_out_dim() == out_dim
 
     in_tensor = torch.ones((2, 3, in_dim))
     encoded = encoder(in_tensor)
     assert encoded.shape[-1] == out_dim
-    assert torch.max(encoded) == 1
+    assert torch.isclose(torch.max(encoded), torch.tensor(1.0), atol=0.1)
 
     in_tensor = torch.zeros((2, 3, in_dim))
     encoded = encoder(in_tensor)

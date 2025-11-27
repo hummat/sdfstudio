@@ -105,10 +105,16 @@ class NeuSAccModel(NeuSModel):
                 n_rays=n_rays,
             )
             rgb = nerfacc.accumulate_along_rays(
-                weights, ray_indices, values=field_outputs[FieldHeadNames.RGB], n_rays=n_rays
+                weights,
+                ray_indices,
+                values=field_outputs[FieldHeadNames.RGB],
+                n_rays=n_rays,
             )
             normal = nerfacc.accumulate_along_rays(
-                weights, ray_indices, values=field_outputs[FieldHeadNames.NORMAL], n_rays=n_rays
+                weights,
+                ray_indices,
+                values=field_outputs[FieldHeadNames.NORMAL],
+                n_rays=n_rays,
             )
 
             accumulation = nerfacc.accumulate_along_rays(weights, ray_indices, values=None, n_rays=n_rays)
@@ -134,7 +140,12 @@ class NeuSAccModel(NeuSModel):
                 outputs.update({"eik_grad": grad_points})
         else:
             zeros = torch.zeros((ray_bundle.shape[0], 3), dtype=torch.float32, device=self.device)
-            outputs = {"rgb": zeros, "accumulation": zeros[:, :1], "depth": zeros[:, :1], "normal": zeros}
+            outputs = {
+                "rgb": zeros,
+                "accumulation": zeros[:, :1],
+                "depth": zeros[:, :1],
+                "normal": zeros,
+            }
             if self.training:
                 outputs.update({"eik_grad": zeros})
 

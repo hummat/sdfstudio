@@ -34,8 +34,9 @@ from __future__ import annotations
 import random
 import socket
 import traceback
+from collections.abc import Callable
 from datetime import timedelta
-from typing import Any, Callable, Optional
+from typing import Any
 
 import numpy as np
 import torch
@@ -152,7 +153,7 @@ def launch(
     num_machines: int = 1,
     machine_rank: int = 0,
     dist_url: str = "auto",
-    config: Optional[cfg.Config] = None,
+    config: cfg.Config | None = None,
     timeout: timedelta = DEFAULT_TIMEOUT,
 ) -> None:
     """Function that spawns muliple processes to call on main_func

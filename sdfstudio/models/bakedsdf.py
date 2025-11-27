@@ -59,7 +59,12 @@ class BakedSDFModelConfig(VolSDFModelConfig):
     proposal_net_args_list: List[Dict] = field(
         default_factory=lambda: [
             {"hidden_dim": 16, "log2_hashmap_size": 17, "num_levels": 5, "max_res": 64},
-            {"hidden_dim": 16, "log2_hashmap_size": 17, "num_levels": 5, "max_res": 256},
+            {
+                "hidden_dim": 16,
+                "log2_hashmap_size": 17,
+                "num_levels": 5,
+                "max_res": 256,
+            },
         ]
     )
     """Arguments for the proposal density fields."""
@@ -91,6 +96,7 @@ class BakedSDFModelConfig(VolSDFModelConfig):
     eikonal_loss_mult_end: float = 0.1
     eikonal_loss_mult_slop: float = 2.0
 
+
 class BakedSDFFactoModel(VolSDFModel):
     """BakedSDF model
 
@@ -112,7 +118,9 @@ class BakedSDFFactoModel(VolSDFModel):
             assert len(self.config.proposal_net_args_list) == 1, "Only one proposal network is allowed."
             prop_net_args = self.config.proposal_net_args_list[0]
             network = HashMLPDensityField(
-                self.scene_box.aabb, spatial_distortion=self.scene_contraction, **prop_net_args
+                self.scene_box.aabb,
+                spatial_distortion=self.scene_contraction,
+                **prop_net_args,
             )
             self.proposal_networks.append(network)
             self.density_fns.extend([network.density_fn for _ in range(num_prop_nets)])
@@ -144,7 +152,11 @@ class BakedSDFFactoModel(VolSDFModel):
         if self.config.use_anneal_beta:
             # don't optimize beta in laplace density if use annealing beta
             param_groups["fields"] = [
-                n_p[1] for n_p in filter(lambda n_p: "laplace_density" not in n_p[0], self.field.named_parameters())
+                n_p[1]
+                for n_p in filter(
+                    lambda n_p: "laplace_density" not in n_p[0],
+                    self.field.named_parameters(),
+                )
             ]
         else:
             param_groups["fields"] = list(self.field.parameters())
@@ -155,7 +167,7 @@ class BakedSDFFactoModel(VolSDFModel):
             param_groups["field_background"] = list(self.field_background.parameters())
         else:
             param_groups["field_background"] = list(self.field_background)
-            
+
         return param_groups
 
     def get_training_callbacks(
@@ -267,7 +279,6 @@ class BakedSDFFactoModel(VolSDFModel):
             if self.config.s3im_loss_mult > 0:
                 loss_dict["s3im_loss"] = self.s3im_loss(image, outputs["rgb"]) * self.config.s3im_loss_mult
             if self.config.use_spatial_varying_eikonal_loss:
-
                 points_norm = outputs["points_norm"][..., 0]
                 points_weights = torch.where(points_norm <= 1, torch.ones_like(points_norm), points_norm)
 

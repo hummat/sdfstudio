@@ -16,7 +16,6 @@
 Field for compound nerf model, adds scene contraction and image embeddings to instant ngp
 """
 
-
 from typing import Dict, Optional, Tuple
 
 import numpy as np
@@ -189,7 +188,8 @@ class TCNNNerfactoField(Field):
                 },
             )
             self.field_head_semantics = SemanticFieldHead(
-                in_dim=self.mlp_semantics.n_output_dims, num_classes=num_semantic_classes
+                in_dim=self.mlp_semantics.n_output_dims,
+                num_classes=num_semantic_classes,
             )
 
         # predicted normals
@@ -259,11 +259,13 @@ class TCNNNerfactoField(Field):
         else:
             if self.use_average_appearance_embedding:
                 embedded_appearance = torch.ones(
-                    (*directions.shape[:-1], self.appearance_embedding_dim), device=directions.device
+                    (*directions.shape[:-1], self.appearance_embedding_dim),
+                    device=directions.device,
                 ) * self.embedding_appearance.mean(dim=0)
             else:
                 embedded_appearance = torch.zeros(
-                    (*directions.shape[:-1], self.appearance_embedding_dim), device=directions.device
+                    (*directions.shape[:-1], self.appearance_embedding_dim),
+                    device=directions.device,
                 )
 
         # transients
@@ -381,7 +383,6 @@ class TorchNerfactoField(Field):
     def get_outputs(
         self, ray_samples: RaySamples, density_embedding: Optional[TensorType] = None
     ) -> Dict[FieldHeadNames, TensorType]:
-
         outputs_shape = ray_samples.frustums.directions.shape[:-1]
 
         if ray_samples.camera_indices is None:

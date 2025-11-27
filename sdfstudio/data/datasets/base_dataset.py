@@ -15,6 +15,7 @@
 """
 Dataset.
 """
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -151,7 +152,9 @@ class GeneralizedDataset(InputDataset):
         w = None
         all_hw_same = True
         for filename in track(
-            self._dataparser_outputs.image_filenames, transient=True, description="Checking image sizes"
+            self._dataparser_outputs.image_filenames,
+            transient=True,
+            description="Checking image sizes",
         ):
             image = Image.open(filename)
             if h is None:

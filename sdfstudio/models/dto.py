@@ -92,7 +92,10 @@ class DtoOModel(NerfactoModel):
 
         # create occupancy grid from scene_bbox
         aabb_scale = 1.0
-        aabb = [[-aabb_scale, -aabb_scale, -aabb_scale], [aabb_scale, aabb_scale, aabb_scale]]
+        aabb = [
+            [-aabb_scale, -aabb_scale, -aabb_scale],
+            [aabb_scale, aabb_scale, aabb_scale],
+        ]
         aabb = torch.tensor(aabb, dtype=torch.float32)
 
         self.grid = nerfacc.OccupancyGrid(aabb.reshape(-1), resolution=32)
@@ -119,7 +122,11 @@ class DtoOModel(NerfactoModel):
         self.uniform_sampler = UniformSampler(single_jitter=False)
 
         self.neus_sampler = NeuSSampler(
-            num_samples=8, num_samples_importance=16, num_samples_outside=0, num_upsample_steps=2, base_variance=512
+            num_samples=8,
+            num_samples_importance=16,
+            num_samples_outside=0,
+            num_upsample_steps=2,
+            base_variance=512,
         )
 
         self.renderer_normal = SemanticRenderer()
@@ -147,8 +154,12 @@ class DtoOModel(NerfactoModel):
         self.method = "neus"
 
         self.rgb_loss = L1Loss()
-        self.s3im_loss = S3IM(s3im_kernel_size=self.config.s3im_kernel_size, s3im_stride=self.config.s3im_stride, s3im_repeat_time=self.config.s3im_repeat_time, s3im_patch_height=self.config.s3im_patch_height)
-
+        self.s3im_loss = S3IM(
+            s3im_kernel_size=self.config.s3im_kernel_size,
+            s3im_stride=self.config.s3im_stride,
+            s3im_repeat_time=self.config.s3im_repeat_time,
+            s3im_patch_height=self.config.s3im_patch_height,
+        )
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
@@ -221,7 +232,12 @@ class DtoOModel(NerfactoModel):
             fine_offset_cube = torch.stack([x, y, z], dim=-1).reshape(-1, 3) * voxel_size * 0.5
 
             # coarse grid coordinates
-            offset = torch.linspace(-1.0 + voxel_size / 2.0, 1.0 - voxel_size / 2.0, grid_size, device=self.device)
+            offset = torch.linspace(
+                -1.0 + voxel_size / 2.0,
+                1.0 - voxel_size / 2.0,
+                grid_size,
+                device=self.device,
+            )
             x, y, z = torch.meshgrid(offset, offset, offset, indexing="ij")
             coarse_offset_cube = torch.stack([x, y, z], dim=-1).reshape(-1, 3)
 
@@ -248,9 +264,20 @@ class DtoOModel(NerfactoModel):
             mask[self._binary.reshape(-1)] = sdf_mask
 
             self._binary_fine = (
-                mask.reshape(grid_size, grid_size, grid_size, fine_grid_size, fine_grid_size, fine_grid_size)
+                mask.reshape(
+                    grid_size,
+                    grid_size,
+                    grid_size,
+                    fine_grid_size,
+                    fine_grid_size,
+                    fine_grid_size,
+                )
                 .permute(0, 3, 1, 4, 2, 5)
-                .reshape(grid_size * fine_grid_size, grid_size * fine_grid_size, grid_size * fine_grid_size)
+                .reshape(
+                    grid_size * fine_grid_size,
+                    grid_size * fine_grid_size,
+                    grid_size * fine_grid_size,
+                )
                 .contiguous()
             )
 
@@ -258,7 +285,10 @@ class DtoOModel(NerfactoModel):
             x, y, z = torch.meshgrid(offset, offset, offset, indexing="ij")
             grid_coord = torch.stack([x, y, z], dim=-1).reshape(-1, 3)
             if self.local_rank == 0:
-                save_points("fine_voxel_valid.ply", grid_coord[self._binary_fine.reshape(-1)].cpu().numpy())
+                save_points(
+                    "fine_voxel_valid.ply",
+                    grid_coord[self._binary_fine.reshape(-1)].cpu().numpy(),
+                )
             # breakpoint()
 
         if self._binary_fine is not None:
@@ -299,7 +329,9 @@ class DtoOModel(NerfactoModel):
             # occupancy_samples = self.pdf_sampler(ray_bundle, base_ray_samples, base_weights, num_samples=64)
 
             occupancy_samples = self.neus_sampler(
-                ray_bundle, sdf_fn=self.occupancy_field.get_sdf, ray_samples=base_ray_samples
+                ray_bundle,
+                sdf_fn=self.occupancy_field.get_sdf,
+                ray_samples=base_ray_samples,
             )
         else:
             outputs = {}
@@ -308,7 +340,9 @@ class DtoOModel(NerfactoModel):
             elif self.method == "volsdf":
                 # VolSDF
                 occupancy_samples, _ = self.error_bounded_sampler(
-                    ray_bundle, density_fn=self.occupancy_field.laplace_density, sdf_fn=self.occupancy_field.get_sdf
+                    ray_bundle,
+                    density_fn=self.occupancy_field.laplace_density,
+                    sdf_fn=self.occupancy_field.get_sdf,
                 )
 
         # save_points("p2.ply", occupancy_samples.frustums.get_positions().detach().cpu().numpy().reshape(-1, 3))
@@ -357,10 +391,13 @@ class DtoOModel(NerfactoModel):
 
             self.step_counter += 1
             if self.step_counter % 5000 == 0 and self.local_rank == 0:
-
-                save_points("a.ply", occupancy_samples.frustums.get_positions().reshape(-1, 3).detach().cpu().numpy())
+                save_points(
+                    "a.ply",
+                    occupancy_samples.frustums.get_positions().reshape(-1, 3).detach().cpu().numpy(),
+                )
                 get_surface_occupancy(
-                    occupancy_fn=lambda x: self.occupancy_field.forward_geonetwork(x)[:, 0], device=self.device
+                    occupancy_fn=lambda x: self.occupancy_field.forward_geonetwork(x)[:, 0],
+                    device=self.device,
                 )
                 # breakpoint()
 
@@ -480,7 +517,11 @@ class DtoOModel(NerfactoModel):
             if self.use_nerfacto:
                 density_field_weights = outputs["weights_list"][-1]
                 loss_dict["sky_loss"] = (
-                    F.binary_cross_entropy(density_field_weights.sum(dim=1).clip(1e-3, 1.0 - 1e-3), sky_label) * 0.01
+                    F.binary_cross_entropy(
+                        density_field_weights.sum(dim=1).clip(1e-3, 1.0 - 1e-3),
+                        sky_label,
+                    )
+                    * 0.01
                 )
 
             occupancy_field_weights = outputs["oweights"]
@@ -564,7 +605,12 @@ class DtoOModel(NerfactoModel):
         metrics_dict["olpips"] = float(lpips)
 
         images_dict.update(
-            {"oimg": combined_rgb, "oaccumulation": combined_acc, "odepth": combined_depth, "onormal": combined_normal}
+            {
+                "oimg": combined_rgb,
+                "oaccumulation": combined_acc,
+                "odepth": combined_depth,
+                "onormal": combined_normal,
+            }
         )
 
         # save hitting

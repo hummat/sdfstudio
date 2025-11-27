@@ -119,10 +119,11 @@ class TensoRFModel(Model):
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
     ) -> List[TrainingCallback]:
-
         # the callback that we want to run every X iterations after the training iteration
         def reinitialize_optimizer(
-            self, training_callback_attributes: TrainingCallbackAttributes, step: int  # pylint: disable=unused-argument
+            self,
+            training_callback_attributes: TrainingCallbackAttributes,
+            step: int,  # pylint: disable=unused-argument
         ):
             resolution = self.upsampling_steps.pop(0)
 
@@ -141,7 +142,10 @@ class TensoRFModel(Model):
             if optimizers_config["encodings"]["scheduler"]:
                 training_callback_attributes.optimizers.schedulers["encodings"] = optimizers_config["encodings"][
                     "scheduler"
-                ].setup(optimizer=training_callback_attributes.optimizers.optimizers["encodings"], lr_init=lr_init)
+                ].setup(
+                    optimizer=training_callback_attributes.optimizers.optimizers["encodings"],
+                    lr_init=lr_init,
+                )
 
         callbacks = [
             TrainingCallback(
@@ -167,7 +171,12 @@ class TensoRFModel(Model):
             num_components=self.num_color_components,
         )
 
-        feature_encoding = NeRFEncoding(in_dim=self.appearance_dim, num_frequencies=2, min_freq_exp=0, max_freq_exp=2)
+        feature_encoding = NeRFEncoding(
+            in_dim=self.appearance_dim,
+            num_frequencies=2,
+            min_freq_exp=0,
+            max_freq_exp=2,
+        )
         direction_encoding = NeRFEncoding(in_dim=3, num_frequencies=2, min_freq_exp=0, max_freq_exp=2)
 
         self.field = TensoRFField(
@@ -193,8 +202,12 @@ class TensoRFModel(Model):
 
         # losses
         self.rgb_loss = MSELoss()
-        self.s3im_loss = S3IM(s3im_kernel_size=self.config.s3im_kernel_size, s3im_stride=self.config.s3im_stride, s3im_repeat_time=self.config.s3im_repeat_time, s3im_patch_height=self.config.s3im_patch_height)
-
+        self.s3im_loss = S3IM(
+            s3im_kernel_size=self.config.s3im_kernel_size,
+            s3im_stride=self.config.s3im_stride,
+            s3im_repeat_time=self.config.s3im_repeat_time,
+            s3im_patch_height=self.config.s3im_patch_height,
+        )
 
         # metrics
         self.psnr = PeakSignalNoiseRatio(data_range=1.0)

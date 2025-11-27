@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Generic utility functions
-"""
+"""Generic utility functions"""
 
 import sys
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -24,7 +23,9 @@ import zmq
 
 
 def get_chunks(
-    lst: List[float], num_chunks: Optional[int] = None, size_of_chunk: Optional[int] = None
+    lst: List[float],
+    num_chunks: Optional[int] = None,
+    size_of_chunk: Optional[int] = None,
 ) -> List[List[float]]:
     """Returns list of n elements, constaining a sublist.
 

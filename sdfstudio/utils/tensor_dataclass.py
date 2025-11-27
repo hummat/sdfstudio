@@ -72,9 +72,9 @@ class TensorDataclass:
         """
         if self._field_custom_dimensions is not None:
             for k, v in self._field_custom_dimensions.items():
-                assert (
-                    isinstance(v, int) and v > 1
-                ), f"Custom dimensions must be an integer greater than 1, since 1 is the default, received {k}: {v}"
+                assert isinstance(v, int) and v > 1, (
+                    f"Custom dimensions must be an integer greater than 1, since 1 is the default, received {k}: {v}"
+                )
 
         if not dataclasses.is_dataclass(self):
             raise TypeError("TensorDataclass must be a dataclass")
@@ -87,7 +87,8 @@ class TensorDataclass:
         batch_shape = torch.broadcast_shapes(*batch_shapes)
 
         broadcasted_fields = self._broadcast_dict_fields(
-            {f.name: self.__getattribute__(f.name) for f in dataclasses.fields(self)}, batch_shape
+            {f.name: self.__getattribute__(f.name) for f in dataclasses.fields(self)},
+            batch_shape,
         )
         for f, v in broadcasted_fields.items():
             self.__setattr__(f, v)
@@ -242,7 +243,8 @@ class TensorDataclass:
             return v.broadcast_to((*shape, *v.shape[-custom_dims:]))
 
         return self._apply_fn_to_fields(
-            lambda x: x.broadcast_to((*shape, x.shape[-1])), custom_tensor_dims_fn=custom_tensor_dims_fn
+            lambda x: x.broadcast_to((*shape, x.shape[-1])),
+            custom_tensor_dims_fn=custom_tensor_dims_fn,
         )
 
     def to(self: TensorDataclassT, device) -> TensorDataclassT:

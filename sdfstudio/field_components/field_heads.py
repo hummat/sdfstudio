@@ -15,6 +15,7 @@
 """
 Collection of render heads
 """
+
 from enum import Enum
 from typing import Callable, Optional, Union
 
@@ -60,7 +61,6 @@ class FieldHead(FieldComponent):
         in_dim: Optional[int] = None,
         activation: Optional[Union[nn.Module, Callable]] = None,
     ) -> None:
-
         super().__init__()
         self.out_dim = out_dim
         self.activation = activation
@@ -103,8 +103,17 @@ class DensityFieldHead(FieldHead):
         activation: output head activation
     """
 
-    def __init__(self, in_dim: Optional[int] = None, activation: Optional[nn.Module] = nn.Softplus()) -> None:
-        super().__init__(in_dim=in_dim, out_dim=1, field_head_name=FieldHeadNames.DENSITY, activation=activation)
+    def __init__(
+        self,
+        in_dim: Optional[int] = None,
+        activation: Optional[nn.Module] = nn.Softplus(),
+    ) -> None:
+        super().__init__(
+            in_dim=in_dim,
+            out_dim=1,
+            field_head_name=FieldHeadNames.DENSITY,
+            activation=activation,
+        )
 
 
 class RGBFieldHead(FieldHead):
@@ -115,8 +124,17 @@ class RGBFieldHead(FieldHead):
         activation: output head activation
     """
 
-    def __init__(self, in_dim: Optional[int] = None, activation: Optional[nn.Module] = nn.Sigmoid()) -> None:
-        super().__init__(in_dim=in_dim, out_dim=3, field_head_name=FieldHeadNames.RGB, activation=activation)
+    def __init__(
+        self,
+        in_dim: Optional[int] = None,
+        activation: Optional[nn.Module] = nn.Sigmoid(),
+    ) -> None:
+        super().__init__(
+            in_dim=in_dim,
+            out_dim=3,
+            field_head_name=FieldHeadNames.RGB,
+            activation=activation,
+        )
 
 
 class SHFieldHead(FieldHead):
@@ -130,11 +148,19 @@ class SHFieldHead(FieldHead):
     """
 
     def __init__(
-        self, in_dim: Optional[int] = None, levels: int = 3, channels: int = 3, activation: Optional[nn.Module] = None
+        self,
+        in_dim: Optional[int] = None,
+        levels: int = 3,
+        channels: int = 3,
+        activation: Optional[nn.Module] = None,
     ) -> None:
-
         out_dim = channels * levels**2
-        super().__init__(in_dim=in_dim, out_dim=out_dim, field_head_name=FieldHeadNames.SH, activation=activation)
+        super().__init__(
+            in_dim=in_dim,
+            out_dim=out_dim,
+            field_head_name=FieldHeadNames.SH,
+            activation=activation,
+        )
 
 
 class UncertaintyFieldHead(FieldHead):
@@ -145,8 +171,17 @@ class UncertaintyFieldHead(FieldHead):
         activation: output head activation
     """
 
-    def __init__(self, in_dim: Optional[int] = None, activation: Optional[nn.Module] = nn.Softplus()) -> None:
-        super().__init__(in_dim=in_dim, out_dim=1, field_head_name=FieldHeadNames.UNCERTAINTY, activation=activation)
+    def __init__(
+        self,
+        in_dim: Optional[int] = None,
+        activation: Optional[nn.Module] = nn.Softplus(),
+    ) -> None:
+        super().__init__(
+            in_dim=in_dim,
+            out_dim=1,
+            field_head_name=FieldHeadNames.UNCERTAINTY,
+            activation=activation,
+        )
 
 
 class TransientRGBFieldHead(FieldHead):
@@ -157,8 +192,17 @@ class TransientRGBFieldHead(FieldHead):
         activation: output head activation
     """
 
-    def __init__(self, in_dim: Optional[int] = None, activation: Optional[nn.Module] = nn.Sigmoid()) -> None:
-        super().__init__(in_dim=in_dim, out_dim=3, field_head_name=FieldHeadNames.TRANSIENT_RGB, activation=activation)
+    def __init__(
+        self,
+        in_dim: Optional[int] = None,
+        activation: Optional[nn.Module] = nn.Sigmoid(),
+    ) -> None:
+        super().__init__(
+            in_dim=in_dim,
+            out_dim=3,
+            field_head_name=FieldHeadNames.TRANSIENT_RGB,
+            activation=activation,
+        )
 
 
 class TransientDensityFieldHead(FieldHead):
@@ -169,9 +213,16 @@ class TransientDensityFieldHead(FieldHead):
         activation: output head activation
     """
 
-    def __init__(self, in_dim: Optional[int] = None, activation: Optional[nn.Module] = nn.Softplus()) -> None:
+    def __init__(
+        self,
+        in_dim: Optional[int] = None,
+        activation: Optional[nn.Module] = nn.Softplus(),
+    ) -> None:
         super().__init__(
-            in_dim=in_dim, out_dim=1, field_head_name=FieldHeadNames.TRANSIENT_DENSITY, activation=activation
+            in_dim=in_dim,
+            out_dim=1,
+            field_head_name=FieldHeadNames.TRANSIENT_DENSITY,
+            activation=activation,
         )
 
 
@@ -185,7 +236,12 @@ class SemanticFieldHead(FieldHead):
     """
 
     def __init__(self, num_classes: int, in_dim: Optional[int] = None) -> None:
-        super().__init__(in_dim=in_dim, out_dim=num_classes, field_head_name=FieldHeadNames.SEMANTICS, activation=None)
+        super().__init__(
+            in_dim=in_dim,
+            out_dim=num_classes,
+            field_head_name=FieldHeadNames.SEMANTICS,
+            activation=None,
+        )
 
 
 class PredNormalsFieldHead(FieldHead):
@@ -197,7 +253,12 @@ class PredNormalsFieldHead(FieldHead):
     """
 
     def __init__(self, in_dim: Optional[int] = None, activation: Optional[nn.Module] = nn.Tanh()) -> None:
-        super().__init__(in_dim=in_dim, out_dim=3, field_head_name=FieldHeadNames.PRED_NORMALS, activation=activation)
+        super().__init__(
+            in_dim=in_dim,
+            out_dim=3,
+            field_head_name=FieldHeadNames.PRED_NORMALS,
+            activation=activation,
+        )
 
     def forward(self, in_tensor: TensorType) -> TensorType:
         """Needed to normalize the output into valid normals."""

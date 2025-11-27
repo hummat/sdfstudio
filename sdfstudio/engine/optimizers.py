@@ -15,13 +15,13 @@
 """
 Optimizers class.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Type
+from typing import Any
 
 import torch
-from torch.amp.grad_scaler import GradScaler
 from torch.nn.parameter import Parameter
 
 from sdfstudio.configs import base_config
@@ -33,7 +33,7 @@ from sdfstudio.utils import writer
 class OptimizerConfig(base_config.PrintableConfig):
     """Basic optimizer config with RAdam"""
 
-    _target: Type = torch.optim.Adam
+    _target: type = torch.optim.Adam
     lr: float = 0.0005
     eps: float = 1e-08
 
@@ -50,24 +50,26 @@ class OptimizerConfig(base_config.PrintableConfig):
 class AdamOptimizerConfig(OptimizerConfig):
     """Basic optimizer config with Adam"""
 
-    _target: Type = torch.optim.Adam
+    _target: type = torch.optim.Adam
     weight_decay: float = 0
+
 
 @dataclass
 class AdamWOptimizerConfig(OptimizerConfig):
     """Basic optimizer config with AdamW"""
 
-    _target: Type = torch.optim.AdamW
+    _target: type = torch.optim.AdamW
     weight_decay: float = 0
+
 
 @dataclass
 class RAdamOptimizerConfig(OptimizerConfig):
     """Basic optimizer config with RAdam"""
 
-    _target: Type = torch.optim.RAdam
+    _target: type = torch.optim.RAdam
 
 
-def setup_optimizers(config: base_config.Config, param_groups: Dict[str, List[Parameter]]) -> "Optimizers":
+def setup_optimizers(config: base_config.Config, param_groups: dict[str, list[Parameter]]) -> Optimizers:
     """Helper to set up the optimizers
 
     Args:
@@ -98,7 +100,7 @@ class Optimizers:
         param_groups: A dictionary of parameter groups to optimize.
     """
 
-    def __init__(self, config: Dict[str, Any], param_groups: Dict[str, List[Parameter]]):
+    def __init__(self, config: dict[str, Any], param_groups: dict[str, list[Parameter]]):
         self.config = config
         self.optimizers = {}
         self.schedulers = {}
@@ -132,7 +134,7 @@ class Optimizers:
         for _, optimizer in self.optimizers.items():
             optimizer.zero_grad()
 
-    def optimizer_scaler_step_all(self, grad_scaler: GradScaler) -> None:
+    def optimizer_scaler_step_all(self, grad_scaler: Any) -> None:
         """Take an optimizer step using a grad scaler.
 
         Args:
@@ -159,7 +161,7 @@ class Optimizers:
             lr = scheduler.get_last_lr()[0]
             writer.put_scalar(name=f"learning_rate/{param_group_name}", scalar=lr, step=step)
 
-    def load_optimizers(self, loaded_state: Dict[str, Any]) -> None:
+    def load_optimizers(self, loaded_state: dict[str, Any]) -> None:
         """Helper to load the optimizer state from previous checkpoint
 
         Args:
@@ -168,7 +170,7 @@ class Optimizers:
         for k, v in loaded_state.items():
             self.optimizers[k].load_state_dict(v)
 
-    def load_schedulers(self, loaded_state: Dict[str, Any]) -> None:
+    def load_schedulers(self, loaded_state: dict[str, Any]) -> None:
         """Helper to load the schedulers state from previous checkpoint
 
         Args:

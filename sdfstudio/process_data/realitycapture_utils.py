@@ -91,7 +91,11 @@ def realitycapture_to_json(
         frame["p2"] = float(cameras["t2"][i])
 
         # Transform matrix to sdfstudio format. Please refer to the documentation for coordinate system conventions.
-        rot = _get_rotation_matrix(-float(cameras["heading"][i]), float(cameras["pitch"][i]), float(cameras["roll"][i]))
+        rot = _get_rotation_matrix(
+            -float(cameras["heading"][i]),
+            float(cameras["pitch"][i]),
+            float(cameras["roll"][i]),
+        )
 
         transform = np.eye(4)
         transform[:3, :3] = rot

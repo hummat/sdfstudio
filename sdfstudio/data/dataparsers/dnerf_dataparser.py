@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Data parser for blender dataset"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -102,7 +103,10 @@ class DNeRF(DataParser):
         )
 
         dataparser_outputs = DataparserOutputs(
-            image_filenames=image_filenames, cameras=cameras, alpha_color=alpha_color_tensor, scene_box=scene_box
+            image_filenames=image_filenames,
+            cameras=cameras,
+            alpha_color=alpha_color_tensor,
+            scene_box=scene_box,
         )
 
         return dataparser_outputs

@@ -24,10 +24,15 @@ def main(args):
     # === load camera intrinsics and poses ===
     cam_intrinsics = []
     if args.data_type == "colmap":
-        cam_intrinsics.append(np.array([
-            [cam_params["fl_x"], 0, cam_params["cx"]],
-            [0, cam_params["fl_y"], cam_params["cy"]],
-            [0, 0, 1]]))
+        cam_intrinsics.append(
+            np.array(
+                [
+                    [cam_params["fl_x"], 0, cam_params["cx"]],
+                    [0, cam_params["fl_y"], cam_params["cy"]],
+                    [0, 0, 1],
+                ]
+            )
+        )
 
     frames = cam_params["frames"]
     poses = []
@@ -38,10 +43,15 @@ def main(args):
     for frame in frames:
         # load intrinsics from polycam
         if args.data_type == "polycam":
-            cam_intrinsics.append(np.array([
-                [frame["fl_x"], 0, frame["cx"]],
-                [0, frame["fl_y"], frame["cy"]],
-                [0, 0, 1]]))
+            cam_intrinsics.append(
+                np.array(
+                    [
+                        [frame["fl_x"], 0, frame["cx"]],
+                        [0, frame["fl_y"], frame["cy"]],
+                        [0, 0, 1],
+                    ]
+                )
+            )
 
         # load poses
         # OpenGL/Blender convention, needs to change to COLMAP/OpenCV convention
@@ -132,14 +142,14 @@ def main(args):
         rgb_trans = transforms.Compose(
             [
                 transforms.CenterCrop(target_crop),
-                transforms.Resize((tar_h, tar_w), interpolation=PIL.Image.BILINEAR)
+                transforms.Resize((tar_h, tar_w), interpolation=PIL.Image.BILINEAR),
             ]
         )
         depth_trans = transforms.Compose(
             [
                 transforms.Resize((h, w), interpolation=PIL.Image.NEAREST),
                 transforms.CenterCrop(target_crop),
-                transforms.Resize((tar_h, tar_w), interpolation=PIL.Image.NEAREST)
+                transforms.Resize((tar_h, tar_w), interpolation=PIL.Image.NEAREST),
             ]
         )
 
@@ -177,7 +187,7 @@ def main(args):
         frame = {
             "rgb_path": rgb_path,
             "camtoworld": pose.tolist(),
-            "intrinsics": cam_intrinsics[0].tolist() if args.data_type == "colmap" else cam_intrinsics[idx].tolist()
+            "intrinsics": cam_intrinsics[0].tolist() if args.data_type == "colmap" else cam_intrinsics[idx].tolist(),
         }
 
         if args.sensor_depth:
@@ -244,31 +254,70 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="preprocess sdfstudio dataset to sdfstudio dataset, "
-                                                 "currently support colmap and polycam")
+    parser = argparse.ArgumentParser(
+        description="preprocess sdfstudio dataset to sdfstudio dataset, currently support colmap and polycam"
+    )
 
-    parser.add_argument("--data", dest="input_dir", required=True, help="path to sdfstudio data directory")
-    parser.add_argument("--output-dir", dest="output_dir", required=True, help="path to output data directory")
+    parser.add_argument(
+        "--data",
+        dest="input_dir",
+        required=True,
+        help="path to sdfstudio data directory",
+    )
+    parser.add_argument(
+        "--output-dir",
+        dest="output_dir",
+        required=True,
+        help="path to output data directory",
+    )
     parser.add_argument("--data-type", dest="data_type", required=True, choices=["colmap", "polycam"])
-    parser.add_argument("--scene-type", dest="scene_type", required=True, choices=["indoor", "object", "unbound"],
-                        help="The scene will be normalized into a unit sphere when selecting indoor or object.")
-    parser.add_argument("--scene-scale-mult", dest="scene_scale_mult", type=float, default=None,
-                        help="The bounding box of the scene is firstly calculated by the camera positions, "
-                             "then multiply with scene_scale_mult")
+    parser.add_argument(
+        "--scene-type",
+        dest="scene_type",
+        required=True,
+        choices=["indoor", "object", "unbound"],
+        help="The scene will be normalized into a unit sphere when selecting indoor or object.",
+    )
+    parser.add_argument(
+        "--scene-scale-mult",
+        dest="scene_scale_mult",
+        type=float,
+        default=None,
+        help="The bounding box of the scene is firstly calculated by the camera positions, "
+        "then multiply with scene_scale_mult",
+    )
 
-    parser.add_argument("--sensor-depth", dest="sensor_depth", action="store_true",
-                        help="Generate sensor depths from polycam.")
-    parser.add_argument("--mono-prior", dest="mono_prior", action="store_true",
-                        help="Whether to generate mono-prior depths and normals. "
-                             "If enabled, the images will be cropped to 384*384")
-    parser.add_argument("--crop-mult", dest="crop_mult", type=int, default=1,
-                        help="image size will be resized to crop_mult*384, only take effect when enabling mono-prior")
-    parser.add_argument("--omnidata-path", dest="omnidata_path",
-                        default="<YOUR_DIR>/omnidata/omnidata_tools/torch",
-                        help="path to omnidata model")
-    parser.add_argument("--pretrained-models", dest="pretrained_models",
-                        default="<YOUR_DIR>/omnidata_tools/torch/pretrained_models/",
-                        help="path to pretrained models")
+    parser.add_argument(
+        "--sensor-depth",
+        dest="sensor_depth",
+        action="store_true",
+        help="Generate sensor depths from polycam.",
+    )
+    parser.add_argument(
+        "--mono-prior",
+        dest="mono_prior",
+        action="store_true",
+        help="Whether to generate mono-prior depths and normals. If enabled, the images will be cropped to 384*384",
+    )
+    parser.add_argument(
+        "--crop-mult",
+        dest="crop_mult",
+        type=int,
+        default=1,
+        help="image size will be resized to crop_mult*384, only take effect when enabling mono-prior",
+    )
+    parser.add_argument(
+        "--omnidata-path",
+        dest="omnidata_path",
+        default="<YOUR_DIR>/omnidata/omnidata_tools/torch",
+        help="path to omnidata model",
+    )
+    parser.add_argument(
+        "--pretrained-models",
+        dest="pretrained_models",
+        default="<YOUR_DIR>/omnidata_tools/torch/pretrained_models/",
+        help="path to pretrained models",
+    )
 
     args = parser.parse_args()
 

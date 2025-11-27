@@ -1,6 +1,7 @@
 """
 Test colormaps
 """
+
 import torch
 
 from sdfstudio.utils import colormaps

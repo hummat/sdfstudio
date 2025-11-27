@@ -15,6 +15,7 @@
 """
 Some ray datastructures.
 """
+
 import random
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Tuple
@@ -158,7 +159,11 @@ class RaySamples(TensorDataclass):
 
         transmittance = torch.cumsum(delta_density[..., :-1, :], dim=-2)
         transmittance = torch.cat(
-            [torch.zeros((*transmittance.shape[:1], 1, 1), device=densities.device), transmittance], dim=-2
+            [
+                torch.zeros((*transmittance.shape[:1], 1, 1), device=densities.device),
+                transmittance,
+            ],
+            dim=-2,
         )
         transmittance = torch.exp(-transmittance)  # [..., "num_samples"]
 
@@ -166,9 +171,7 @@ class RaySamples(TensorDataclass):
 
         return weights
 
-    def get_weights_and_transmittance(
-        self, densities: TensorType
-    ) -> Tuple[TensorType, TensorType]:
+    def get_weights_and_transmittance(self, densities: TensorType) -> Tuple[TensorType, TensorType]:
         """Return weights and transmittance based on predicted densities
 
         Args:
@@ -183,7 +186,11 @@ class RaySamples(TensorDataclass):
 
         transmittance = torch.cumsum(delta_density[..., :-1, :], dim=-2)
         transmittance = torch.cat(
-            [torch.zeros((*transmittance.shape[:1], 1, 1), device=densities.device), transmittance], dim=-2
+            [
+                torch.zeros((*transmittance.shape[:1], 1, 1), device=densities.device),
+                transmittance,
+            ],
+            dim=-2,
         )
         transmittance = torch.exp(-transmittance)  # [..., "num_samples"]
 
@@ -202,16 +209,21 @@ class RaySamples(TensorDataclass):
         """
 
         transmittance = torch.cumprod(
-            torch.cat([torch.ones((*alphas.shape[:1], 1, 1), device=alphas.device), 1.0 - alphas + 1e-7], 1), 1
+            torch.cat(
+                [
+                    torch.ones((*alphas.shape[:1], 1, 1), device=alphas.device),
+                    1.0 - alphas + 1e-7,
+                ],
+                1,
+            ),
+            1,
         )  # [..., "num_samples"]
 
         weights = alphas * transmittance[:, :-1, :]  # [..., "num_samples"]
 
         return weights
 
-    def get_weights_and_transmittance_from_alphas(
-        self, alphas: TensorType
-    ) -> TensorType:
+    def get_weights_and_transmittance_from_alphas(self, alphas: TensorType) -> Tuple[TensorType, TensorType]:
         """Return weights based on predicted alphas
 
         Args:
@@ -222,7 +234,14 @@ class RaySamples(TensorDataclass):
         """
 
         transmittance = torch.cumprod(
-            torch.cat([torch.ones((*alphas.shape[:1], 1, 1), device=alphas.device), 1.0 - alphas + 1e-7], 1), 1
+            torch.cat(
+                [
+                    torch.ones((*alphas.shape[:1], 1, 1), device=alphas.device),
+                    1.0 - alphas + 1e-7,
+                ],
+                1,
+            ),
+            1,
         )  # [..., "num_samples"]
 
         weights = alphas * transmittance[:, :-1, :]  # [..., "num_samples"]

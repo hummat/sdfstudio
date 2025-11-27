@@ -34,7 +34,14 @@ def run_hloc(
     verbose: bool = False,
     matching_method: Literal["vocab_tree", "exhaustive", "sequential"] = "vocab_tree",
     feature_type: Literal[
-        "sift", "superpoint_aachen", "superpoint_max", "superpoint_inloc", "r2d2", "d2net-ss", "sosnet", "disk"
+        "sift",
+        "superpoint_aachen",
+        "superpoint_max",
+        "superpoint_inloc",
+        "r2d2",
+        "d2net-ss",
+        "sosnet",
+        "disk",
     ] = "superpoint_aachen",
     matcher_type: Literal[
         "superglue",
@@ -136,7 +143,10 @@ def run_hloc(
         sfm = PixSfM(  # type: ignore
             conf={
                 "dense_features": {"use_cache": True},
-                "KA": {"dense_features": {"use_cache": True}, "max_kps_per_problem": 1000},
+                "KA": {
+                    "dense_features": {"use_cache": True},
+                    "max_kps_per_problem": 1000,
+                },
                 "BA": {"strategy": "costmaps"},
             }
         )

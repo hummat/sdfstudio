@@ -16,12 +16,13 @@
 Collection of Losses.
 """
 
+from math import exp
+
 import torch
 import torch.nn.functional as F
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 from torch.autograd import Variable
-import numpy as np
-from math import exp
 
 from sdfstudio.cameras.rays import RaySamples
 from sdfstudio.field_components.field_heads import FieldHeadNames
@@ -103,7 +104,7 @@ def interlevel_loss(weights_list, ray_samples_list):
     c = ray_samples_to_sdist(ray_samples_list[-1]).detach()
     w = weights_list[-1][..., 0].detach()
     loss_interlevel = 0.0
-    for ray_samples, weights in zip(ray_samples_list[:-1], weights_list[:-1]):
+    for ray_samples, weights in zip(ray_samples_list[:-1], weights_list[:-1], strict=False):
         sdist = ray_samples_to_sdist(ray_samples)
         cp = sdist  # (num_rays, num_samples + 1)
         wp = weights[..., 0]  # (num_rays, num_samples)
@@ -127,7 +128,7 @@ def blur_stepfun(x, y, r):
     return x_r, y_r
 
 
-@torch.amp.autocast(device_type="cuda", enabled=False)
+@torch.cuda.amp.autocast(enabled=False)
 def interlevel_loss_zip(weights_list, ray_samples_list):
     """Calculates the proposal loss in the Zip-NeRF paper."""
     c = ray_samples_to_sdist(ray_samples_list[-1]).detach()
@@ -137,7 +138,7 @@ def interlevel_loss_zip(weights_list, ray_samples_list):
     w_normalize = w / (c[:, 1:] - c[:, :-1])
 
     loss_interlevel = 0.0
-    for ray_samples, weights, r in zip(ray_samples_list[:-1], weights_list[:-1], [0.03, 0.003]):
+    for ray_samples, weights, r in zip(ray_samples_list[:-1], weights_list[:-1], [0.03, 0.003], strict=False):
         # 2. step blur with different r
         x_r, y_r = blur_stepfun(c, w_normalize, r)
         y_r = torch.clip(y_r, min=0)
@@ -674,6 +675,7 @@ class SensorDepthLoss(nn.Module):
 
         return l1_loss, free_space_loss, sdf_loss
 
+
 r"""Implements Stochastic Structural SIMilarity(S3IM) algorithm.
 It is proposed in the ICCV2023 paper  
 `S3IM: Stochastic Structural SIMilarity and Its Unreasonable Effectiveness for Neural Fields`.
@@ -685,8 +687,9 @@ Arguments:
     s3im_patch_height (height): height of virtual patch(default: 64)
 """
 
+
 class S3IM(torch.nn.Module):
-    def __init__(self, s3im_kernel_size = 4, s3im_stride=4, s3im_repeat_time=10, s3im_patch_height=64, size_average = True):
+    def __init__(self, s3im_kernel_size=4, s3im_stride=4, s3im_repeat_time=10, s3im_patch_height=64, size_average=True):
         super(S3IM, self).__init__()
         self.s3im_kernel_size = s3im_kernel_size
         self.s3im_stride = s3im_stride
@@ -696,10 +699,11 @@ class S3IM(torch.nn.Module):
         self.channel = 1
         self.s3im_kernel = self.create_kernel(s3im_kernel_size, self.channel)
 
-    
     def gaussian(self, s3im_kernel_size, sigma):
-        gauss = torch.Tensor([exp(-(x - s3im_kernel_size//2)**2/float(2*sigma**2)) for x in range(s3im_kernel_size)])
-        return gauss/gauss.sum()
+        gauss = torch.Tensor(
+            [exp(-((x - s3im_kernel_size // 2) ** 2) / float(2 * sigma**2)) for x in range(s3im_kernel_size)]
+        )
+        return gauss / gauss.sum()
 
     def create_kernel(self, s3im_kernel_size, channel):
         _1D_window = self.gaussian(s3im_kernel_size, 1.5).unsqueeze(1)
@@ -707,28 +711,37 @@ class S3IM(torch.nn.Module):
         s3im_kernel = Variable(_2D_window.expand(channel, 1, s3im_kernel_size, s3im_kernel_size).contiguous())
         return s3im_kernel
 
-    def _ssim(self, img1, img2, s3im_kernel, s3im_kernel_size, channel, size_average = True, s3im_stride=None):
-        mu1 = F.conv2d(img1, s3im_kernel, padding = (s3im_kernel_size-1)//2, groups = channel, stride=s3im_stride)
-        mu2 = F.conv2d(img2, s3im_kernel, padding = (s3im_kernel_size-1)//2, groups = channel, stride=s3im_stride)
+    def _ssim(self, img1, img2, s3im_kernel, s3im_kernel_size, channel, size_average=True, s3im_stride=None):
+        mu1 = F.conv2d(img1, s3im_kernel, padding=(s3im_kernel_size - 1) // 2, groups=channel, stride=s3im_stride)
+        mu2 = F.conv2d(img2, s3im_kernel, padding=(s3im_kernel_size - 1) // 2, groups=channel, stride=s3im_stride)
 
         mu1_sq = mu1.pow(2)
         mu2_sq = mu2.pow(2)
-        mu1_mu2 = mu1*mu2
+        mu1_mu2 = mu1 * mu2
 
-        sigma1_sq = F.conv2d(img1*img1, s3im_kernel, padding = (s3im_kernel_size-1)//2, groups = channel, stride=s3im_stride) - mu1_sq
-        sigma2_sq = F.conv2d(img2*img2, s3im_kernel, padding = (s3im_kernel_size-1)//2, groups = channel, stride=s3im_stride) - mu2_sq
-        sigma12 = F.conv2d(img1*img2, s3im_kernel, padding = (s3im_kernel_size-1)//2, groups = channel, stride=s3im_stride) - mu1_mu2
+        sigma1_sq = (
+            F.conv2d(img1 * img1, s3im_kernel, padding=(s3im_kernel_size - 1) // 2, groups=channel, stride=s3im_stride)
+            - mu1_sq
+        )
+        sigma2_sq = (
+            F.conv2d(img2 * img2, s3im_kernel, padding=(s3im_kernel_size - 1) // 2, groups=channel, stride=s3im_stride)
+            - mu2_sq
+        )
+        sigma12 = (
+            F.conv2d(img1 * img2, s3im_kernel, padding=(s3im_kernel_size - 1) // 2, groups=channel, stride=s3im_stride)
+            - mu1_mu2
+        )
 
         C1 = 0.01**2
         C2 = 0.03**2
 
-        ssim_map = ((2*mu1_mu2 + C1)*(2*sigma12 + C2))/((mu1_sq + mu2_sq + C1)*(sigma1_sq + sigma2_sq + C2))
+        ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
 
         if size_average:
             return ssim_map.mean()
         else:
             return ssim_map.mean(1).mean(1).mean(1)
-    
+
     def ssim_loss(self, img1, img2):
         """
         img1, img2: torch.Tensor([b,c,h,w])
@@ -747,8 +760,9 @@ class S3IM(torch.nn.Module):
             self.s3im_kernel = s3im_kernel
             self.channel = channel
 
-
-        return self._ssim(img1, img2, s3im_kernel, self.s3im_kernel_size, channel, self.size_average, s3im_stride=self.s3im_stride)
+        return self._ssim(
+            img1, img2, s3im_kernel, self.s3im_kernel_size, channel, self.size_average, s3im_stride=self.s3im_stride
+        )
 
     def forward(self, src_vec, tar_vec):
         loss = 0.0
@@ -765,6 +779,5 @@ class S3IM(torch.nn.Module):
         src_all = src_vec[res_index]
         tar_patch = tar_all.permute(1, 0).reshape(1, 3, self.s3im_patch_height, -1)
         src_patch = src_all.permute(1, 0).reshape(1, 3, self.s3im_patch_height, -1)
-        loss = (1 - self.ssim_loss(src_patch, tar_patch))
+        loss = 1 - self.ssim_loss(src_patch, tar_patch)
         return loss
-

@@ -15,6 +15,7 @@
 """
 Abstracts for the Pipeline class.
 """
+
 from __future__ import annotations
 
 import typing
@@ -222,7 +223,10 @@ class VanillaPipeline(Pipeline):
         self.config = config
         self.test_mode = test_mode
         self.datamanager: VanillaDataManager = config.datamanager.setup(
-            device=device, test_mode=test_mode, world_size=world_size, local_rank=local_rank
+            device=device,
+            test_mode=test_mode,
+            world_size=world_size,
+            local_rank=local_rank,
         )
         self.datamanager.to(device)
         # TODO(ethan): get rid of scene_bounds from the model
@@ -239,7 +243,10 @@ class VanillaPipeline(Pipeline):
 
         self.world_size = world_size
         if world_size > 1:
-            self._model = typing.cast(Model, DDP(self._model, device_ids=[local_rank], find_unused_parameters=True))
+            self._model = typing.cast(
+                Model,
+                DDP(self._model, device_ids=[local_rank], find_unused_parameters=True),
+            )
             dist.barrier(device_ids=[local_rank])
 
     @property
@@ -336,7 +343,10 @@ class VanillaPipeline(Pipeline):
             transient=True,
         ) as progress:
             task = progress.add_task("[green]Evaluating all eval images...", total=num_images)
-            for camera_ray_bundle, batch in self.datamanager.fixed_indices_eval_dataloader:
+            for (
+                camera_ray_bundle,
+                batch,
+            ) in self.datamanager.fixed_indices_eval_dataloader:
                 isbasicimages = False
                 if isinstance(
                     batch["image"], BasicImages
@@ -382,7 +392,14 @@ class VanillaPipeline(Pipeline):
         self.eval()
 
         coarse_mask = torch.ones(
-            (1, 1, coarse_grid_resolution, coarse_grid_resolution, coarse_grid_resolution), requires_grad=True
+            (
+                1,
+                1,
+                coarse_grid_resolution,
+                coarse_grid_resolution,
+                coarse_grid_resolution,
+            ),
+            requires_grad=True,
         ).to(self.device)
         coarse_mask.retain_grad()
 
@@ -395,7 +412,10 @@ class VanillaPipeline(Pipeline):
             transient=True,
         ) as progress:
             task = progress.add_task("[green]Evaluating all eval images...", total=num_images)
-            for camera_ray_bundle, batch in self.datamanager.fixed_indices_train_dataloader:
+            for (
+                camera_ray_bundle,
+                batch,
+            ) in self.datamanager.fixed_indices_train_dataloader:
                 isbasicimages = False
                 if isinstance(
                     batch["image"], BasicImages

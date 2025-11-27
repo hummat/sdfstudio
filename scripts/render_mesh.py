@@ -2,6 +2,7 @@
 """
 render.py
 """
+
 from __future__ import annotations
 
 import json
@@ -150,7 +151,6 @@ def _render_trajectory_video(
             rendered_images.append(images)
         index = index + 1
         if index < num_frames:
-
             param = ctr.convert_to_pinhole_camera_parameters()
             camera = cameras[index]
             width = camera.width[0].item()

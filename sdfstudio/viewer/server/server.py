@@ -151,7 +151,9 @@ class ZMQWebSocketBridge:
             self.zmq_socket.send(umsgpack.packb(b"error: unknown command"))
 
     def forward_to_websockets(
-        self, frames: Tuple[str, str, bytes], websocket_to_skip: Optional[WebSocketHandler] = None
+        self,
+        frames: Tuple[str, str, bytes],
+        websocket_to_skip: Optional[WebSocketHandler] = None,
     ):
         """Forward a zmq message to all websockets.
 
@@ -195,7 +197,10 @@ class ZMQWebSocketBridge:
 
 
 def run_viewer_bridge_server(
-    zmq_port: int = 6000, websocket_port: int = 7007, ip_address: str = "127.0.0.1", use_ngrok: bool = False
+    zmq_port: int = 6000,
+    websocket_port: int = 7007,
+    ip_address: str = "127.0.0.1",
+    use_ngrok: bool = False,
 ):
     """Run the viewer bridge server.
 

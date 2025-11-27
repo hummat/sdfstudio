@@ -58,7 +58,6 @@ class InstantNGP(DataParser):
     config: InstantNGPDataParserConfig
 
     def _generate_dataparser_outputs(self, split="train"):
-
         meta = load_from_json(self.config.data / "transforms.json")
         image_filenames = []
         poses = []
@@ -72,9 +71,7 @@ class InstantNGP(DataParser):
                 poses.append(np.array(frame["transform_matrix"]))
         if num_skipped_image_filenames >= 0:
             CONSOLE.print(f"Skipping {num_skipped_image_filenames} files in dataset split {split}.")
-        assert (
-            len(image_filenames) != 0
-        ), """
+        assert len(image_filenames) != 0, """
         No image files found. 
         You should check the file_paths in the transforms.json file to make sure they are correct.
         """
@@ -84,7 +81,10 @@ class InstantNGP(DataParser):
         camera_to_world = torch.from_numpy(poses[:, :3])  # camera to world transform
 
         distortion_params = camera_utils.get_distortion_params(
-            k1=float(meta["k1"]), k2=float(meta["k2"]), p1=float(meta["p1"]), p2=float(meta["p2"])
+            k1=float(meta["k1"]),
+            k2=float(meta["k2"]),
+            p1=float(meta["p1"]),
+            p2=float(meta["p2"]),
         )
 
         # in x,y,z order
@@ -92,7 +92,11 @@ class InstantNGP(DataParser):
         aabb_scale = meta["aabb_scale"]
         scene_box = SceneBox(
             aabb=torch.tensor(
-                [[-aabb_scale, -aabb_scale, -aabb_scale], [aabb_scale, aabb_scale, aabb_scale]], dtype=torch.float32
+                [
+                    [-aabb_scale, -aabb_scale, -aabb_scale],
+                    [aabb_scale, aabb_scale, aabb_scale],
+                ],
+                dtype=torch.float32,
             )
         )
 

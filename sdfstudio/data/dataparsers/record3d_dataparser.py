@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Data parser for record3d dataset"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -65,7 +66,6 @@ class Record3D(DataParser):
     config: Record3DDataParserConfig
 
     def _generate_dataparser_outputs(self, split: str = "train") -> DataparserOutputs:
-
         CONSOLE.print(
             "[bold red]DEPRECATION WARNING: The Record3D dataparser will be deprecated in future versions. "
             "Use `ns-data-process record3d` to convert the data into the sdfstudio format instead."
@@ -91,7 +91,10 @@ class Record3D(DataParser):
         poses_data = np.array(metadata_dict["poses"])
         # (N, 3, 4)
         poses = np.concatenate(
-            [Rotation.from_quat(poses_data[:, :4]).as_matrix(), poses_data[:, 4:, None]],
+            [
+                Rotation.from_quat(poses_data[:, :4]).as_matrix(),
+                poses_data[:, 4:, None],
+            ],
             axis=-1,
         ).astype(np.float32)
 
@@ -116,7 +119,9 @@ class Record3D(DataParser):
         poses = torch.from_numpy(poses[:, :3, :4])
 
         poses = camera_utils.auto_orient_and_center_poses(
-            pose_utils.to4x4(poses), method=self.config.orientation_method, center_method="poses"
+            pose_utils.to4x4(poses),
+            method=self.config.orientation_method,
+            center_method="poses",
         )[:, :3, :4]
 
         # Centering poses

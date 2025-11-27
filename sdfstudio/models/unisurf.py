@@ -91,7 +91,10 @@ class UniSurfModel(SurfaceModel):
 
     def sample_and_forward_field(self, ray_bundle: RayBundle) -> Dict:
         ray_samples, surface_points = self.sampler(
-            ray_bundle, occupancy_fn=self.field.get_occupancy, sdf_fn=self.field.get_sdf, return_surface_points=True
+            ray_bundle,
+            occupancy_fn=self.field.get_occupancy,
+            sdf_fn=self.field.get_sdf,
+            return_surface_points=True,
         )
         field_outputs = self.field(ray_samples, return_occupancy=True)
         weights, transmittance = ray_samples.get_weights_and_transmittance_from_alphas(

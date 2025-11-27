@@ -15,18 +15,18 @@
 """
 Code to train model.
 """
+
 from __future__ import annotations
 
 import dataclasses
 import functools
 import os
 import time
-from typing import Dict, List, Tuple
+from typing import Literal
 
 import torch
 from rich.console import Console
-from torch.amp.grad_scaler import GradScaler
-from typing_extensions import Literal
+from torch.cuda.amp.grad_scaler import GradScaler
 
 from sdfstudio.configs import base_config as cfg
 from sdfstudio.engine.callbacks import (
@@ -69,7 +69,7 @@ class Trainer:
 
     pipeline: VanillaPipeline
     optimizers: Optimizers
-    callbacks: List[TrainingCallback]
+    callbacks: list[TrainingCallback]
 
     def __init__(self, config: cfg.Config, local_rank: int = 0, world_size: int = 1):
         self.config = config
@@ -138,7 +138,6 @@ class Trainer:
             step = 0
             for step in range(self._start_step, self._start_step + num_iterations):
                 with TimeWriter(writer, EventName.ITER_TRAIN_TIME, step=step) as train_t:
-
                     self.pipeline.train()
 
                     # training callbacks before the training iteration
@@ -306,7 +305,7 @@ class Trainer:
                     f.unlink()
 
     @profiler.time_function
-    def train_iteration(self, step: int) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], Dict[str, torch.Tensor]]:
+    def train_iteration(self, step: int) -> tuple[torch.Tensor, dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         """Run one iteration with a batch of inputs. Returns dictionary of model losses.
 
         Args:

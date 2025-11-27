@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0,<81"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,8 +7,8 @@ name = "sdfstudio"
 version = "0.4.1"
 description = "All-in-one repository for state-of-the-art neural surface reconstruction"
 readme = "README.md"
-license = { text="Apache 2.0"}
-requires-python = ">=3.9"
+license = { text = "Apache 2.0" }
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python",
@@ -53,21 +53,23 @@ dependencies = [
     "rawpy",
     #"scipy==1.15.1",
     "tornado",
-    "pyzmq"
+    "pyzmq",
 ]
 
 [project.urls]
 "Documentation" = "https://docs.nerf.studio"
 
-
 [project.optional-dependencies]
 # Development packages
 dev = [
-    "black[jupyter]==22.3.0",
-    "pylint==2.13.4",
-    "pytest==7.1.2",
-    "pytest-xdist==2.5.0",
-    "typeguard>=2.13.3",
+    "black[jupyter]",
+    "pylint",
+    "pytest",
+    "pytest-xdist",
+    "pytest-cov",
+    "typeguard",
+    "ruff",
+    "pyright",
 ]
 
 # Documentation related packages
@@ -84,7 +86,7 @@ docs = [
     "sphinx-argparse==0.3.1",
     "sphinx-copybutton==0.5.0",
     "sphinx-design==0.2.0",
-    "sphinxext-opengraph==0.6.3"
+    "sphinxext-opengraph==0.6.3",
 ]
 
 [project.scripts]
@@ -102,7 +104,6 @@ sdf-extract-mesh = "scripts.extract_mesh:entrypoint"
 sdf-render-mesh = "scripts.render_mesh:entrypoint"
 sdf-texture-mesh = "scripts.texture:entrypoint"
 
-
 #[options]
 # equivalent to using --extra-index-url with pip, which is needed for specifying the CUDA version torch and torchvision
 #dependency_links = [
@@ -110,7 +111,7 @@ sdf-texture-mesh = "scripts.texture:entrypoint"
 #]
 
 [tool.setuptools.packages.find]
-include = ["sdfstudio*","scripts*"]
+include = ["sdfstudio*", "scripts*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "py.typed", "setup.bash", "setup.zsh"]
@@ -129,29 +130,48 @@ jobs = 0
 ignored-classes = ["TensorDataclass"]
 
 disable = [
-  "duplicate-code",
-  "fixme",
-  "logging-fstring-interpolation",
-  "too-many-arguments",
-  "too-many-branches",
-  "too-many-instance-attributes",
-  "too-many-locals",
-  "unnecessary-ellipsis",
+    "duplicate-code",
+    "fixme",
+    "logging-fstring-interpolation",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-instance-attributes",
+    "too-many-locals",
+    "unnecessary-ellipsis",
 ]
 
 #pytest
 [tool.pytest.ini_options]
-addopts = "-n=4 --typeguard-packages=sdfstudio --torchtyping-patch-typeguard --disable-warnings"
-testpaths = [
-    "tests",
+addopts = "-n=4 --typeguard-packages=sdfstudio --disable-warnings --cov=sdfstudio --cov-report=xml --cov-report=term"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
 ]
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+    "W191", # indentation contains tabs
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sdfstudio"]
 
 # pyright
 [tool.pyright]
 include = ["sdfstudio"]
-exclude = ["**/node_modules",
-    "**/__pycache__",
-]
+exclude = ["**/node_modules", "**/__pycache__"]
 ignore = ["sdfstudio/viewer"]
 defineConstant = { DEBUG = true }
 
@@ -160,5 +180,5 @@ reportMissingTypeStubs = false
 reportPrivateImportUsage = false
 reportUndefinedVariable = false
 
-pythonVersion = "3.9"
+pythonVersion = "3.10"
 pythonPlatform = "Linux"

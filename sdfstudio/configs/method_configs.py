@@ -122,7 +122,8 @@ method_configs["bakedangelo"] = Config(
             train_num_rays_per_batch=8192,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=BakedAngeloModelConfig(
@@ -194,7 +195,8 @@ method_configs["neuralangelo"] = Config(
             train_num_rays_per_batch=512,
             eval_num_rays_per_batch=512,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=NeuralangeloModelConfig(
@@ -255,7 +257,8 @@ method_configs["bakedsdf"] = Config(
             train_num_rays_per_batch=8192,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=BakedSDFModelConfig(
@@ -321,7 +324,8 @@ method_configs["bakedsdf-mlp"] = Config(
             train_num_rays_per_batch=4096,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=BakedSDFModelConfig(
@@ -388,7 +392,8 @@ method_configs["neus-facto-angelo"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=NeuSFactoModelConfig(
@@ -459,7 +464,8 @@ method_configs["neus-facto"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=NeuSFactoModelConfig(
@@ -510,11 +516,13 @@ method_configs["neus-facto-bigmlp"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=NeuSFactoModelConfig(
-            sdf_field=SDFFieldConfig(num_layers=8, hidden_dim=512, num_layers_color=4), eval_num_rays_per_chunk=1024
+            sdf_field=SDFFieldConfig(num_layers=8, hidden_dim=512, num_layers_color=4),
+            eval_num_rays_per_chunk=1024,
         ),
     ),
     optimizers={
@@ -551,7 +559,8 @@ method_configs["geo-volsdf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=VolSDFModelConfig(patch_warp_loss_mult=0.1, eval_num_rays_per_chunk=1024),
@@ -588,10 +597,15 @@ method_configs["monosdf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
-        model=VolSDFModelConfig(mono_depth_loss_mult=0.1, mono_normal_loss_mult=0.05, eval_num_rays_per_chunk=1024),
+        model=VolSDFModelConfig(
+            mono_depth_loss_mult=0.1,
+            mono_normal_loss_mult=0.05,
+            eval_num_rays_per_chunk=1024,
+        ),
     ),
     optimizers={
         "fields": {
@@ -623,7 +637,8 @@ method_configs["volsdf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=VolSDFModelConfig(eval_num_rays_per_chunk=1024),
@@ -658,7 +673,8 @@ method_configs["geo-neus"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=NeuSModelConfig(patch_warp_loss_mult=0.1, eval_num_rays_per_chunk=1024),
@@ -693,10 +709,15 @@ method_configs["mono-neus"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
-        model=NeuSModelConfig(mono_depth_loss_mult=0.1, mono_normal_loss_mult=0.05, eval_num_rays_per_chunk=1024),
+        model=NeuSModelConfig(
+            mono_depth_loss_mult=0.1,
+            mono_normal_loss_mult=0.05,
+            eval_num_rays_per_chunk=1024,
+        ),
     ),
     optimizers={
         "fields": {
@@ -728,7 +749,8 @@ method_configs["neus"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=NeuSModelConfig(eval_num_rays_per_chunk=1024),
@@ -763,7 +785,8 @@ method_configs["unisurf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=UniSurfModelConfig(eval_num_rays_per_chunk=1024),
@@ -798,10 +821,15 @@ method_configs["mono-unisurf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
-        model=UniSurfModelConfig(mono_depth_loss_mult=0.1, mono_normal_loss_mult=0.05, eval_num_rays_per_chunk=1024),
+        model=UniSurfModelConfig(
+            mono_depth_loss_mult=0.1,
+            mono_normal_loss_mult=0.05,
+            eval_num_rays_per_chunk=1024,
+        ),
     ),
     optimizers={
         "fields": {
@@ -833,7 +861,8 @@ method_configs["geo-unisurf"] = Config(
             train_num_rays_per_batch=1024,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=UniSurfModelConfig(patch_warp_loss_mult=0.1, eval_num_rays_per_chunk=1024),
@@ -868,7 +897,8 @@ method_configs["dto"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=2048,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=DtoOModelConfig(eval_num_rays_per_chunk=1 << 10),
@@ -907,11 +937,15 @@ method_configs["neusW"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=2048,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=NeuralReconWModelConfig(
-            background_model="grid", num_samples_outside=4, eikonal_loss_mult=0.0001, eval_num_rays_per_chunk=1 << 10
+            background_model="grid",
+            num_samples_outside=4,
+            eikonal_loss_mult=0.0001,
+            eval_num_rays_per_chunk=1 << 10,
         ),
     ),
     optimizers={
@@ -944,7 +978,8 @@ method_configs["neus-acc"] = Config(
             train_num_rays_per_batch=2048,
             eval_num_rays_per_batch=1024,
             camera_optimizer=CameraOptimizerConfig(
-                mode="off", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=NeuSAccModelConfig(eval_num_rays_per_chunk=1024),
@@ -967,7 +1002,10 @@ method_configs["neus-acc"] = Config(
 method_configs["nerfacto"] = Config(
     method_name="nerfacto",
     trainer=TrainerConfig(
-        steps_per_eval_batch=5000, steps_per_save=2000, max_num_iterations=30000, mixed_precision=True
+        steps_per_eval_batch=5000,
+        steps_per_save=2000,
+        max_num_iterations=30000,
+        mixed_precision=True,
     ),
     pipeline=VanillaPipelineConfig(
         datamanager=VanillaDataManagerConfig(
@@ -975,7 +1013,8 @@ method_configs["nerfacto"] = Config(
             train_num_rays_per_batch=4096,
             eval_num_rays_per_batch=4096,
             camera_optimizer=CameraOptimizerConfig(
-                mode="SO3xR3", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="SO3xR3",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=NerfactoModelConfig(eval_num_rays_per_chunk=1 << 15),
@@ -1018,11 +1057,16 @@ method_configs["mipnerf"] = Config(
 method_configs["semantic-nerfw"] = Config(
     method_name="semantic-nerfw",
     trainer=TrainerConfig(
-        steps_per_eval_batch=500, steps_per_save=2000, max_num_iterations=30000, mixed_precision=True
+        steps_per_eval_batch=500,
+        steps_per_save=2000,
+        max_num_iterations=30000,
+        mixed_precision=True,
     ),
     pipeline=VanillaPipelineConfig(
         datamanager=SemanticDataManagerConfig(
-            dataparser=FriendsDataParserConfig(), train_num_rays_per_batch=4096, eval_num_rays_per_batch=8192
+            dataparser=FriendsDataParserConfig(),
+            train_num_rays_per_batch=4096,
+            eval_num_rays_per_batch=8192,
         ),
         model=SemanticNerfWModelConfig(eval_num_rays_per_chunk=1 << 16),
     ),
@@ -1106,7 +1150,10 @@ method_configs["dnerf"] = Config(
 method_configs["phototourism"] = Config(
     method_name="phototourism",
     trainer=TrainerConfig(
-        steps_per_eval_batch=500, steps_per_save=2000, max_num_iterations=30000, mixed_precision=True
+        steps_per_eval_batch=500,
+        steps_per_save=2000,
+        max_num_iterations=30000,
+        mixed_precision=True,
     ),
     pipeline=VanillaPipelineConfig(
         datamanager=VariableResDataManagerConfig(  # NOTE: one of the only differences with nerfacto
@@ -1114,7 +1161,8 @@ method_configs["phototourism"] = Config(
             train_num_rays_per_batch=4096,
             eval_num_rays_per_batch=4096,
             camera_optimizer=CameraOptimizerConfig(
-                mode="SO3xR3", optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2)
+                mode="SO3xR3",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
         model=NerfactoModelConfig(eval_num_rays_per_chunk=1 << 15),

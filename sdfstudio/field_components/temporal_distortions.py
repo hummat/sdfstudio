@@ -63,10 +63,18 @@ class DNeRFDistortion(TemporalDistortion):
     def __init__(
         self,
         position_encoding: Encoding = NeRFEncoding(
-            in_dim=3, num_frequencies=10, min_freq_exp=0.0, max_freq_exp=8.0, include_input=True
+            in_dim=3,
+            num_frequencies=10,
+            min_freq_exp=0.0,
+            max_freq_exp=8.0,
+            include_input=True,
         ),
         temporal_encoding: Encoding = NeRFEncoding(
-            in_dim=1, num_frequencies=10, min_freq_exp=0.0, max_freq_exp=8.0, include_input=True
+            in_dim=1,
+            num_frequencies=10,
+            min_freq_exp=0.0,
+            max_freq_exp=8.0,
+            include_input=True,
         ),
         mlp_num_layers: int = 4,
         mlp_layer_width: int = 256,

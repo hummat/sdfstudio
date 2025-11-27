@@ -94,7 +94,8 @@ class Model(nn.Module):
         return self.device_indicator_param.device
 
     def get_training_callbacks(  # pylint:disable=no-self-use
-        self, training_callback_attributes: TrainingCallbackAttributes  # pylint: disable=unused-argument
+        self,
+        training_callback_attributes: TrainingCallbackAttributes,  # pylint: disable=unused-argument
     ) -> List[TrainingCallback]:
         """Returns a list of callbacks that run functions at the specified training iterations."""
         return []
@@ -106,7 +107,8 @@ class Model(nn.Module):
 
         if self.config.enable_collider:
             self.collider = NearFarCollider(
-                near_plane=self.config.collider_params["near_plane"], far_plane=self.config.collider_params["far_plane"]
+                near_plane=self.config.collider_params["near_plane"],
+                far_plane=self.config.collider_params["far_plane"],
             )
 
     @abstractmethod
@@ -164,9 +166,9 @@ class Model(nn.Module):
         """
 
     @torch.no_grad()
-    def get_outputs_for_camera_ray_bundle(self,
-                                          camera_ray_bundle: RayBundle,
-                                          progress: bool = False) -> Dict[str, torch.Tensor]:
+    def get_outputs_for_camera_ray_bundle(
+        self, camera_ray_bundle: RayBundle, progress: bool = False
+    ) -> Dict[str, torch.Tensor]:
         """Takes in camera parameters and computes the output of the model.
 
         Args:
