@@ -19,12 +19,12 @@ Implementation of vanilla nerf.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any
 
 import torch
 from torch.nn import Parameter
+from torchmetrics.functional.image import structural_similarity_index_measure
 from torchmetrics.image import PeakSignalNoiseRatio
-from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from sdfstudio.cameras.rays import RayBundle
@@ -48,7 +48,7 @@ from sdfstudio.utils import colormaps, colors, misc
 class VanillaModelConfig(ModelConfig):
     """Vanilla Model Config"""
 
-    _target: Type = field(default_factory=lambda: NeRFModel)
+    _target: type = field(default_factory=lambda: NeRFModel)
     num_coarse_samples: int = 64
     """Number of samples in coarse field evaluation"""
     num_importance_samples: int = 128
@@ -56,7 +56,7 @@ class VanillaModelConfig(ModelConfig):
 
     enable_temporal_distortion: bool = False
     """Specifies whether or not to include ray warping based on time."""
-    temporal_distortion_params: Dict[str, Any] = to_immutable_dict({"kind": TemporalDistortionKind.DNERF})
+    temporal_distortion_params: dict[str, Any] = to_immutable_dict({"kind": TemporalDistortionKind.DNERF})
     """Parameters to instantiate temporal distortion with"""
 
 
@@ -133,7 +133,7 @@ class NeRFModel(Model):
             kind = params.pop("kind")
             self.temporal_distortion = kind.to_temporal_distortion(params)
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         param_groups = {}
         if self.field_coarse is None or self.field_fine is None:
             raise ValueError("populate_fields() must be called before get_param_groups")
@@ -188,7 +188,7 @@ class NeRFModel(Model):
         }
         return outputs
 
-    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict[str, torch.Tensor]:
+    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> dict[str, torch.Tensor]:
         # Scaling metrics by coefficients to create the losses.
         device = outputs["rgb_coarse"].device
         image = batch["image"].to(device)
@@ -201,8 +201,8 @@ class NeRFModel(Model):
         return loss_dict
 
     def get_image_metrics_and_images(
-        self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
-    ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
+        self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
+    ) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
         image = batch["image"].to(outputs["rgb_coarse"].device)
         rgb_coarse = outputs["rgb_coarse"]
         rgb_fine = outputs["rgb_fine"]

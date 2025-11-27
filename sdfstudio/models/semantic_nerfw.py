@@ -19,13 +19,12 @@ Semantic NeRF-W implementation which should be fast enough to view in the viewer
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Type
 
 import numpy as np
 import torch
 from torch.nn import Parameter
+from torchmetrics.functional.image import structural_similarity_index_measure
 from torchmetrics.image import PeakSignalNoiseRatio
-from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from sdfstudio.cameras.rays import RayBundle
@@ -58,7 +57,7 @@ from sdfstudio.utils import colormaps
 class SemanticNerfWModelConfig(NerfactoModelConfig):
     """Nerfacto Model Config"""
 
-    _target: Type = field(default_factory=lambda: SemanticNerfWModel)
+    _target: type = field(default_factory=lambda: SemanticNerfWModel)
     use_transient_embedding: bool = False
     """Whether to use transient embedding."""
 
@@ -72,7 +71,7 @@ class SemanticNerfWModel(Model):
 
     config: SemanticNerfWModelConfig
 
-    def __init__(self, config: SemanticNerfWModelConfig, metadata: Dict, **kwargs) -> None:
+    def __init__(self, config: SemanticNerfWModelConfig, metadata: dict, **kwargs) -> None:
         assert "semantics" in metadata.keys() and isinstance(metadata["semantics"], Semantics)
         self.semantics = metadata["semantics"]
         super().__init__(config=config, **kwargs)
@@ -139,7 +138,7 @@ class SemanticNerfWModel(Model):
         self.ssim = structural_similarity_index_measure
         self.lpips = LearnedPerceptualImagePatchSimilarity()
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         param_groups = {}
         param_groups["proposal_networks"] = list(self.proposal_networks.parameters())
         param_groups["fields"] = list(self.field.parameters())
@@ -147,7 +146,7 @@ class SemanticNerfWModel(Model):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         callbacks = []
         if self.config.use_proposal_weight_anneal:
             # anneal the weights of the proposal network before doing PDF sampling
@@ -247,8 +246,8 @@ class SemanticNerfWModel(Model):
         return loss_dict
 
     def get_image_metrics_and_images(
-        self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
-    ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
+        self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
+    ) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
         image = batch["image"].to(self.device)
         rgb = outputs["rgb"]
         rgb = torch.clamp(rgb, min=0, max=1)

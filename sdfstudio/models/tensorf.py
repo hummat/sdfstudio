@@ -19,13 +19,12 @@ TensorRF implementation.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Type
 
 import numpy as np
 import torch
 from torch.nn import Parameter
+from torchmetrics.functional.image import structural_similarity_index_measure
 from torchmetrics.image import PeakSignalNoiseRatio
-from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from sdfstudio.cameras.rays import RayBundle
@@ -54,15 +53,15 @@ from sdfstudio.utils import colormaps, colors, misc
 class TensoRFModelConfig(ModelConfig):
     """TensoRF model config"""
 
-    _target: Type = field(default_factory=lambda: TensoRFModel)
+    _target: type = field(default_factory=lambda: TensoRFModel)
     """target class to instantiate"""
     init_resolution: int = 128
     """initial render resolution"""
     final_resolution: int = 300
     """final render resolution"""
-    upsampling_iters: Tuple[int, ...] = (2000, 3000, 4000, 5500, 7000)
+    upsampling_iters: tuple[int, ...] = (2000, 3000, 4000, 5500, 7000)
     """specifies a list of iteration step numbers to perform upsampling"""
-    loss_coefficients: Dict[str, float] = to_immutable_dict({"rgb_loss": 1.0})
+    loss_coefficients: dict[str, float] = to_immutable_dict({"rgb_loss": 1.0})
     """Loss specific weights."""
     num_samples: int = 256
     """Number of samples in field evaluation"""
@@ -118,7 +117,7 @@ class TensoRFModel(Model):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         # the callback that we want to run every X iterations after the training iteration
         def reinitialize_optimizer(
             self,
@@ -218,7 +217,7 @@ class TensoRFModel(Model):
         if self.config.enable_collider:
             self.collider = AABBBoxCollider(scene_box=self.scene_box)
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         param_groups = {}
 
         param_groups["fields"] = (
@@ -264,7 +263,7 @@ class TensoRFModel(Model):
         outputs = {"rgb": rgb, "accumulation": accumulation, "depth": depth}
         return outputs
 
-    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict[str, torch.Tensor]:
+    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> dict[str, torch.Tensor]:
         # Scaling metrics by coefficients to create the losses.
         device = outputs["rgb"].device
         image = batch["image"].to(device)
@@ -278,8 +277,8 @@ class TensoRFModel(Model):
         return loss_dict
 
     def get_image_metrics_and_images(
-        self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
-    ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
+        self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
+    ) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
         image = batch["image"].to(outputs["rgb"].device)
         rgb = outputs["rgb"]
         acc = colormaps.apply_colormap(outputs["accumulation"])

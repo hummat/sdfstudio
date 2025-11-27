@@ -20,16 +20,16 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Type
+from typing import Literal
 
 import torch
 import torch.nn.functional as F
-from torch.nn import Parameter
 from torch import Tensor as TensorType
+from torch.nn import Parameter
+from torchmetrics.functional.image import structural_similarity_index_measure
 from torchmetrics.image import PeakSignalNoiseRatio
-from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-from typing_extensions import Literal
+
 from sdfstudio.cameras.rays import RayBundle, RaySamples
 from sdfstudio.field_components.encodings import NeRFEncoding
 from sdfstudio.field_components.field_heads import FieldHeadNames
@@ -38,6 +38,7 @@ from sdfstudio.fields.nerfacto_field import TCNNNerfactoField
 from sdfstudio.fields.sdf_field import SDFFieldConfig
 from sdfstudio.fields.vanilla_nerf_field import NeRFField
 from sdfstudio.model_components.losses import (
+    S3IM,
     L1Loss,
     MSELoss,
     MultiViewLoss,
@@ -45,7 +46,6 @@ from sdfstudio.model_components.losses import (
     SensorDepthLoss,
     compute_scale_and_shift,
     monosdf_normal_loss,
-    S3IM,
 )
 from sdfstudio.model_components.patch_warping import PatchWarping
 from sdfstudio.model_components.ray_samplers import LinearDisparitySampler
@@ -69,7 +69,7 @@ from sdfstudio.utils.colors import get_color
 class SurfaceModelConfig(ModelConfig):
     """Nerfacto Model Config"""
 
-    _target: Type = field(default_factory=lambda: SurfaceModel)
+    _target: type = field(default_factory=lambda: SurfaceModel)
     near_plane: float = 0.05
     """How far along the ray to start sampling."""
     far_plane: float = 4.0
@@ -251,7 +251,7 @@ class SurfaceModel(Model):
         self.ssim = structural_similarity_index_measure
         self.lpips = LearnedPerceptualImagePatchSimilarity()
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         param_groups = {}
         param_groups["fields"] = list(self.field.parameters())
         if self.config.background_model != "none":
@@ -261,7 +261,7 @@ class SurfaceModel(Model):
         return param_groups
 
     @abstractmethod
-    def sample_and_forward_field(self, ray_bundle: RayBundle) -> Dict:
+    def sample_and_forward_field(self, ray_bundle: RayBundle) -> dict:
         """_summary_
 
         Args:
@@ -279,7 +279,7 @@ class SurfaceModel(Model):
         inside_sphere_mask = (ray_samples.frustums.get_start_positions().norm(dim=-1, keepdim=True) < 1.0).float()
         return inside_sphere_mask
 
-    def forward_background_field_and_merge(self, ray_samples: RaySamples, field_outputs: Dict) -> Dict:
+    def forward_background_field_and_merge(self, ray_samples: RaySamples, field_outputs: dict) -> dict:
         """_summary_
 
         Args:
@@ -305,7 +305,7 @@ class SurfaceModel(Model):
         # TODO make everything outside the sphere to be 0
         return field_outputs
 
-    def get_outputs(self, ray_bundle: RayBundle) -> Dict:
+    def get_outputs(self, ray_bundle: RayBundle) -> dict:
         samples_and_field_outputs = self.sample_and_forward_field(ray_bundle=ray_bundle)
 
         # Shotscuts
@@ -389,7 +389,7 @@ class SurfaceModel(Model):
         outputs["normal_vis"] = (outputs["normal"] + 1.0) / 2.0
         return outputs
 
-    def get_outputs_flexible(self, ray_bundle: RayBundle, additional_inputs: Dict[str, TensorType]) -> Dict:
+    def get_outputs_flexible(self, ray_bundle: RayBundle, additional_inputs: dict[str, TensorType]) -> dict:
         """run the model with additional inputs such as warping or rendering from unseen rays
         Args:
             ray_bundle: containing all the information needed to render that ray latents included
@@ -421,7 +421,7 @@ class SurfaceModel(Model):
 
         return outputs
 
-    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict:
+    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> dict:
         loss_dict = {}
         image = batch["image"].to(self.device)
         loss_dict["rgb_loss"] = self.rgb_loss(image, outputs["rgb"])
@@ -501,7 +501,7 @@ class SurfaceModel(Model):
 
         return loss_dict
 
-    def get_metrics_dict(self, outputs, batch) -> Dict:
+    def get_metrics_dict(self, outputs, batch) -> dict:
         metrics_dict = {}
         image = batch["image"].to(self.device)
         rgb = outputs["rgb"].to(self.device)
@@ -509,8 +509,8 @@ class SurfaceModel(Model):
         return metrics_dict
 
     def get_image_metrics_and_images(
-        self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
-    ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
+        self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
+    ) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
         image = batch["image"].to(self.device)
         rgb = outputs["rgb"].to(self.device)
         normal = (outputs["normal"].to(self.device) + 1.0) / 2.0

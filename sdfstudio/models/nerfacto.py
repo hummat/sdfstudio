@@ -19,15 +19,14 @@ NeRF implementation that combines many recent advancements.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Type
+from typing import Literal
 
 import numpy as np
 import torch
 from torch.nn import Parameter
+from torchmetrics.functional.image import structural_similarity_index_measure
 from torchmetrics.image import PeakSignalNoiseRatio
-from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-from typing_extensions import Literal
 
 from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.engine.callbacks import (
@@ -63,7 +62,7 @@ from sdfstudio.utils.colors import get_color
 class NerfactoModelConfig(ModelConfig):
     """Nerfacto Model Config"""
 
-    _target: Type = field(default_factory=lambda: NerfactoModel)
+    _target: type = field(default_factory=lambda: NerfactoModel)
     near_plane: float = 0.05
     """How far along the ray to start sampling."""
     far_plane: float = 1000.0
@@ -76,7 +75,7 @@ class NerfactoModelConfig(ModelConfig):
     """Maximum resolution of the hashmap for the base mlp."""
     log2_hashmap_size: int = 19
     """Size of the hashmap for the base mlp"""
-    num_proposal_samples_per_ray: Tuple[int, ...] = (256, 96)
+    num_proposal_samples_per_ray: tuple[int, ...] = (256, 96)
     """Number of samples per ray for the proposal network."""
     num_nerf_samples_per_ray: int = 48
     """Number of samples per ray for the nerf network."""
@@ -88,7 +87,7 @@ class NerfactoModelConfig(ModelConfig):
     """Number of proposal network iterations."""
     use_same_proposal_network: bool = False
     """Use the same proposal network. Otherwise use different ones."""
-    proposal_net_args_list: List[Dict] = field(
+    proposal_net_args_list: list[dict] = field(
         default_factory=lambda: [
             {"hidden_dim": 16, "log2_hashmap_size": 17, "num_levels": 5, "max_res": 64},
             {
@@ -214,7 +213,7 @@ class NerfactoModel(Model):
         self.ssim = structural_similarity_index_measure
         self.lpips = LearnedPerceptualImagePatchSimilarity()
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         param_groups = {}
         param_groups["proposal_networks"] = list(self.proposal_networks.parameters())
         param_groups["fields"] = list(self.field.parameters())
@@ -222,7 +221,7 @@ class NerfactoModel(Model):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         callbacks = []
         if self.config.use_proposal_weight_anneal:
             # anneal the weights of the proposal network before doing PDF sampling
@@ -326,8 +325,8 @@ class NerfactoModel(Model):
         return loss_dict
 
     def get_image_metrics_and_images(
-        self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
-    ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
+        self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
+    ) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
         image = batch["image"].to(self.device)
         rgb = outputs["rgb"]
         acc = colormaps.apply_colormap(outputs["accumulation"])

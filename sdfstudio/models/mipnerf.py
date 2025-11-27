@@ -18,12 +18,10 @@ Implementation of mip-NeRF.
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
 import torch
 from torch.nn import Parameter
+from torchmetrics.functional.image import structural_similarity_index_measure
 from torchmetrics.image import PeakSignalNoiseRatio
-from torchmetrics.functional import structural_similarity_index_measure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from sdfstudio.cameras.rays import RayBundle
@@ -99,7 +97,7 @@ class MipNerfModel(Model):
         self.ssim = structural_similarity_index_measure
         self.lpips = LearnedPerceptualImagePatchSimilarity()
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         param_groups = {}
         if self.field is None:
             raise ValueError("populate_fields() must be called before get_param_groups")
@@ -155,8 +153,8 @@ class MipNerfModel(Model):
         return loss_dict
 
     def get_image_metrics_and_images(
-        self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
-    ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
+        self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
+    ) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
         image = batch["image"].to(outputs["rgb_coarse"].device)
         rgb_coarse = outputs["rgb_coarse"]
         rgb_fine = outputs["rgb_fine"]
