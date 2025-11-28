@@ -128,7 +128,7 @@ def blur_stepfun(x, y, r):
     return x_r, y_r
 
 
-@torch.cuda.amp.autocast(enabled=False)
+@torch.amp.autocast('cuda', enabled=False)
 def interlevel_loss_zip(weights_list, ray_samples_list):
     """Calculates the proposal loss in the Zip-NeRF paper."""
     c = ray_samples_to_sdist(ray_samples_list[-1]).detach()

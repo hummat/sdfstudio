@@ -30,7 +30,7 @@ dependencies = [
     #"msgpack_numpy",
     "nerfacc==0.5.2",
     "open3d",
-    "opencv-python",
+    "opencv-python-headless",
     #"plotly",
     #"protobuf",
     "pymeshlab",
