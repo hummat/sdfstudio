@@ -61,7 +61,7 @@ class DtoOModelConfig(NerfactoModelConfig):
     _target: Type = field(default_factory=lambda: DtoOModel)
     smooth_loss_multi: float = 0.005
     """smoothness loss on surface points in unisurf"""
-    sdf_field: SDFFieldConfig = SDFFieldConfig()
+    sdf_field: SDFFieldConfig = field(default_factory=SDFFieldConfig)
     """Config for SDF Field"""
     s3im_loss_mult: float = 0.0
     """S3IM loss multiplier."""

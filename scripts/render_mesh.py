@@ -207,7 +207,7 @@ class RenderTrajectory:
     output_format: Literal["images", "video"] = "video"
     merge_type: Literal["half", "concat"] = "half"
 
-    data: AnnotatedDataParserUnion = SDFStudioDataParserConfig()
+    data: AnnotatedDataParserUnion = field(default_factory=SDFStudioDataParserConfig)
     num_views: int = 300
 
     def main(self) -> None:

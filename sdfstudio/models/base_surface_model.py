@@ -118,7 +118,7 @@ class SurfaceModelConfig(ModelConfig):
     """S3IM repeat time."""
     s3im_patch_height: int = 32
     """S3IM virtual patch height."""
-    sdf_field: SDFFieldConfig = SDFFieldConfig()
+    sdf_field: SDFFieldConfig = field(default_factory=SDFFieldConfig)
     """Config for SDF Field"""
     background_model: Literal["grid", "mlp", "none"] = "mlp"
     """background models"""

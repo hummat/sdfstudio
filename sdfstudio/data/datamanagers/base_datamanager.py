@@ -262,7 +262,7 @@ class VanillaDataManagerConfig(InstantiateConfig):
 
     _target: Type = field(default_factory=lambda: VanillaDataManager)
     """Target class to instantiate."""
-    dataparser: AnnotatedDataParserUnion = BlenderDataParserConfig()
+    dataparser: AnnotatedDataParserUnion = field(default_factory=BlenderDataParserConfig)
     """Specifies the dataparser used to unpack the data."""
     train_num_rays_per_batch: int = 1024
     """Number of rays per batch to use per training iteration."""
@@ -280,7 +280,7 @@ class VanillaDataManagerConfig(InstantiateConfig):
     new images. If -1, never pick new images."""
     eval_image_indices: Optional[Tuple[int, ...]] = (0,)
     """Specifies the image indices to use during eval; if None, uses all."""
-    camera_optimizer: CameraOptimizerConfig = CameraOptimizerConfig()
+    camera_optimizer: CameraOptimizerConfig = field(default_factory=CameraOptimizerConfig)
     """Specifies the camera pose optimizer used during training. Helpful if poses are noisy, such as for data from
     Record3D."""
     collate_fn = staticmethod(nerfstudio_collate)

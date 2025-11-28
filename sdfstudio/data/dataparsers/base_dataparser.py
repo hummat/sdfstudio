@@ -55,7 +55,7 @@ class DataparserOutputs:
     """Camera object storing collection of camera information in dataset."""
     alpha_color: Optional[TensorType] = None
     """Color of dataset background."""
-    scene_box: SceneBox = SceneBox()
+    scene_box: SceneBox = field(default_factory=SceneBox)
     """Scene box of dataset. Used to bound the scene or provide the scene scale depending on model."""
     mask_filenames: Optional[List[Path]] = None
     """Filenames for any masks that are required"""

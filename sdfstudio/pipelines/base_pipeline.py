@@ -188,9 +188,9 @@ class VanillaPipelineConfig(cfg.InstantiateConfig):
 
     _target: Type = field(default_factory=lambda: VanillaPipeline)
     """target class to instantiate"""
-    datamanager: VanillaDataManagerConfig = VanillaDataManagerConfig()
+    datamanager: VanillaDataManagerConfig = field(default_factory=VanillaDataManagerConfig)
     """specifies the datamanager config"""
-    model: ModelConfig = ModelConfig()
+    model: ModelConfig = field(default_factory=ModelConfig)
     """specifies the model config"""
 
 
@@ -485,9 +485,9 @@ class FlexibleInputPipelineConfig(VanillaPipelineConfig):
 
     _target: Type = field(default_factory=lambda: FlexibleInputPipeline)
     """target class to instantiate"""
-    datamanager: FlexibleDataManagerConfig = FlexibleDataManagerConfig()
+    datamanager: FlexibleDataManagerConfig = field(default_factory=FlexibleDataManagerConfig)
     """specifies the datamanager config"""
-    model: ModelConfig = ModelConfig()
+    model: ModelConfig = field(default_factory=ModelConfig)
     """specifies the model config"""
 
 
