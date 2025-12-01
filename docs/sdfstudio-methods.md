@@ -10,6 +10,39 @@ This is a short documentation of SDFStudio, organized as follows:
 
 SDF Studio implements multiple neural implicit surface reconstruction methods in one common framework. More specifically, SDF Studio builds on [UniSurf](https://github.com/autonomousvision/unisurf), [VolSDF](https://github.com/lioryariv/volsdf), and [NeuS](https://github.com/Totoro97/NeuS). The main difference of these methods is in how the points along the ray are sampled and how the SDF is used during volume rendering. For more details of these methods, please check the corresponding paper. Here we explain these methods shortly and provide examples on how to use them in the following.
 
+## Method Registry Overview
+
+The table below summarizes all methods exposed via `ns-train` / `method_configs`, with their main implementation file and the original paper or project.
+
+| Method | Code (primary) | Paper / Project |
+| --- | --- | --- |
+| `bakedangelo` | `sdfstudio/models/bakedangelo.py` | [BakedSDF](https://bakedsdf.github.io/) + [Neuralangelo](https://research.nvidia.com/labs/dir/neuralangelo/) |
+| `neuralangelo` | `sdfstudio/models/neuralangelo.py` | [Neuralangelo](https://research.nvidia.com/labs/dir/neuralangelo/) |
+| `bakedsdf` | `sdfstudio/models/bakedsdf.py` | [BakedSDF](https://bakedsdf.github.io/) |
+| `bakedsdf-mlp` | `sdfstudio/models/bakedsdf.py` | BakedSDF large-MLP variant (no separate paper) |
+| `neus-facto-angelo` | `sdfstudio/models/neus_facto.py` | NeuS-facto + Neuralangelo-style schedules (no dedicated paper) |
+| `neus-facto` | `sdfstudio/models/neus_facto.py` | NeuS with Nerfacto / mip-NeRF360-style proposal sampling (no dedicated paper) |
+| `neus-facto-bigmlp` | `sdfstudio/models/neus_facto.py` | Large-MLP NeuS-facto variant (no dedicated paper) |
+| `geo-volsdf` | `sdfstudio/models/volsdf.py` | [VolSDF](https://arxiv.org/abs/2106.12052) + [Geo-NeuS](https://github.com/GhiXu/Geo-Neus) patch warping |
+| `monosdf` | `sdfstudio/models/monosdf.py` | [MonoSDF](https://arxiv.org/abs/2302.12276) |
+| `volsdf` | `sdfstudio/models/volsdf.py` | [VolSDF](https://arxiv.org/abs/2106.12052) |
+| `geo-neus` | `sdfstudio/models/neus.py` | [Geo-NeuS](https://github.com/GhiXu/Geo-Neus) |
+| `mono-neus` | `sdfstudio/models/neus.py` | MonoSDF-style monocular cues on [NeuS](https://arxiv.org/abs/2106.10689) |
+| `neus` | `sdfstudio/models/neus.py` | [NeuS](https://arxiv.org/abs/2106.10689) |
+| `unisurf` | `sdfstudio/models/unisurf.py` | [UniSurf](https://arxiv.org/abs/2104.00400) |
+| `mono-unisurf` | `sdfstudio/models/unisurf.py` | MonoSDF-style monocular cues on UniSurf (no separate paper) |
+| `geo-unisurf` | `sdfstudio/models/unisurf.py` | Geo-NeuS-style patch warping on UniSurf (no separate paper) |
+| `dto` | `sdfstudio/models/dto.py` | Internal occupancy-field method (“density guided sampling”, no external paper) |
+| `neusW` | `sdfstudio/models/neuralreconW.py` | [NeuralRecon-W](https://github.com/zju3dv/NeuralRecon-W) |
+| `neus-acc` | `sdfstudio/models/neus_acc.py` | NeuS with occupancy-grid acceleration (no separate paper) |
+| `nerfacto` | `sdfstudio/models/nerfacto.py` | [Nerfstudio / nerfacto](https://arxiv.org/abs/2302.04264) |
+| `mipnerf` | `sdfstudio/models/mipnerf.py` | [Mip-NeRF](https://arxiv.org/abs/2103.13415) |
+| `semantic-nerfw` | `sdfstudio/models/semantic_nerfw.py` | [Semantic-NeRF](https://shuaifengzhi.com/Semantic-NeRF/) + [NeRF in the Wild](https://nerf-w.github.io/) |
+| `vanilla-nerf` | `sdfstudio/models/vanilla_nerf.py` | [NeRF](https://arxiv.org/abs/2003.08934) |
+| `tensorf` | `sdfstudio/models/tensorf.py` | [TensoRF](https://arxiv.org/abs/2203.09517) |
+| `dnerf` | `sdfstudio/models/dnerf.py` | [D-NeRF](https://arxiv.org/abs/2011.13961) |
+| `phototourism` | `sdfstudio/models/nerfacto.py` | Nerfacto on PhotoTourism / NeRF-W-style data (no separate paper) |
+
 ## UniSurf
 
 UniSurf first finds the intersection of the surface and sample points around the surface. The sampling range starts from a large range and progressively decreases to a small range during training. When no surface is found for a ray, UniSurf samples uniformly according to the near and far value of the ray. To train a UniSurf model, run the following command:

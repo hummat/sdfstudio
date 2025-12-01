@@ -64,7 +64,12 @@ if args.task == "normal":
     """
     pretrained_weights_path = os.path.join(root_dir, "omnidata_dpt_normal_v2.ckpt")
     model = DPTDepthModel(backbone="vitb_rn50_384", num_channels=3)  # DPT Hybrid
-    checkpoint = torch.load(pretrained_weights_path, map_location=map_location)
+    # Try secure loading first, fallback to unsafe loading if needed
+    try:
+        checkpoint = torch.load(pretrained_weights_path, map_location=map_location, weights_only=True)
+    except (RuntimeError, pickle.UnpicklingError):
+        # Fallback for external models that may contain metadata beyond tensors
+        checkpoint = torch.load(pretrained_weights_path, map_location=map_location, weights_only=False)
     if "state_dict" in checkpoint:
         state_dict = {}
         for k, v in checkpoint["state_dict"].items():
