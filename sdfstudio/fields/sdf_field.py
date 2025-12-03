@@ -318,7 +318,7 @@ class SDFField(Field):
         # deviation_network to compute alpha from sdf from NeuS
         self.deviation_network = SingleVarianceNetwork(init_val=self.config.beta_init)
 
-        # diffuse and specular tint layer
+        # diffuse, specular tint, and roughness layers
         if self.config.use_diffuse_color:
             self.diffuse_color_pred = nn.Linear(self.config.geo_feat_dim, 3)
         if self.config.use_specular_tint:
@@ -530,7 +530,7 @@ class SDFField(Field):
     def get_colors(self, points, directions, gradients, geo_features, camera_indices):
         """compute colors"""
 
-        # diffuse color and specular tint
+        # diffuse color, specular tint, and roughness
         if self.config.use_diffuse_color:
             raw_rgb_diffuse = self.diffuse_color_pred(geo_features.view(-1, self.config.geo_feat_dim))
         if self.config.use_specular_tint:
@@ -540,12 +540,24 @@ class SDFField(Field):
 
         normals = F.normalize(gradients, p=2, dim=-1)
 
+        # encode view and (optionally) reflection directions
+        d_view = self.direction_encoding(directions)
         if self.config.use_reflections:
             # https://github.com/google-research/multinerf/blob/5d4c82831a9b94a87efada2eee6a993d530c4226/internal/ref_utils.py#L22
             refdirs = 2.0 * torch.sum(normals * -directions, axis=-1, keepdims=True) * normals + directions
-            d = self.direction_encoding(refdirs)
+            d_ref = self.direction_encoding(refdirs)
+
+            if self.config.enable_pred_roughness:
+                # map roughness to [0, 1) to mix view and reflection features
+                # smooth surfaces (small roughness) rely more on reflection directions,
+                # rough surfaces rely more on the original view directions.
+                roughness_norm = roughness / (1.0 + roughness)
+                d = d_view * roughness_norm + d_ref * (1.0 - roughness_norm)
+            else:
+                # if roughness is not predicted, fall back to a simple average
+                d = 0.5 * (d_view + d_ref)
         else:
-            d = self.direction_encoding(directions)
+            d = d_view
 
         # appearance
         if self.training:
