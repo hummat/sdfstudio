@@ -669,12 +669,16 @@ class SDFField(Field):
         # Apply padding, mapping color to [-rgb_padding, 1+rgb_padding].
         rgb = rgb * (1 + 2 * self.config.rgb_padding) - self.config.rgb_padding
         if self.config.use_diffuse_color:
-            return (
+            components: list[TensorType] = [
                 rgb,
                 linear_to_srgb(2 * diffuse_linear).clamp(0, 1),
                 linear_to_srgb(specular_linear).clamp(0, 1),
-                linear_to_srgb(tint).clamp(0, 1),
-            )
+            ]
+            if self.config.use_specular_tint:
+                components.append(linear_to_srgb(tint).clamp(0, 1))
+            if self.config.enable_pred_roughness:
+                components.append(roughness)
+            return tuple(components)
         return rgb
 
     def get_outputs(self, ray_samples: RaySamples, return_alphas: bool = False, return_occupancy: bool = False):
@@ -724,14 +728,21 @@ class SDFField(Field):
 
         rgb = self.get_colors(inputs, directions_flat, gradients, geo_feature, camera_indices)
         if isinstance(rgb, tuple):
-            rgb, diffuse, specular, tint = rgb
-            outputs.update(
-                {
-                    "diffuse": diffuse.view(*ray_samples.frustums.directions.shape[:-1], -1),
-                    "specular": specular.view(*ray_samples.frustums.directions.shape[:-1], -1),
-                    "tint": tint.view(*ray_samples.frustums.directions.shape[:-1], -1),
-                }
-            )
+            components = list(rgb)
+            rgb = components[0]
+            diffuse = components[1]
+            specular = components[2]
+            outputs["diffuse"] = diffuse.view(*ray_samples.frustums.directions.shape[:-1], -1)
+            outputs["specular"] = specular.view(*ray_samples.frustums.directions.shape[:-1], -1)
+
+            idx = 3
+            if self.config.use_specular_tint:
+                tint = components[idx]
+                outputs["tint"] = tint.view(*ray_samples.frustums.directions.shape[:-1], -1)
+                idx += 1
+            if self.config.enable_pred_roughness:
+                roughness = components[idx]
+                outputs["roughness"] = roughness.view(*ray_samples.frustums.directions.shape[:-1], -1)
 
         density = self.laplace_density(sdf)
 

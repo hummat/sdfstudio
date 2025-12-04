@@ -10,9 +10,11 @@ This is a short documentation of SDFStudio, organized as follows:
 
 SDF Studio implements multiple neural implicit surface reconstruction methods in one common framework. More specifically, SDF Studio builds on [UniSurf](https://github.com/autonomousvision/unisurf), [VolSDF](https://github.com/lioryariv/volsdf), and [NeuS](https://github.com/Totoro97/NeuS). The main difference of these methods is in how the points along the ray are sampled and how the SDF is used during volume rendering. For more details of these methods, please check the corresponding paper. Here we explain these methods shortly and provide examples on how to use them in the following.
 
+**Note:** All SDFStudio commands use the `sdf-` prefix (e.g., `sdf-train`, `sdf-export`, `sdf-eval`).
+
 ## Method Registry Overview
 
-The table below summarizes all methods exposed via `ns-train` / `method_configs`, with their main implementation file and the original paper or project.
+The table below summarizes all methods exposed via `sdf-train` / `method_configs`, with their main implementation file and the original paper or project.
 
 | Method | Code (primary) | Paper / Project |
 | --- | --- | --- |
@@ -48,7 +50,7 @@ The table below summarizes all methods exposed via `ns-train` / `method_configs`
 UniSurf first finds the intersection of the surface and sample points around the surface. The sampling range starts from a large range and progressively decreases to a small range during training. When no surface is found for a ray, UniSurf samples uniformly according to the near and far value of the ray. To train a UniSurf model, run the following command:
 
 ```
-ns-train unisurf --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
+sdf-train unisurf --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
 ```
 
 ## VolSDF
@@ -56,7 +58,7 @@ ns-train unisurf --pipeline.model.sdf-field.inside-outside False sdfstudio-data 
 VolSDF uses an error-bound sampler [see paper for details] and converts the SDF value to a density value and then uses regular volume rendering as in NeRF. To train a VolSDF model, run the following command:
 
 ```
-ns-train volsdf --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
+sdf-train volsdf --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
 ```
 
 ## NeuS
@@ -64,7 +66,7 @@ ns-train volsdf --pipeline.model.sdf-field.inside-outside False sdfstudio-data -
 NeuS uses hierarchical sampling with multiple steps and converts the SDF value to an alpha value based on a sigmoid function [see paper for details]. To train a NeuS model, run the following command:
 
 ```
-ns-train neus --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
+sdf-train neus --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
 ```
 
 ## MonoSDF
@@ -72,7 +74,7 @@ ns-train neus --pipeline.model.sdf-field.inside-outside False sdfstudio-data --d
 [MonoSDF](https://github.com/autonomousvision/monosdf) builds on VolSDF and proposes to use monocular depth and normal cues as additional supervision. This is particularly helpful in sparse settings (little views) and in indoor scenes. To train a MonoSDF model for an indoor scene, run the following command:
 
 ```
-ns-train monosdf --pipeline.model.sdf-field.inside-outside True sdfstudio-data --data data/sdfstudio-demo-data/replica-room0 --include-mono-prior True
+sdf-train monosdf --pipeline.model.sdf-field.inside-outside True sdfstudio-data --data data/sdfstudio-demo-data/replica-room0 --include-mono-prior True
 
 ```
 
@@ -81,7 +83,7 @@ ns-train monosdf --pipeline.model.sdf-field.inside-outside True sdfstudio-data -
 Similar to MonoSDF, Mono-UniSurf uses monocular depth and normal cues as additional supervision for UniSurf. To train a Mono-UniSurf model, run the following command:
 
 ```
-ns-train mono-unisurf --pipeline.model.sdf-field.inside-outside True sdfstudio-data --data data/sdfstudio-demo-data/replica-room0 --include-mono-prior True
+sdf-train mono-unisurf --pipeline.model.sdf-field.inside-outside True sdfstudio-data --data data/sdfstudio-demo-data/replica-room0 --include-mono-prior True
 ```
 
 ## Mono-NeuS
@@ -89,7 +91,7 @@ ns-train mono-unisurf --pipeline.model.sdf-field.inside-outside True sdfstudio-d
 Similar to MonoSDF, Mono-NeuS uses monocular depth and normal cues as additional supervision for NeuS. To train a Mono-NeuS model, run the following command:
 
 ```
-ns-train mono-neus --pipeline.model.sdf-field.inside-outside True sdfstudio-data --data data/sdfstudio-demo-data/replica-room0 --include-mono-prior True
+sdf-train mono-neus --pipeline.model.sdf-field.inside-outside True sdfstudio-data --data data/sdfstudio-demo-data/replica-room0 --include-mono-prior True
 ```
 
 ## Geo-NeuS
@@ -97,7 +99,7 @@ ns-train mono-neus --pipeline.model.sdf-field.inside-outside True sdfstudio-data
 [Geo-NeuS](https://github.com/GhiXu/Geo-Neus) builds on NeuS and proposes a multi-view photometric consistency loss. To train a Geo-NeuS model on the DTU dataset, run the following command:
 
 ```
-ns-train geo-neus --pipeline.model.sdf-field.inside-outside False sdfstudio-data -data data/dtu/scan24 --load-pairs True
+sdf-train geo-neus --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/dtu/scan24 --load-pairs True
 ```
 
 ## Geo-UniSurf
@@ -105,7 +107,7 @@ ns-train geo-neus --pipeline.model.sdf-field.inside-outside False sdfstudio-data
 The idea of Geo-NeuS can also be applied to UniSurf, which we call Geo-UniSurf. To train a Geo-UniSurf model on the DTU dataset, run the following command:
 
 ```
-ns-train geo-unisurf --pipeline.model.sdf-field.inside-outside False sdfstudio-data -data data/dtu/scan24 --load-pairs True
+sdf-train geo-unisurf --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/dtu/scan24 --load-pairs True
 ```
 
 ## Geo-VolSDF
@@ -113,7 +115,7 @@ ns-train geo-unisurf --pipeline.model.sdf-field.inside-outside False sdfstudio-d
 Similarly, we can apply the idea of Geo-NeuS to VolSDF, which we call Geo-VolSDF. To train a Geo-VolSDF model on the DTU dataset, run the following command:
 
 ```
-ns-train geo-volsdf --pipeline.model.sdf-field.inside-outside False sdfstudio-data -data data/dtu/scan24 --load-pairs True
+sdf-train geo-volsdf --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/dtu/scan24 --load-pairs True
 ```
 
 ## NeuS-acc
@@ -121,7 +123,7 @@ ns-train geo-volsdf --pipeline.model.sdf-field.inside-outside False sdfstudio-da
 NeuS-acc maintains an occupancy grid for empty space skipping during point sampling along the ray. This significantly reduces the number of samples required during training and hence speeds up training. To train a NeuS-acc model on the DTU dataset, run the following command:
 
 ```
-ns-train neus-acc --pipeline.model.sdf-field.inside-outside False sdfstudio-data -data data/dtu/scan65
+sdf-train neus-acc --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/dtu/scan65
 
 ```
 
@@ -130,7 +132,7 @@ ns-train neus-acc --pipeline.model.sdf-field.inside-outside False sdfstudio-data
 NeuS-facto is inspired by [nerfacto](https://github.com/nerfstudio-project/nerfstudio) in nerfstudio, where the proposal network from [mip-NeRF360](https://jonbarron.info/mipnerf360/) is used for sampling points along the ray. We apply this idea to NeuS to speed up the sampling process and reduce the number of samples for each ray. To train a NeuS-facto model on the DTU dataset, run the following command:
 
 ```
-ns-train neus-facto --pipeline.model.sdf-field.inside-outside False sdfstudio-data -data data/dtu/scan65
+sdf-train neus-facto --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/dtu/scan65
 ```
 
 ## NeuralReconW
@@ -138,7 +140,7 @@ ns-train neus-facto --pipeline.model.sdf-field.inside-outside False sdfstudio-da
 [NeuralReconW](https://github.com/zju3dv/NeuralRecon-W) is specifically designed for heritage scenes and hence can only be applied to these scenes. Specifically, it uses sparse point clouds from colmap to create a coarse occupancy grid. Using this occupancy grid, the near and far plane for each ray can be determined. Points are sampled uniformly along the ray within the near and far plane. Further, NeuralReconW also uses surface guided sampling, by sampling points in a small range around the predicted surface. To speed up sampling, it uses a high-resolution grid to cache the SDF field such that no network queries are required to find the surface intersection. The SDF cache is regularly updated during training (every 5K iterations). To train a NeuralReconW model on the DTU dataset, run the following command:
 
 ```
-ns-train neusW --pipeline.model.sdf-field.inside-outside False heritage-data --data data/heritage/brandenburg_gate
+sdf-train neusW --pipeline.model.sdf-field.inside-outside False heritage-data --data data/heritage/brandenburg_gate
 ```
 
 # Representations
@@ -152,7 +154,7 @@ We support three representations for the geometric mapping: MLPs, Multi-Res. Fea
 The 3D position is encoded using a positional encoding as in NeRF and passed to a multi-layer perceptron (MLP) network to predict an SDF value, normal, and geometry feature. To train VolSDF with an MLP with 8 layers and 512 hidden dimensions, run the following command:
 
 ```
-ns-train volsdf --pipeline.model.sdf-field.use-grid-feature False sdfstudio-data --data YOUR_DATA
+sdf-train volsdf --pipeline.model.sdf-field.use-grid-feature False sdfstudio-data --data YOUR_DATA
 ```
 
 ## Multi-res Feature Grids
@@ -160,7 +162,7 @@ ns-train volsdf --pipeline.model.sdf-field.use-grid-feature False sdfstudio-data
 The 3D position is first mapped to a multi-resolution feature grid, using tri-linear interpolation to retrieve the corresponding feature vector. This feature vector is then used as input to an MLP to predict SDF, normal, and geometry features. To train a VolSDF model with Multi-Res Feature Grid representation with 2 layers and 256 hidden dimensions, run the following command:
 
 ```
-ns-train volsdf --pipeline.model.sdf-field.use-grid-feature True --pipeline.model.sdf-field.encoding-type hash sdfstudio-data --data YOUR_DATA
+sdf-train volsdf --pipeline.model.sdf-field.use-grid-feature True --pipeline.model.sdf-field.encoding-type hash sdfstudio-data --data YOUR_DATA
 ```
 
 ## Tri-plane
@@ -168,7 +170,7 @@ ns-train volsdf --pipeline.model.sdf-field.use-grid-feature True --pipeline.mode
 The 3D position is first mapped to three orthogonal planes, using bi-linear interpolation to retrieve a feature vector for each plane which are concatenated as input to the MLP. To use a tri-plane representation on VolSDF, run the following command:
 
 ```
-ns-train volsdf --pipeline.model.sdf-field.use-grid-feature True  --pipeline.model.sdf-field.encoding-type tri-plane sdfstudio-data --data YOUR_DATA
+sdf-train volsdf --pipeline.model.sdf-field.use-grid-feature True  --pipeline.model.sdf-field.encoding-type tri-plane sdfstudio-data --data YOUR_DATA
 ```
 
 ## Geometry Initialization
@@ -176,13 +178,13 @@ ns-train volsdf --pipeline.model.sdf-field.use-grid-feature True  --pipeline.mod
 Proper initialization is very important to obtain good results. By default, SDF Studio initializes the SDF as a sphere. For example, for the DTU dataset, you can initialize the network with the following command:
 
 ```
-ns-train volsdf  --pipeline.model.sdf-field.geometric-init True --pipeline.model.sdf-field.bias 0.5 --pipeline.model.sdf-field.inside-outside False
+sdf-train volsdf  --pipeline.model.sdf-field.geometric-init True --pipeline.model.sdf-field.bias 0.5 --pipeline.model.sdf-field.inside-outside False
 ```
 
 For indoor scenes, please initialize the model using the following command:
 
 ```
-ns-train volsdf --pipeline.model.sdf-field.geometric-init True --pipeline.model.sdf-field.bias 0.8 --pipeline.model.sdf-field.inside-outside True
+sdf-train volsdf --pipeline.model.sdf-field.geometric-init True --pipeline.model.sdf-field.bias 0.8 --pipeline.model.sdf-field.inside-outside True
 ```
 
 Note that for indoor scenes the cameras are inside the sphere, so we set `inside-outside` to `True` such that the points inside the sphere will have positive SDF values and points outside the sphere will have negative SDF values.
@@ -192,7 +194,7 @@ Note that for indoor scenes the cameras are inside the sphere, so we set `inside
 The color network is an MLPs, similar to the geometry MLP. It can be config using the following command:
 
 ```
-ns-train volsdf --pipeline.model.sdf-field.num-layers-color 2 --pipeline.model.sdf-field.hidden-dim-color 512
+sdf-train volsdf --pipeline.model.sdf-field.num-layers-color 2 --pipeline.model.sdf-field.hidden-dim-color 512
 ```
 
 ## Improving Geometry Under Adverse Conditions
@@ -208,7 +210,7 @@ If Structure-from-Motion (SfM) poses are wrong, geometry will be wrong regardles
 - Where available, enable camera optimization in the SDFStudio config to refine poses during training, e.g.:
 
 ```bash
-ns-train neus sdfstudio-data --data YOUR_DATA \
+sdf-train neus sdfstudio-data --data YOUR_DATA \
   --pipeline.datamanager.camera-optimizer.mode SO3xR3 \
   --pipeline.datamanager.camera-optimizer.optimizer.lr 1e-4 \
   --pipeline.datamanager.camera-optimizer.scheduler.lr-final 1e-5 \
@@ -334,7 +336,7 @@ non-zero density. It is available in:
 Example:
 
 ```bash
-ns-train neus sdfstudio-data --data YOUR_DATA \
+sdf-train neus sdfstudio-data --data YOUR_DATA \
   --pipeline.model.orientation-loss-mult 1e-4
 ```
 
@@ -354,7 +356,7 @@ It is available for:
 Example:
 
 ```bash
-ns-train neus-facto sdfstudio-data --data YOUR_DATA \
+sdf-train neus-facto sdfstudio-data --data YOUR_DATA \
   --pipeline.model.distortion-loss-mult 0.002
 ```
 

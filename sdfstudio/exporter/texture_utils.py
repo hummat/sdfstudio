@@ -429,6 +429,10 @@ def export_textured_mesh(
         tint_image = outputs["tint"].cpu().numpy()
         media.write_image(str(output_dir / "tint_0.png"), tint_image)
 
+    if "roughness" in outputs:
+        roughness_image = outputs["roughness"].cpu().numpy()
+        media.write_image(str(output_dir / "roughness_0.png"), roughness_image)
+
     # save the normal image
     normal_image = outputs["normal"].cpu().numpy()
     normal_image = (normal_image + 1.0) / 2.0
