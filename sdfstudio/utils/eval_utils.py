@@ -19,6 +19,7 @@ Evaluation utils
 from __future__ import annotations
 
 import os
+import pickle
 import sys
 from pathlib import Path
 from typing import Optional, Tuple
@@ -62,7 +63,15 @@ def eval_load_checkpoint(config: cfg.TrainerConfig, pipeline: Pipeline) -> Path:
         load_step = config.load_step
     load_path = config.load_dir / f"step-{load_step:09d}.ckpt"
     assert load_path.exists(), f"Checkpoint {load_path} does not exist"
-    loaded_state = torch.load(load_path, map_location="cpu", weights_only=True)
+    # Prefer safe loading, but fall back for older checkpoints that require full unpickling.
+    try:
+        loaded_state = torch.load(load_path, map_location="cpu", weights_only=True)
+    except (RuntimeError, pickle.UnpicklingError):
+        CONSOLE.print(
+            "[yellow]Secure checkpoint loading failed; falling back to weights_only=False. "
+            "Only do this with checkpoints from trusted sources.[/yellow]"
+        )
+        loaded_state = torch.load(load_path, map_location="cpu", weights_only=False)
     pipeline.load_pipeline(loaded_state["pipeline"])
     CONSOLE.print(f":white_check_mark: Done loading checkpoint from {load_path}")
     return load_path
