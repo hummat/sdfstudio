@@ -149,17 +149,34 @@ class SDFFieldConfig(FieldConfig):
     encoding_type: Literal["hash", "periodic", "tensorf_vm"] = "hash"
     """feature grid encoding type"""
     position_encoding_max_degree: int = 6
-    """positional encoding max degree"""
+    """Positional encoding max degree for spatial inputs."""
     use_diffuse_color: bool = False
-    """whether to use diffuse color as in ref-nerf"""
+    """Enable a Ref-NeRF-style diffuse/specular split.
+
+    Adds a view-independent diffuse head fed from geo features + appearance embedding, while the main
+    color MLP focuses on view-dependent (specular-like) effects. This makes it easier to keep albedo
+    separate from highlights and reduces pressure to encode specular behavior into geometry."""
     use_specular_tint: bool = False
-    """whether to use specular tint as in ref-nerf"""
+    """Enable Ref-NeRF-style specular tint.
+
+    Learns an RGB tint for the specular component so the network can represent colored specular (metals)
+    instead of assuming neutral/white highlights."""
     use_reflections: bool = False
-    """whether to use reflections as in ref-nerf"""
+    """Use reflection directions for view encoding as in Ref-NeRF.
+
+    When enabled, the color MLP sees features derived from both the view direction and its reflection
+    about the surface normal, improving specular highlight placement and reflection-like view dependence."""
     use_n_dot_v: bool = False
-    """whether to use n dot v as in ref-nerf"""
+    """Provide n·v (cosine of view incidence) to the color MLP.
+
+    This gives the network an explicit angle-of-incidence cue, making limb darkening, foreshortening,
+    and Fresnel-like intensity ramps easier to learn."""
     enable_pred_roughness: bool = False
-    """whether to predict roughness"""
+    """Predict a PBR-style roughness in [0, 1] and use it to mix view and reflection encodings.
+
+    With `use_reflections=True`, roughness=0 (specular) relies purely on reflection directions and
+    roughness=1 (diffuse) uses only view directions, giving an interpretable roughness map and a
+    simple roughness-dependent bias on specular sharpness (no full microfacet BRDF)."""
     rgb_padding: float = 0.001
     """Padding added to the RGB outputs"""
     off_axis: bool = False
@@ -528,7 +545,33 @@ class SDFField(Field):
         return occupancy
 
     def get_colors(self, points, directions, gradients, geo_features, camera_indices):
-        """compute colors"""
+        """Compute view-dependent colors with Ref-NeRF-inspired BRDF signals.
+
+        - Diffuse/specular split (`use_diffuse_color`) separates view-independent albedo from
+          view-dependent components.
+        - Specular tint (`use_specular_tint`) lets the model learn colored specular (metals).
+        - Reflection encoding (`use_reflections`) provides reflection-direction features for
+          more accurate highlight and reflection placement.
+        - Roughness (`enable_pred_roughness`) in [0, 1] mixes view and reflection encodings
+          (0 = fully specular / reflection-dir, 1 = fully diffuse / view-dir).
+        - n·v (`use_n_dot_v`) explicitly encodes angle of incidence for Fresnel/foreshortening-
+          like behavior.
+
+        All effects are realized through a learned MLP; this is not a full analytic microfacet
+        BRDF and there is no explicit environment lighting.
+
+        Args:
+            points: Sample positions (unused for shading, reserved for spatial variation).
+            directions: View directions, shape (..., 3).
+            gradients: SDF gradients used to compute normals, shape (..., 3).
+            geo_features: Geometry features from the SDF network.
+            camera_indices: Per-ray camera indices for appearance embedding.
+
+        Returns:
+            If `use_diffuse_color` is False: RGB colors, shape (..., 3).
+            If `use_diffuse_color` is True: tuple (rgb, diffuse, specular, tint),
+                each with shape (..., 3).
+        """
 
         # diffuse color, specular tint, and roughness
         if self.config.use_diffuse_color:
@@ -536,7 +579,7 @@ class SDFField(Field):
         if self.config.use_specular_tint:
             tint = self.sigmoid(self.specular_tint_pred(geo_features.view(-1, self.config.geo_feat_dim)))
         if self.config.enable_pred_roughness:
-            roughness = self.softplus(self.roughness_pred(geo_features.view(-1, self.config.geo_feat_dim)) - 1)
+            roughness = self.sigmoid(self.roughness_pred(geo_features.view(-1, self.config.geo_feat_dim)))
 
         normals = F.normalize(gradients, p=2, dim=-1)
 
@@ -548,11 +591,9 @@ class SDFField(Field):
             d_ref = self.direction_encoding(refdirs)
 
             if self.config.enable_pred_roughness:
-                # map roughness to [0, 1) to mix view and reflection features
-                # smooth surfaces (small roughness) rely more on reflection directions,
-                # rough surfaces rely more on the original view directions.
-                roughness_norm = roughness / (1.0 + roughness)
-                d = d_view * roughness_norm + d_ref * (1.0 - roughness_norm)
+                # roughness in [0, 1]: 0=specular (reflection dir), 1=diffuse (view dir)
+                # directly usable for PBR roughness map export
+                d = d_view * roughness + d_ref * (1.0 - roughness)
             else:
                 # if roughness is not predicted, fall back to a simple average
                 d = 0.5 * (d_view + d_ref)

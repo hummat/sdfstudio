@@ -33,7 +33,7 @@ from sdfstudio.engine.callbacks import (
 )
 from sdfstudio.field_components.field_heads import FieldHeadNames
 from sdfstudio.fields.density_fields import HashMLPDensityField
-from sdfstudio.model_components.losses import interlevel_loss
+from sdfstudio.model_components.losses import distortion_loss, interlevel_loss
 from sdfstudio.model_components.ray_samplers import ProposalNetworkSampler
 from sdfstudio.models.bakedsdf import BakedSDFFactoModel, BakedSDFModelConfig
 from sdfstudio.utils import colormaps
@@ -163,6 +163,12 @@ class BakedAngeloModel(BakedSDFFactoModel):
             metrics_dict["activated_encoding"] = self.field.hash_encoding_mask.mean().item()
             metrics_dict["numerical_gradients_delta"] = self.field.numerical_gradients_delta
             metrics_dict["curvature_loss_multi"] = self.curvature_loss_multi_factor * self.config.curvature_loss_multi
+
+            if self.config.distortion_loss_mult > 0.0:
+                metrics_dict["distortion"] = distortion_loss(
+                    outputs["weights_list"],
+                    outputs["ray_samples_list"],
+                )
 
         return metrics_dict
 

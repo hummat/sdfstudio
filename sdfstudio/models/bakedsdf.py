@@ -33,7 +33,7 @@ from sdfstudio.engine.callbacks import (
 )
 from sdfstudio.field_components.field_heads import FieldHeadNames
 from sdfstudio.fields.density_fields import HashMLPDensityField
-from sdfstudio.model_components.losses import interlevel_loss
+from sdfstudio.model_components.losses import distortion_loss, interlevel_loss
 from sdfstudio.model_components.ray_samplers import ProposalNetworkSampler
 from sdfstudio.models.volsdf import VolSDFModel, VolSDFModelConfig
 from sdfstudio.utils import colormaps
@@ -70,6 +70,8 @@ class BakedSDFModelConfig(VolSDFModelConfig):
     """Arguments for the proposal density fields."""
     interlevel_loss_mult: float = 1.0
     """Proposal loss multiplier."""
+    distortion_loss_mult: float = 0.0
+    """Distortion loss multiplier (Mip-NeRF 360 style)."""
     use_proposal_weight_anneal: bool = True
     """Whether to use proposal weight annealing."""
     proposal_weights_anneal_slope: float = 10.0
@@ -301,12 +303,21 @@ class BakedSDFFactoModel(VolSDFModel):
                 outputs["weights_list"], outputs["ray_samples_list"]
             )
 
+            if self.config.distortion_loss_mult > 0.0:
+                assert metrics_dict is not None and "distortion" in metrics_dict
+                loss_dict["distortion_loss"] = self.config.distortion_loss_mult * metrics_dict["distortion"]
+
         return loss_dict
 
     def get_image_metrics_and_images(
         self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
     ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
         metrics_dict, images_dict = super().get_image_metrics_and_images(outputs, batch)
+        if self.training and self.config.distortion_loss_mult > 0.0:
+            metrics_dict["distortion"] = distortion_loss(
+                outputs["weights_list"],
+                outputs["ray_samples_list"],
+            )
         for i in range(self.config.num_proposal_iterations):
             key = f"prop_depth_{i}"
             prop_depth_i = colormaps.apply_depth_colormap(

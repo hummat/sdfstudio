@@ -195,6 +195,112 @@ The color network is an MLPs, similar to the geometry MLP. It can be config usin
 ns-train volsdf --pipeline.model.sdf-field.num-layers-color 2 --pipeline.model.sdf-field.hidden-dim-color 512
 ```
 
+## Improving Geometry Under Adverse Conditions
+
+This section summarizes practical knobs that help when geometry quality is poor in challenging scenes (weak texture,
+glossy materials, noisy poses). It is intentionally high level; see method papers for theory.
+
+### 1. Fix Poses Before Anything Else
+
+If Structure-from-Motion (SfM) poses are wrong, geometry will be wrong regardless of BRDF settings.
+
+- Use a stronger SfM pipeline (e.g. exhaustive matching, Glomap, HLoc, VGGSfM) appropriate for your data.
+- Where available, enable camera optimization in the SDFStudio config to refine poses during training, e.g.:
+
+```bash
+ns-train neus sdfstudio-data --data YOUR_DATA \
+  --pipeline.datamanager.camera-optimizer.mode SO3xR3 \
+  --pipeline.datamanager.camera-optimizer.optimizer.lr 1e-4 \
+  --pipeline.datamanager.camera-optimizer.scheduler.lr-final 1e-5 \
+  --pipeline.datamanager.camera-optimizer.scheduler.max-steps 5000
+```
+
+### 2. Robust BRDF Settings for SDF Fields
+
+For SDF-based methods (`neus`, `neus-facto`, `volsdf`, `geo-neus`, etc.), the following `SDFFieldConfig` flags often
+improve geometry on reflective or weakly textured surfaces by giving the color MLP better cues:
+
+- **Baseline for most scenes (even mostly diffuse)**:
+
+```bash
+--pipeline.model.sdf-field.use-diffuse-color True
+--pipeline.model.sdf-field.use-n-dot-v True
+```
+
+- **Scenes with clear gloss / specular highlights**:
+
+```bash
+--pipeline.model.sdf-field.use-diffuse-color True
+--pipeline.model.sdf-field.use-specular-tint True
+--pipeline.model.sdf-field.use-reflections True
+--pipeline.model.sdf-field.use-n-dot-v True
+```
+
+- **Very shiny / metallic objects (strong mirror-like reflections)**:
+
+```bash
+--pipeline.model.sdf-field.enable-pred-roughness True
+```
+
+Notes:
+
+- These flags only affect the *appearance* model; SDF geometry is still learned from color + regularizers, but the
+  gradient signal is often more geometry-friendly.
+- `use-n-dot-v` is cheap and generally safe to keep enabled whenever you care about good geometry.
+
+### 3. Turn Up Existing Geometry Priors
+
+Before inventing new losses, consider using the priors that already exist in SDFStudio:
+
+- **Patch warping / Geo-NeuS-style multi-view consistency**  
+  For methods that support it (e.g. `geo-neus`, `geo-volsdf`), increase `patch_warp_loss_mult` and use a moderate
+  patch size / top-k:
+
+  ```bash
+  --pipeline.model.patch-warp-loss-mult 0.1 \
+  --pipeline.model.patch-size 11 \
+  --pipeline.model.topk 4
+  ```
+
+- **Monocular priors (MonoSDF-style)**  
+  When you have precomputed mono normals / depth, enable `mono_normal_loss_mult` and/or `mono_depth_loss_mult` to
+  stabilize large, weakly textured regions.
+
+- **Sparse SfM point constraints**  
+  For scenes with reliable sparse points, use `sparse_points_sdf_loss_mult > 0` so the SDF is directly constrained at
+  those locations.
+
+Start with small multipliers; over-regularization can flatten real detail.
+
+### 4. Orientation and Distortion Losses
+
+Two additional losses can be useful to stabilize geometry under adverse conditions:
+
+- **Orientation loss (Ref-NeRF-style)**  
+  Encourages visible normals to face towards the camera. Available for:
+  - `nerfacto` (via `orientation_loss_mult` in `NerfactoModelConfig`).
+  - All SDF models inheriting `SurfaceModel` (via `orientation_loss_mult` in `SurfaceModelConfig`).
+
+  This is most helpful when normals are noisy or flipped in low-texture regions.
+
+- **Distortion loss (Mip-NeRF 360-style)**  
+  Encourages compact, non-overlapping depth distributions along each ray. Available for:
+  - Proposal-based SDF methods (`neus-facto`, `bakedsdf`, `bakedangelo`) via `distortion_loss_mult` on
+    `weights_list` / `ray_samples_list`.
+  - Default `neus` via `distortion_loss_mult` and `nerfstudio_distortion_loss` on the main sampling hierarchy.
+
+  A small `distortion_loss_mult` can reduce “double walls” and smeared geometry, especially in cluttered or
+  unbounded scenes.
+
+### 5. When It’s Still Not Enough
+
+If geometry remains poor after the above:
+
+- Adjust the **capture setup**: matte spray or washable paint for transparent/metallic objects, add texture in the
+  background, use higher-quality images (less motion blur, better exposure).
+- Only then consider **heavier models** (explicit lighting / environment estimation, microfacet BRDF heads, refractive
+  components), which typically require research-level effort and are outside the scope of SDFStudio’s default methods.
+
 # Supervision
 
 ## RGB Loss
@@ -216,6 +322,43 @@ The Eikonal loss is used for all SDF-based methods to regularize the SDF field t
 ```
 --pipeline.model.eikonal-loss-mult 0.01
 ```
+
+## Orientation Loss
+
+The orientation loss (proposed in Ref-NeRF) encourages surface normals to roughly face the camera where there is
+non-zero density. It is available in:
+
+- `nerfacto` via `orientation_loss_mult` and predicted normals.
+- All SDF models that use `SurfaceModel` via `orientation_loss_mult` in `SurfaceModelConfig`, using SDF-derived normals.
+
+Example:
+
+```bash
+ns-train neus sdfstudio-data --data YOUR_DATA \
+  --pipeline.model.orientation-loss-mult 1e-4
+```
+
+Use a small multiplier; this is a soft prior, not a hard constraint.
+
+## Distortion Loss
+
+The distortion loss (Mip-NeRF 360 style) penalizes stretched or multi-modal depth distributions along a ray. It helps
+avoid “double walls” and smeared geometry, especially in unbounded or cluttered scenes.
+
+It is available for:
+
+- Proposal-based SDF methods such as `neus-facto`, `bakedsdf`, and `bakedangelo` via `distortion_loss_mult`, operating
+  on `weights_list` / `ray_samples_list`.
+- Default `neus` via `distortion_loss_mult`, using `nerfstudio_distortion_loss` on the main sampling hierarchy.
+
+Example:
+
+```bash
+ns-train neus-facto sdfstudio-data --data YOUR_DATA \
+  --pipeline.model.distortion-loss-mult 0.002
+```
+
+As with other regularizers, start with a small value and increase only if you see clear benefits.
 
 ## Smoothness Loss
 
