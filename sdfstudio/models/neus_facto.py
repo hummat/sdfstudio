@@ -34,7 +34,7 @@ from sdfstudio.engine.callbacks import (
 from sdfstudio.field_components.field_heads import FieldHeadNames
 from sdfstudio.models.neus import NeuSModel, NeuSModelConfig
 from sdfstudio.fields.density_fields import HashMLPDensityField
-from sdfstudio.model_components.losses import interlevel_loss, interlevel_loss_zip
+from sdfstudio.model_components.losses import distortion_loss, interlevel_loss, interlevel_loss_zip
 from sdfstudio.model_components.ray_samplers import ProposalNetworkSampler
 from sdfstudio.utils import colormaps
 
@@ -70,6 +70,8 @@ class NeuSFactoModelConfig(NeuSModelConfig):
     """Arguments for the proposal density fields."""
     interlevel_loss_mult: float = 1.0
     """Proposal loss multiplier."""
+    distortion_loss_mult: float = 0.0
+    """Distortion loss multiplier (Mip-NeRF 360 style)."""
     use_proposal_weight_anneal: bool = True
     """Whether to use proposal weight annealing."""
     proposal_weights_anneal_slope: float = 10.0
@@ -319,6 +321,11 @@ class NeuSFactoModel(NeuSModel):
                 outputs["weights_list"], outputs["ray_samples_list"]
             )
 
+            # distortion loss as in mip-NeRF 360 / nerfacto
+            if self.config.distortion_loss_mult > 0.0:
+                assert metrics_dict is not None and "distortion" in metrics_dict
+                loss_dict["distortion_loss"] = self.config.distortion_loss_mult * metrics_dict["distortion"]
+
         # curvature loss
         if self.training and self.config.curvature_loss_multi > 0.0:
             delta = self.field.numerical_gradients_delta
@@ -340,10 +347,17 @@ class NeuSFactoModel(NeuSModel):
         metrics_dict = super().get_metrics_dict(outputs, batch)
 
         if self.training:
-            # training statics
+            # training statistics
             metrics_dict["activated_encoding"] = self.field.hash_encoding_mask.mean().item()
             metrics_dict["numerical_gradients_delta"] = self.field.numerical_gradients_delta
             metrics_dict["curvature_loss_multi"] = self.curvature_loss_multi_factor * self.config.curvature_loss_multi
+
+            # distortion loss over proposal + main samples
+            if self.config.distortion_loss_mult > 0.0:
+                metrics_dict["distortion"] = distortion_loss(
+                    outputs["weights_list"],
+                    outputs["ray_samples_list"],
+                )
 
         return metrics_dict
 

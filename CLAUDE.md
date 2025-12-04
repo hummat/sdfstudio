@@ -6,25 +6,74 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SDFStudio is a unified framework for neural implicit surface reconstruction built on top of nerfstudio. It implements multiple SDF-based reconstruction methods (UniSurf, VolSDF, NeuS, MonoSDF, etc.) in a modular architecture that makes it easy to transfer ideas between methods.
 
+## Project Structure
+
+```
+sdfstudio/
+├── sdfstudio/           # Core library
+│   ├── cameras/         # Camera models, optimizers, ray generation
+│   ├── configs/         # Method configs and base configuration
+│   ├── data/            # Data pipeline (dataparsers, datamanagers, datasets)
+│   ├── engine/          # Training loop, optimizers, schedulers, callbacks
+│   ├── exporter/        # Mesh and texture export utilities
+│   ├── fields/          # Neural field implementations (SDF, density, etc.)
+│   ├── field_components/# Encodings, MLPs, embeddings, activations
+│   ├── model_components/# Losses, renderers, ray samplers, colliders
+│   ├── models/          # Method implementations (NeuS, VolSDF, etc.)
+│   ├── pipelines/       # Training pipeline orchestration
+│   ├── process_data/    # Dataset preprocessing converters
+│   ├── utils/           # General utilities (math, marching cubes, etc.)
+│   └── viewer/          # Web viewer (Tornado backend + React frontend)
+├── scripts/             # CLI entry points
+├── tests/               # Unit tests (mirrors sdfstudio/ structure)
+├── docs/                # Sphinx documentation
+├── omnidata/            # Vendored external tools (do not modify)
+└── colab/               # Google Colab notebooks (do not modify)
+```
+
 ## Development Commands
 
 ### Installation
 
 ```bash
-# Create conda environment
-conda create --name sdfstudio -y python=3.8
+# Create conda environment (Python 3.10+ required)
+conda create --name sdfstudio -y python=3.10
 conda activate sdfstudio
 
-# Install PyTorch with CUDA 11.3
-pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html
+# Install PyTorch with CUDA (check pytorch.org for current versions)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# Install tiny-cuda-nn (optional, for hash grid encoding)
 pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
 
 # Install SDFStudio in editable mode
 pip install -e .
 
+# Install with dev dependencies
+pip install -e .[dev]
+
 # Install CLI tab completion
-ns-install-cli
+sdf-install-cli
 ```
+
+### CLI Commands
+
+All commands use the `sdf-` prefix:
+
+| Command | Purpose |
+|---------|---------|
+| `sdf-train` | Train a model |
+| `sdf-eval` | Evaluate a trained model |
+| `sdf-render` | Render novel views |
+| `sdf-export` | Export model to various formats |
+| `sdf-extract-mesh` | Extract mesh from SDF |
+| `sdf-render-mesh` | Render extracted mesh |
+| `sdf-texture-mesh` | Apply texture to mesh |
+| `sdf-process-data` | Preprocess raw data to SDFStudio format |
+| `sdf-download-data` | Download demo datasets |
+| `sdf-dev-test` | Run full dev testing pipeline (lint, format, tests, docs) |
+| `sdf-bridge-server` | Start viewer backend server |
+| `sdf-install-cli` | Install CLI tab completion |
 
 ### Testing
 
@@ -54,42 +103,90 @@ ruff check .
 # Type checking with pyright
 pyright sdfstudio
 
-# Legacy linting (if needed)
-black sdfstudio/ scripts/ tests/
-pylint sdfstudio tests scripts
+# Full dev test suite (lint, format, tests, docs)
+sdf-dev-test
 ```
 
 ### Training
 
 ```bash
 # Basic training command structure:
-# ns-train <method> [method-args] <dataparser> --data <path> [dataparser-args]
+# sdf-train <method> [method-args] <dataparser> --data <path> [dataparser-args]
 
 # Train NeuS-facto on DTU dataset
-ns-train neus-facto --pipeline.model.sdf-field.inside-outside False --vis viewer sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
+sdf-train neus-facto --pipeline.model.sdf-field.inside-outside False --vis viewer sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
 
 # Resume from checkpoint
-ns-train neus-facto --trainer.load-dir outputs/experiment-name/neus-facto/XXX/sdfstudio_models sdfstudio-data --data data/path
+sdf-train neus-facto --trainer.load-dir outputs/experiment-name/neus-facto/XXX/sdfstudio_models sdfstudio-data --data data/path
 
 # View without training
-ns-train neus-facto --viewer.start-train False --trainer.load-dir outputs/.../sdfstudio_models sdfstudio-data --data data/path
+sdf-train neus-facto --viewer.start-train False --trainer.load-dir outputs/.../sdfstudio_models sdfstudio-data --data data/path
+
+# Download demo data
+sdf-download-data sdfstudio --dataset-name sdfstudio-demo-data
 ```
 
 ### Mesh Extraction and Rendering
 
 ```bash
 # Extract mesh from trained model
-ns-extract-mesh --load-config outputs/experiment-name/neus-facto/XXX/config.yml --output-path meshes/output.ply
+sdf-extract-mesh --load-config outputs/experiment-name/neus-facto/XXX/config.yml --output-path meshes/output.ply
 
 # Render mesh to video
-ns-render-mesh --meshfile meshes/output.ply --traj interpolate --output-path renders/output.mp4 sdfstudio-data --data data/path
+sdf-render-mesh --meshfile meshes/output.ply --traj interpolate --output-path renders/output.mp4 sdfstudio-data --data data/path
 ```
+
+## Method Registry
+
+All 26 methods registered in `sdfstudio/configs/method_configs.py`:
+
+### SDF-Based Methods (18)
+
+| Method | Description |
+|--------|-------------|
+| `neus-facto` | **Recommended** - NeuS with proposal networks, fast training |
+| `neus-facto-bigmlp` | NeuS-facto with larger MLP |
+| `neus-facto-angelo` | NeuS-facto with Neuralangelo-style progressive training |
+| `neus` | Vanilla NeuS |
+| `neus-acc` | NeuS with occupancy grid acceleration |
+| `volsdf` | Volume rendering with SDF |
+| `geo-volsdf` | VolSDF + patch warping loss |
+| `geo-neus` | NeuS + patch warping loss |
+| `unisurf` | UniSurf surface extraction |
+| `mono-unisurf` | UniSurf + monocular depth/normal priors |
+| `geo-unisurf` | UniSurf + patch warping loss |
+| `monosdf` | MonoSDF with monocular priors |
+| `mono-neus` | NeuS + monocular priors |
+| `bakedsdf` | BakedSDF with multi-res hash grids |
+| `bakedsdf-mlp` | BakedSDF with large MLPs |
+| `neuralangelo` | Neuralangelo with numerical gradients |
+| `bakedangelo` | BakedSDF + Neuralangelo |
+| `neusW` | NeuralReconW for heritage/outdoor scenes |
+| `dto` | DTO occupancy field |
+
+### NeRF-Based Methods (8)
+
+| Method | Description |
+|--------|-------------|
+| `nerfacto` | Recommended general NeRF method |
+| `mipnerf` | Mip-NeRF |
+| `vanilla-nerf` | Original NeRF |
+| `semantic-nerfw` | Semantic NeRF + NeRF-in-the-wild |
+| `tensorf` | TensoRF |
+| `dnerf` | Dynamic NeRF |
+| `phototourism` | Nerfacto on PhotoTourism data |
 
 ## Architecture
 
 ### Core Components
 
 SDFStudio follows a hierarchical architecture with clear separation of concerns:
+
+**Cameras** (`sdfstudio/cameras/`)
+- Camera models, intrinsics, and extrinsics
+- Camera optimizers for pose refinement
+- Ray generation and camera paths
+- Lie group utilities for SE(3) operations
 
 **Pipeline** (`sdfstudio/pipelines/`)
 - Orchestrates the entire training/inference workflow
@@ -100,27 +197,32 @@ SDFStudio follows a hierarchical architecture with clear separation of concerns:
 **DataManager** (`sdfstudio/data/datamanagers/`)
 - Manages dataset loading and batching
 - Provides train/eval data iterators
-- Types: VanillaDataManager, FlexibleDataManager, SemanticDataManager, VariableResDataManager
+- Types: VanillaDataManager, SemanticDataManager, VariableResDataManager
+- `DataManager.next_train` returns `(RayBundle, batch)`; batch may include extras (`depth`, `normal`, `sensor_depth`, `pairs`, `sparse_sfm_points`)
 
 **DataParser** (`sdfstudio/data/dataparsers/`)
 - Parses different dataset formats into SDFStudio format
 - Handles camera poses, intrinsics, and scene metadata
-- Available parsers: SDFStudioDataParser, BlenderDataParser, NerfstudioDataParser, HeritageDataParser, etc.
+- Available parsers: SDFStudioDataParser, BlenderDataParser, NerfstudioDataParser, HeritageDataParser, MonoSDFDataParser, Record3DDataParser, etc.
+- Flow: Dataparser → `DataparserOutputs` → `InputDataset`/`GeneralizedDataset`
 
 **Model** (`sdfstudio/models/`)
 - Implements specific reconstruction methods
 - Base classes: `Model` → `SurfaceModel` → specific implementations (NeuSModel, VolSDFModel, etc.)
 - Handles forward pass, loss computation, and metric calculation
-- Key models: neus.py, volsdf.py, unisurf.py, monosdf.py, neus_facto.py, neus_acc.py, neuralangelo.py, bakedsdf.py
+- Models combine fields, samplers (`ray_samplers`), colliders, and renderers
 
 **Field** (`sdfstudio/fields/`)
 - Neural network implementations for geometry and appearance
 - `SDFField`: Core SDF representation with various encodings (MLP, hash grid, tri-plane)
+- Also: DensityField, NerfactoField, SemanticNeRFField, TensoRFField, VanillaNeRFField
 - Outputs: SDF values, normals, geometry features, RGB colors
 
 **Field Components** (`sdfstudio/field_components/`)
 - Reusable building blocks: encodings, MLPs, spatial distortions
 - Supports positional encoding, hash encoding (iNGP), tri-plane encoding
+- Embeddings for appearance and temporal variations
+- Field heads for density, SDF, color outputs
 
 **Model Components** (`sdfstudio/model_components/`)
 - Shared utilities: losses, renderers, ray samplers, scene colliders
@@ -131,38 +233,37 @@ SDFStudio follows a hierarchical architecture with clear separation of concerns:
 - Training loop, optimizers, schedulers, callbacks
 - Supports multiple optimizers (Adam, RAdam, AdamW) and custom schedulers
 
-### Method-Specific Architectures
+**Process Data** (`sdfstudio/process_data/`)
+- Dataset conversion utilities for COLMAP, Record3D, Polycam, Metashape, RealityCapture, ODM, Insta360, etc.
+- Equirectangular image processing
+- HLOC (Hierarchical Localization) utilities
 
-**NeuS-facto** (Recommended for most use cases)
-- Uses proposal network from mip-NeRF360 for efficient sampling
-- Significantly faster training than vanilla NeuS
-- Hybrid representation: hash grid + small MLP
+**Exporter** (`sdfstudio/exporter/`)
+- Mesh export utilities
+- Texture baking and UV mapping
+- TSDF fusion utilities
 
-**NeuS-acc**
-- Maintains occupancy grid for empty space skipping
-- Speeds up training by reducing number of samples per ray
+**Viewer** (`sdfstudio/viewer/`)
+- Web-based visualization (Tornado server backend + React/TypeScript frontend)
+- Enabled with `--vis viewer`; for CI/tests use `--vis wandb` or `--vis tensorboard`
 
-**MonoSDF/Mono-NeuS/Mono-UniSurf**
-- Incorporates monocular depth and normal priors
-- Particularly useful for indoor scenes and sparse views
-- Requires preprocessing to extract monocular cues
+### End-to-End Training Flow
 
-**BakedSDF/BakedAngelo/Neuralangelo**
-- Focus on high-quality reconstruction
-- Neuralangelo: numerical gradients + progressive training
-- BakedSDF: hybrid representation for faster rendering
-
-**NeuralReconW**
-- Designed for heritage/outdoor scenes
-- Uses sparse point clouds from COLMAP for occupancy grid
-- Voxel-surface guided sampling with SDF caching
+```
+CLI (scripts/train.py)
+  → Config (from method_configs)
+    → Trainer
+      → Pipeline
+        → DataManager + Model
+          → Fields, Samplers, Colliders, Renderers
+```
 
 ### Configuration System
 
 All models/pipelines/datamanagers are configured via dataclasses using `tyro` for CLI parsing:
 - Method configs defined in `sdfstudio/configs/method_configs.py`
 - Hierarchical config structure: `Config` contains `TrainerConfig`, `PipelineConfig`, `DataManagerConfig`, `ModelConfig`
-- CLI arguments cascade: `ns-train <method> [method-args] <dataparser> [dataparser-args]`
+- CLI arguments cascade: `sdf-train <method> [method-args] <dataparser> [dataparser-args]`
 - **Important**: Order matters! Arguments apply to the preceding subcommand
 
 ### Key Design Patterns
@@ -205,16 +306,40 @@ Configure loss weights via CLI:
 - Multi-view Patch Warp: `--pipeline.model.patch-warp-loss-mult 0.1 --pipeline.model.topk 4`
 - Sensor Depth: `--pipeline.model.sensor-depth-l1-loss-mult 0.1` (for RGB-D data)
 
-## Type Annotations
+## Coding Style & Naming
 
-Recent updates use builtin generics (PEP 585):
-- Use `list[T]` instead of `List[T]`
-- Use `dict[K, V]` instead of `Dict[K, V]`
-- Use `tuple[...]` instead of `Tuple[...]`
-- Requires Python 3.10+ (see pyproject.toml)
+- Python 3.10+, 4-space indentation, type hints for public APIs
+- Formatting: `black` (line length 120) + `ruff` + `pylint` + `pyright` (configured in `pyproject.toml`)
+- Use builtin generics (PEP 585): `list[T]`, `dict[K, V]`, `tuple[...]` instead of `List`, `Dict`, `Tuple`
+- Prefer dataclasses for configs; use `config_utils.to_immutable_dict` for default dicts
+- Keep names descriptive (`VolSDFModel`, `SDFFieldConfig`); avoid unnecessary abbreviations
 
-## Testing Notes
+## Adding New Methods
 
+1. Create `*ModelConfig` + `*Model` in `sdfstudio/models/`
+2. Register a `Config` entry in `method_configs.py` with trainer, pipeline, and optimizers
+3. Decide placement: data (dataparser/datamanager), geometry (field/sampler), or training (callbacks/losses)
+4. Update docs in `docs/sdfstudio-methods.md` if it affects user-facing configs
+5. Add at least a smoke test similar to `tests/test_train.py`
+
+## Testing Guidelines
+
+- Tests live under `tests/` and follow `test_*.py` naming
+- Mirror the package structure; e.g., new sampler → `tests/model_components/test_<name>.py`
 - Test configuration in `pyproject.toml`: pytest runs with 4 workers, typeguard, coverage enabled
-- Tests located in `tests/` directory mirroring `sdfstudio/` structure
-- Key test: `tests/test_train.py` - validates training setup
+- Ensure `pytest` and `sdf-dev-test` pass before opening a PR
+- For validation, run at least one short training with demo data and a fast method (`neus-facto` or `nerfacto`)
+
+## Commit & PR Guidelines
+
+- Commits are short, imperative summaries, e.g. `Refactor typing annotations` or `Add roughness gating to SDF field`
+- Group related changes; avoid large, unrelated refactors in a single commit
+- PRs should describe the change, motivation, and any API/config differences
+- Link to issues or papers when relevant
+- Include output snippets or screenshots for viewer/visual changes
+
+## Performance Notes
+
+- High-res marching cubes (`sdf-extract-mesh` with `resolution >= 2048`) is GPU/CPU intensive; avoid in unit tests
+- `omnidata/` and dataset conversion scripts are optional; don't assume they run in constrained environments
+- For method reference, see `docs/sdfstudio-methods.md` for mapping from `method_configs` to implementations and papers

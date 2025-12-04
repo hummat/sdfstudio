@@ -46,6 +46,7 @@ from sdfstudio.model_components.losses import (
     SensorDepthLoss,
     compute_scale_and_shift,
     monosdf_normal_loss,
+    orientation_loss,
 )
 from sdfstudio.model_components.patch_warping import PatchWarping
 from sdfstudio.model_components.ray_samplers import LinearDisparitySampler
@@ -126,6 +127,8 @@ class SurfaceModelConfig(ModelConfig):
     """Number of samples outside the bounding sphere for backgound"""
     periodic_tvl_mult: float = 0.0
     """Total variational loss mutliplier"""
+    orientation_loss_mult: float = 0.0
+    """Orientation loss multiplier (encourages visible normals to face the camera)."""
     overwrite_near_far_plane: bool = False
     """whether to use near and far collider from command line"""
     scene_contraction_norm: Literal["inf", "l2"] = "inf"
@@ -358,6 +361,7 @@ class SurfaceModel(Model):
                 "depth": depth,
                 "normal": normal,
                 "weights": weights,
+                "viewdirs": ray_bundle.directions,
                 "ray_points": self.scene_contraction(
                     ray_samples.frustums.get_start_positions()
                 ),  # used for creating visiblity mask
@@ -498,6 +502,21 @@ class SurfaceModel(Model):
             if self.config.periodic_tvl_mult > 0.0:
                 assert self.field.config.encoding_type == "periodic"
                 loss_dict["tvl_loss"] = self.field.encoding.get_total_variation_loss() * self.config.periodic_tvl_mult
+
+            # orientation loss (Ref-NeRF-style), encourages normals to face the camera where density is non-zero
+            if self.config.orientation_loss_mult > 0.0:
+                if "field_outputs" in outputs and "ray_samples" in outputs:
+                    field_outputs = outputs["field_outputs"]
+                    weights = outputs["weights"]
+                    viewdirs = outputs["viewdirs"]
+                    rendered_orientation_loss = orientation_loss(
+                        weights.detach(),
+                        field_outputs[FieldHeadNames.NORMAL],
+                        viewdirs,
+                    )
+                    loss_dict["orientation_loss"] = (
+                        rendered_orientation_loss.mean() * self.config.orientation_loss_mult
+                    )
 
         return loss_dict
 

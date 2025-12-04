@@ -30,6 +30,7 @@ from sdfstudio.engine.callbacks import (
 from sdfstudio.field_components.field_heads import FieldHeadNames
 from sdfstudio.model_components.ray_samplers import NeuSSampler
 from sdfstudio.models.base_surface_model import SurfaceModel, SurfaceModelConfig
+from sdfstudio.model_components.losses import nerfstudio_distortion_loss
 
 
 @dataclass
@@ -47,6 +48,8 @@ class NeuSModelConfig(SurfaceModelConfig):
     """fixed base variance in NeuS sampler, the inv_s will be base * 2 ** iter during upsample"""
     perturb: bool = True
     """use to use perturb for the sampled points"""
+    distortion_loss_mult: float = 0.0
+    """Distortion loss multiplier (Mip-NeRF 360 style, single-level)."""
 
 
 class NeuSModel(SurfaceModel):
@@ -117,4 +120,19 @@ class NeuSModel(SurfaceModel):
             metrics_dict["s_val"] = self.field.deviation_network.get_variance().item()
             metrics_dict["inv_s"] = 1.0 / self.field.deviation_network.get_variance().item()
 
+            if self.config.distortion_loss_mult > 0.0:
+                metrics_dict["distortion"] = nerfstudio_distortion_loss(
+                    outputs["ray_samples"],
+                    weights=outputs["weights"],
+                ).mean()
+
         return metrics_dict
+
+    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict:
+        loss_dict = super().get_loss_dict(outputs, batch, metrics_dict)
+
+        if self.training and self.config.distortion_loss_mult > 0.0:
+            assert metrics_dict is not None and "distortion" in metrics_dict
+            loss_dict["distortion_loss"] = self.config.distortion_loss_mult * metrics_dict["distortion"]
+
+        return loss_dict
