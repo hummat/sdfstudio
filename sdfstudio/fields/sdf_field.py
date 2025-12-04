@@ -129,11 +129,19 @@ class SDFFieldConfig(FieldConfig):
     hidden_dim_color: int = 256
     """Number of hidden dimension of color network"""
     appearance_embedding_dim: int = 32
-    """Dimension of appearance embedding"""
+    """Dimension of the per-image appearance (color) embedding."""
     use_appearance_embedding: bool = False
-    """Dimension of appearance embedding"""
+    """Whether to feed a learned per-image appearance embedding into the color MLP.
+
+    When enabled, each training image gets a small latent code that can absorb exposure / white-balance /
+    lighting variation in the color network instead of pushing it into geometry or BRDF parameters."""
     bias: float = 0.8
-    """sphere size of geometric initializaion"""
+    """Controls the radius/offset of the geometric SDF initialization.
+
+    With ``geometric_init=True``, the last SDF MLP layer is initialized to a sphere whose radius is
+    roughly ``bias`` (up to sign conventions via ``inside_outside``). Smaller values focus the initial
+    field on a tight object-centric region; larger values cover a bigger volume and spread gradients
+    more widely at the start."""
     geometric_init: bool = True
     """Whether to use geometric initialization"""
     inside_outside: bool = True
@@ -145,7 +153,11 @@ class SDFFieldConfig(FieldConfig):
     divide_factor: float = 2.0
     """Normalization factor for multi-resolution grids"""
     beta_init: float = 0.1
-    """Init learnable beta value for transformation of sdf to density"""
+    """Initial softness scale for SDF→density/alpha around the surface.
+
+    Used to initialize both the VolSDF Laplace density ``beta`` and the NeuS variance network
+    (which exponentiates this value internally to produce the global sharpness ``s_val``). Smaller
+    values make the initial transition sharper; larger values make it thicker and more forgiving."""
     encoding_type: Literal["hash", "periodic", "tensorf_vm"] = "hash"
     """feature grid encoding type"""
     position_encoding_max_degree: int = 6

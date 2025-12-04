@@ -195,6 +195,117 @@ The color network is an MLPs, similar to the geometry MLP. It can be config usin
 ns-train volsdf --pipeline.model.sdf-field.num-layers-color 2 --pipeline.model.sdf-field.hidden-dim-color 512
 ```
 
+# Improving Geometry Under Adverse Conditions
+
+This section summarizes practical knobs that help when geometry quality is poor in challenging scenes (weak texture,
+glossy materials, noisy poses). It is intentionally high level; see method papers for theory.
+
+### 1. Fix Poses Before Anything Else
+
+If Structure-from-Motion (SfM) poses are wrong, geometry will be wrong regardless of BRDF settings.
+
+- Use a stronger SfM pipeline (e.g. exhaustive matching, Glomap, HLoc, VGGSfM) appropriate for your data.
+- Where available, enable camera optimization in the SDFStudio config to refine poses during training, e.g.:
+
+```bash
+sdf-train neus sdfstudio-data --data YOUR_DATA \
+  --pipeline.datamanager.camera-optimizer.mode SO3xR3 \
+  --pipeline.datamanager.camera-optimizer.optimizer.lr 1e-4 \
+  --pipeline.datamanager.camera-optimizer.scheduler.lr-final 1e-5 \
+  --pipeline.datamanager.camera-optimizer.scheduler.max-steps 5000
+```
+
+### 2. Robust BRDF Settings for SDF Fields
+
+For SDF-based methods (`neus`, `neus-facto`, `volsdf`, `geo-neus`, etc.), the following `SDFFieldConfig` flags often
+improve geometry on reflective or weakly textured surfaces by giving the color MLP better cues:
+
+- **Baseline for most scenes (even mostly diffuse)**:
+
+```bash
+--pipeline.model.sdf-field.use-diffuse-color True
+--pipeline.model.sdf-field.use-n-dot-v True
+```
+
+- **Scenes with clear gloss / specular highlights**:
+
+```bash
+--pipeline.model.sdf-field.use-diffuse-color True
+--pipeline.model.sdf-field.use-specular-tint True
+--pipeline.model.sdf-field.use-reflections True
+--pipeline.model.sdf-field.use-n-dot-v True
+```
+
+- **Very shiny / metallic objects (strong mirror-like reflections)**:
+
+```bash
+--pipeline.model.sdf-field.enable-pred-roughness True
+```
+
+Notes:
+
+- These flags only affect the *appearance* model; SDF geometry is still learned from color + regularizers, but the
+  gradient signal is often more geometry-friendly.
+- `use-n-dot-v` is cheap and generally safe to keep enabled whenever you care about good geometry.
+- `use-appearance-embedding` (in `SDFFieldConfig` / `SurfaceModelConfig`) adds a small per-image latent to the color
+  network. On real-world captures with varying exposure / white balance / lighting (e.g. handheld smartphones), this
+  usually helps because it lets the model absorb per-view photometric quirks without twisting geometry or BRDF
+  parameters. On clean, studio-lit multi-view photo sets where you primarily care about geometry, you may prefer to
+  disable it so that more of the supervision flows directly into the SDF and normals.
+
+### 3. Turn Up Existing Geometry Priors
+
+Before inventing new losses, consider using the priors that already exist in SDFStudio:
+
+- **Patch warping / Geo-NeuS-style multi-view consistency**  
+  For methods that support it (e.g. `geo-neus`, `geo-volsdf`), increase `patch_warp_loss_mult` and use a moderate
+  patch size / top-k:
+
+  ```bash
+  --pipeline.model.patch-warp-loss-mult 0.1 \
+  --pipeline.model.patch-size 11 \
+  --pipeline.model.topk 4
+  ```
+
+- **Monocular priors (MonoSDF-style)**  
+  When you have precomputed mono normals / depth, enable `mono_normal_loss_mult` and/or `mono_depth_loss_mult` to
+  stabilize large, weakly textured regions.
+
+- **Sparse SfM point constraints**  
+  For scenes with reliable sparse points, use `sparse_points_sdf_loss_mult > 0` so the SDF is directly constrained at
+  those locations.
+
+Start with small multipliers; over-regularization can flatten real detail.
+
+### 4. Orientation and Distortion Losses
+
+Two additional losses can be useful to stabilize geometry under adverse conditions:
+
+- **Orientation loss (Ref-NeRF-style)**  
+  Encourages visible normals to face towards the camera. Available for:
+  - `nerfacto` (via `orientation_loss_mult` in `NerfactoModelConfig`).
+  - All SDF models inheriting `SurfaceModel` (via `orientation_loss_mult` in `SurfaceModelConfig`).
+
+  This is most helpful when normals are noisy or flipped in low-texture regions.
+
+- **Distortion loss (Mip-NeRF 360-style)**  
+  Encourages compact, non-overlapping depth distributions along each ray. Available for:
+  - Proposal-based SDF methods (`neus-facto`, `bakedsdf`, `bakedangelo`) via `distortion_loss_mult` on
+    `weights_list` / `ray_samples_list`.
+  - Default `neus` via `distortion_loss_mult` and `nerfstudio_distortion_loss` on the main sampling hierarchy.
+
+  A small `distortion_loss_mult` can reduce “double walls” and smeared geometry, especially in cluttered or
+  unbounded scenes.
+
+### 5. When It’s Still Not Enough
+
+If geometry remains poor after the above:
+
+- Adjust the **capture setup**: matte spray or washable paint for transparent/metallic objects, add texture in the
+  background, use higher-quality images (less motion blur, better exposure).
+- Only then consider **heavier models** (explicit lighting / environment estimation, microfacet BRDF heads, refractive
+  components), which typically require research-level effort and are outside the scope of SDFStudio’s default methods.
+
 # Supervision
 
 ## RGB Loss
@@ -259,3 +370,21 @@ RGBD data is useful for high-quality surface reconstruction. [Neural RGB-D Surfa
 # truncation is set to 5cm with a rough scale value 0.3 (0.015 = 0.05 * 0.3)
 --pipeline.model.sensor-depth-truncation 0.015 --pipeline.model.sensor-depth-l1-loss-mult 0.1 --pipeline.model.sensor-depth-freespace-loss-mult 10.0 --pipeline.model.sensor-depth-sdf-loss-mult 6000.0
 ```
+
+## NeuS / VolSDF Scale and Sharpness (``bias``, ``beta_init``, ``s_val``)
+
+For SDF-based NeuS/VolSDF-style models, a few global parameters control how “thick” or “sharp” the transition band
+around the surface is:
+
+- ``bias`` (in ``SDFFieldConfig``) controls the radius of the geometric SDF sphere at initialization. With
+  ``geometric-init=True``, the last SDF MLP layer is initialized to a sphere of roughly this radius (up to sign
+  conventions via ``inside-outside``). For object-centric scenes, values around ``0.3–0.5`` are a good starting point;
+  an extremely small ``bias`` can make the initial surface so tiny that gradients are weak.
+- ``beta-init`` seeds both the VolSDF Laplace density scale and the NeuS variance network. Smaller values make the
+  initial SDF→density/alpha mapping sharper, larger values make it thicker and more forgiving. Values in the range
+  ``0.1–0.3`` work well in practice; pushing it much higher makes the initial surface very soft.
+- ``s_val`` (logged as a metric in NeuS/DTO models) is the learned NeuS sharpness scalar; it roughly controls how thin
+  the NeuS transition band around the zero level set is (thickness ≈ ``1 / s_val`` in SDF units). In a healthy run
+  ``s_val`` typically rises from its initialization and then plateaus. Treat it as a diagnostic (is training doing
+  something sensible?) rather than a target — a higher ``s_val`` is only better if the rendered images and geometry
+  also improve.
