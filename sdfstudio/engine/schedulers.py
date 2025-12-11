@@ -210,9 +210,9 @@ class MultiStepWarmupSchedulerConfig(InstantiateConfig):
     warm_up_end: int = 5000
     milestones: List[int] = field(default_factory=lambda: [300000, 400000, 500000])
     gamma: float = 0.33
-     # Optional max_steps is accepted for CLI compatibility, but is not used by
-     # MultiStepWarmupScheduler. Use `milestones` to control decay points.
-     max_steps: int | None = None
+    # Optional max_steps is accepted for CLI compatibility, but is not used by
+    # MultiStepWarmupScheduler. Use `milestones` to control decay points.
+    max_steps: int | None = None
 
     def setup(self, optimizer=None, **kwargs) -> Any:
         """Returns the instantiated object using the config."""
