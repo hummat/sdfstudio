@@ -29,8 +29,9 @@ from sdfstudio.field_components.field_heads import FieldHeadNames
 
 L1Loss = nn.L1Loss
 MSELoss = nn.MSELoss
+HuberLoss = nn.SmoothL1Loss
 
-LOSSES = {"L1": L1Loss, "MSE": MSELoss}
+LOSSES = {"L1": L1Loss, "MSE": MSELoss, "Huber": HuberLoss}
 
 EPS = 1.0e-7
 

@@ -40,6 +40,7 @@ from sdfstudio.fields.vanilla_nerf_field import NeRFField
 from sdfstudio.model_components.losses import (
     S3IM,
     L1Loss,
+    LOSSES,
     MSELoss,
     MultiViewLoss,
     ScaleAndShiftInvariantLoss,
@@ -119,6 +120,8 @@ class SurfaceModelConfig(ModelConfig):
     """S3IM repeat time."""
     s3im_patch_height: int = 32
     """S3IM virtual patch height."""
+    rgb_loss_type: Literal["L1", "MSE", "Huber"] = "L1"
+    """Which per-pixel RGB reconstruction loss to use."""
     sdf_field: SDFFieldConfig = field(default_factory=SDFFieldConfig)
     """Config for SDF Field"""
     background_model: Literal["grid", "mlp", "none"] = "mlp"
@@ -232,7 +235,8 @@ class SurfaceModel(Model):
         )
 
         # losses
-        self.rgb_loss = L1Loss()
+        rgb_loss_cls = LOSSES.get(self.config.rgb_loss_type, L1Loss)
+        self.rgb_loss = rgb_loss_cls()
         self.s3im_loss = S3IM(
             s3im_kernel_size=self.config.s3im_kernel_size,
             s3im_stride=self.config.s3im_stride,

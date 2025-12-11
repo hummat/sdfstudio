@@ -38,8 +38,12 @@ class NeuS2ModelConfig(NeuralangeloModelConfig):
 
     _target: Type = field(default_factory=lambda: NeuS2Model)
 
-    # Encourage analytic gradients by default.
+    # Defaults for a NeuS2-style run:
+    # - analytic gradients only (no numerical-gradients schedule)
+    # - same eikonal/fg-mask defaults as NeuS
+    # - no explicit curvature loss unless enabled via CLI.
     enable_numerical_gradients_schedule: bool = False
+    curvature_loss_multi: float = 0.0
 
 
 class NeuS2Model(NeuralangeloModel):

@@ -50,6 +50,8 @@ class NeuSModelConfig(SurfaceModelConfig):
     """use to use perturb for the sampled points"""
     distortion_loss_mult: float = 0.0
     """Distortion loss multiplier (Mip-NeRF 360 style, single-level)."""
+    anneal_end: int = 50000
+    """Number of iterations for NeuS cos-anneal schedule. Set to 0 to disable (NeuS2-style)."""
 
 
 class NeuSModel(SurfaceModel):
@@ -73,7 +75,7 @@ class NeuSModel(SurfaceModel):
             base_variance=self.config.base_variance,
         )
 
-        self.anneal_end = 50000
+        self.anneal_end = self.config.anneal_end
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes

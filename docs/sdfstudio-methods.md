@@ -311,6 +311,31 @@ If geometry remains poor after the above:
 
 # Supervision
 
+## Loss Overview
+
+The table below summarizes the most common scalar **losses** used across methods. Each entry corresponds to a key in
+`loss_dict` and usually shows up in logs as `Train Loss Dict/<name>`.
+
+| Loss / log key(s) | Purpose | Main config knobs |
+| --- | --- | --- |
+| `rgb_loss`, `rgb_loss_coarse`, `rgb_loss_fine`, `orgb_loss` | Photometric data term between rendered and ground‑truth RGB (DTO uses `orgb_*`). | Core objective; always enabled. |
+| `eikonal_loss` | Enforces SDF behaviour by penalizing `(‖∇SDF‖−1)²` on sampled points. | `--pipeline.model.eikonal-loss-mult` (SDF methods only). |
+| `curvature_loss` | Penalizes SDF curvature (second derivatives) to suppress wiggly, high‑frequency surfaces. | `--pipeline.model.curvature-loss-multi`, plus schedules in NeuS‑facto / Neuralangelo configs. |
+| `distortion_loss` | Mip‑NeRF‑style penalty on stretched / multi‑modal depth distributions along a ray. | `--pipeline.model.distortion-loss-mult`. |
+| `s3im_loss` | Patch‑level perceptual / structural loss on RGB (S3IM). | `--pipeline.model.s3im-loss-mult`. |
+| `normal_smoothness_loss` | Encourages neighbouring normals to be similar (UniSurf / DTO smoothness). | `--pipeline.model.smooth-loss-multi` (UniSurf / DTO). |
+| `orientation_loss` | Ref‑NeRF prior that encourages visible normals to roughly face the camera. | `--pipeline.model.orientation-loss-mult`. |
+| `fg_mask_loss`, `sky_loss`, `osky_loss` | Aligns accumulated opacity with foreground / sky masks. | `--pipeline.model.fg-mask-loss-mult` (and fixed multipliers in DTO / NeuS‑Acc). |
+| `depth_loss` | MonoSDF scale‑and‑shift‑invariant monocular depth consistency. | `--pipeline.model.mono-depth-loss-mult`. |
+| `normal_loss` | MonoSDF monocular normal consistency. | `--pipeline.model.mono-normal-loss-mult`. |
+| `patch_loss` | Geo‑NeuS multi‑view photometric consistency over warped patches (NCC). | `--pipeline.model.patch-warp-loss-mult`, `--pipeline.model.patch-size`, `--pipeline.model.topk`. |
+| `sensor_l1_loss`, `sensor_freespace_loss`, `sensor_sdf_loss` | RGB‑D supervision: L1 depth, free‑space loss, and truncated SDF loss from sensor depth. | `--pipeline.model.sensor-depth-*` flags. |
+| `sparse_sfm_points_sdf_loss` | Constrains SDF to be near zero at sparse COLMAP points. | `--pipeline.model.sparse-points-sdf-loss-mult`. |
+| `tvl_loss` | Total‑variation regularizer on periodic feature volumes. | `--pipeline.model.periodic-tvl-mult`. |
+
+Use this table to quickly map WandB/TensorBoard curves back to their role and the corresponding CLI flags. The
+subsections below provide more detailed explanations and example commands.
+
 ## RGB Loss
 
 We use the L1 loss for the RGB loss to supervise the volume rendered color at each ray. This is the default for all models.
@@ -428,3 +453,44 @@ around the surface is:
   ``s_val`` typically rises from its initialization and then plateaus. Treat it as a diagnostic (is training doing
   something sensible?) rather than a target — a higher ``s_val`` is only better if the rendered images and geometry
   also improve.
+
+# Metrics
+
+During training and evaluation, SDFStudio logs several scalar **metrics** alongside the losses. They are populated via
+`metrics_dict` / `get_image_metrics_and_images` and typically appear as `Train Metrics Dict/<name>` and
+`Eval Metrics Dict/<name>`.
+
+## Image Quality Metrics
+
+These measure agreement between rendered images and ground truth but are not added directly to the optimization loss.
+
+| Metric / log key(s) | Role | Interpretation |
+| --- | --- | --- |
+| `psnr`, `opsnr` | Peak signal‑to‑noise ratio between rendered and ground‑truth RGB (`opsnr` for DTO occupancy RGB). | Higher is better. In a healthy run PSNR increases and then plateaus; further training past the plateau has diminishing returns. |
+| `ssim` | Structural Similarity Index between rendered and ground‑truth images. | In `[0,1]`; closer to 1 is better and more sensitive to structural artefacts than PSNR. |
+| `lpips`, `olpips` | Learned Perceptual Image Patch Similarity (`olpips` for DTO occupancy RGB). | Lower is better. Complements PSNR/SSIM, especially in textured or glossy scenes. |
+
+Prefer PSNR / SSIM / LPIPS over raw training losses when comparing methods or hyperparameters.
+
+## NeuS / VolSDF / DTO Internal Scalars
+
+NeuS‑ and VolSDF‑style methods expose additional scalars that help diagnose whether the SDF and sampling behave
+sensibly.
+
+| Metric / log key(s) | Role | Interpretation / healthy trend |
+| --- | --- | --- |
+| `s_val` | NeuS / DTO sharpness scalar from the deviation network. | Approximate inverse thickness of the NeuS transition band; should rise from its initialization and then plateau. See the scale/sharpness section above. |
+| `inv_s` | Reciprocal of `s_val` (transition‑band thickness). | Mirrors `s_val`: typically decays quickly and then flattens at a small positive value. |
+| `curvature_loss_multi` | Effective curvature‑loss multiplier after scheduling. | Starts near zero, warms up, and may slowly decay. Explains trends in `curvature_loss`. |
+| `numerical_gradients_delta` | Finite‑difference step size used for numerical gradients / curvature. | Scheduled to decrease over training: larger early (robust gradients), smaller later (sharper detail). |
+| `activated_encoding` | Mean of the hash‑encoding mask ∈ `[0,1]` (fraction of active grid features). | With progressive hash encoding enabled it should step up as more levels are activated; a flat line means the schedule has finished or is disabled. |
+| `distortion` | Raw distortion metric backing `distortion_loss`. | If `distortion_loss` is enabled but `distortion` remains very high, ray sampling is still multi‑modal or smeared. |
+| `delta` | UniSurf sampler band width (`sampler.delta`). | Shrinks as training focuses more tightly around the surface; large, non‑decreasing values indicate difficulty localizing the surface. |
+| `beta`, `alpha` | VolSDF / DTO Laplace density scale (`beta`) and its inverse (`alpha = 1 / beta`). | Control how “soft” the SDF→density mapping is. Very large `beta` means a thick transition band; extremely small `beta` can make training brittle. |
+| `eikonal_loss_mult` | Current eikonal‑loss multiplier (for BakedSDF schedules). | Grows from `eikonal_loss_mult_start` to `*_end`; distinguishes real eikonal spikes from changes in weighting. |
+
+In practice:
+
+- Use `psnr` / `ssim` / `lpips` together with qualitative renders to decide whether a run is “good”.
+-, When geometry looks noisy despite good image metrics, inspect `eikonal_loss`, `curvature_loss`, `distortion_loss`
+  and their associated metrics above before inventing new losses.
