@@ -18,25 +18,25 @@ The table below summarizes all methods exposed via `sdf-train` / `method_configs
 
 | Method | Code (primary) | Paper / Project |
 | --- | --- | --- |
-| `bakedangelo` | `sdfstudio/models/bakedangelo.py` | [BakedSDF](https://bakedsdf.github.io/) + [Neuralangelo](https://research.nvidia.com/labs/dir/neuralangelo/) |
-| `neuralangelo` | `sdfstudio/models/neuralangelo.py` | [Neuralangelo](https://research.nvidia.com/labs/dir/neuralangelo/) |
+| `bakedangelo` | `sdfstudio/models/bakedangelo.py` | [BakedSDF](https://arxiv.org/abs/2302.14859) + [Neuralangelo](https://arxiv.org/abs/2306.03092) |
+| `neuralangelo` | `sdfstudio/models/neuralangelo.py` | [Neuralangelo](https://arxiv.org/abs/2306.03092) |
 | `neus2` | `sdfstudio/models/neus2.py` | NeuS2-style: NeuS with hash grids, progressive hash/curvature schedules, and analytic 2nd-order curvature via tcnn double backward |
-| `bakedsdf` | `sdfstudio/models/bakedsdf.py` | [BakedSDF](https://bakedsdf.github.io/) |
+| `bakedsdf` | `sdfstudio/models/bakedsdf.py` | [BakedSDF](https://arxiv.org/abs/2302.14859) |
 | `bakedsdf-mlp` | `sdfstudio/models/bakedsdf.py` | BakedSDF large-MLP variant (no separate paper) |
 | `neus-facto-angelo` | `sdfstudio/models/neus_facto.py` | NeuS-facto + Neuralangelo-style schedules (no dedicated paper) |
 | `neus-facto` | `sdfstudio/models/neus_facto.py` | NeuS with Nerfacto / mip-NeRF360-style proposal sampling (no dedicated paper) |
 | `neus-facto-bigmlp` | `sdfstudio/models/neus_facto.py` | Large-MLP NeuS-facto variant (no dedicated paper) |
-| `geo-volsdf` | `sdfstudio/models/volsdf.py` | [VolSDF](https://arxiv.org/abs/2106.12052) + [Geo-NeuS](https://github.com/GhiXu/Geo-Neus) patch warping |
+| `geo-volsdf` | `sdfstudio/models/volsdf.py` | [VolSDF](https://arxiv.org/abs/2106.12052) + [Geo-NeuS](https://arxiv.org/abs/2205.15848) patch warping |
 | `monosdf` | `sdfstudio/models/monosdf.py` | [MonoSDF](https://arxiv.org/abs/2302.12276) |
 | `volsdf` | `sdfstudio/models/volsdf.py` | [VolSDF](https://arxiv.org/abs/2106.12052) |
-| `geo-neus` | `sdfstudio/models/neus.py` | [Geo-NeuS](https://github.com/GhiXu/Geo-Neus) |
+| `geo-neus` | `sdfstudio/models/neus.py` | [Geo-NeuS](https://arxiv.org/abs/2205.15848) |
 | `mono-neus` | `sdfstudio/models/neus.py` | MonoSDF-style monocular cues on [NeuS](https://arxiv.org/abs/2106.10689) |
 | `neus` | `sdfstudio/models/neus.py` | [NeuS](https://arxiv.org/abs/2106.10689) |
 | `unisurf` | `sdfstudio/models/unisurf.py` | [UniSurf](https://arxiv.org/abs/2104.00400) |
 | `mono-unisurf` | `sdfstudio/models/unisurf.py` | MonoSDF-style monocular cues on UniSurf (no separate paper) |
 | `geo-unisurf` | `sdfstudio/models/unisurf.py` | Geo-NeuS-style patch warping on UniSurf (no separate paper) |
 | `dto` | `sdfstudio/models/dto.py` | Internal occupancy-field method (“density guided sampling”, no external paper) |
-| `neusW` | `sdfstudio/models/neuralreconW.py` | [NeuralRecon-W](https://github.com/zju3dv/NeuralRecon-W) |
+| `neusW` | `sdfstudio/models/neuralreconW.py` | [NeuralRecon-W](https://arxiv.org/abs/2205.12955) |
 | `neus-acc` | `sdfstudio/models/neus_acc.py` | NeuS with occupancy-grid acceleration (no separate paper) |
 | `nerfacto` | `sdfstudio/models/nerfacto.py` | [Nerfstudio / nerfacto](https://arxiv.org/abs/2302.04264) |
 | `mipnerf` | `sdfstudio/models/mipnerf.py` | [Mip-NeRF](https://arxiv.org/abs/2103.13415) |
