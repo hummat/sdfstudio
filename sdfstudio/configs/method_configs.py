@@ -49,8 +49,8 @@ from sdfstudio.engine.optimizers import RAdamOptimizerConfig, AdamWOptimizerConf
 from sdfstudio.engine.schedulers import (
     ExponentialSchedulerConfig,
     MultiStepSchedulerConfig,
-    NeuSSchedulerConfig,
     MultiStepWarmupSchedulerConfig,
+    NeuSSchedulerConfig,
 )
 from sdfstudio.field_components.temporal_distortions import TemporalDistortionKind
 from sdfstudio.fields.sdf_field import SDFFieldConfig
@@ -64,6 +64,7 @@ from sdfstudio.models.neuralreconW import NeuralReconWModelConfig
 from sdfstudio.models.neus import NeuSModelConfig
 from sdfstudio.models.neus_acc import NeuSAccModelConfig
 from sdfstudio.models.neus_facto import NeuSFactoModelConfig
+from sdfstudio.models.neus2 import NeuS2ModelConfig
 from sdfstudio.models.semantic_nerfw import SemanticNerfWModelConfig
 from sdfstudio.models.tensorf import TensoRFModelConfig
 from sdfstudio.models.unisurf import UniSurfModelConfig
@@ -103,6 +104,7 @@ descriptions = {
     "neuralangelo": "Implementation of Neuralangelo",
     "bakedangelo": "Implementation of Neuralangelo with BakedSDF",
     "neus-facto-angelo": "Implementation of Neuralangelo with neus-facto",
+    "neus2": "NeuS2-style (analytic 2nd-order curvature via tcnn double backward)",
 }
 
 
@@ -235,6 +237,77 @@ method_configs["neuralangelo"] = Config(
         "field_background": {
             "optimizer": AdamWOptimizerConfig(lr=1e-3, eps=1e-15),
             "scheduler": MultiStepWarmupSchedulerConfig(warm_up_end=5000, milestones=[300_000, 400_000], gamma=0.1),
+        },
+    },
+    viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
+    vis="viewer",
+)
+
+method_configs["neus2"] = Config(
+    method_name="neus2",
+    trainer=TrainerConfig(
+        steps_per_eval_image=5000,
+        steps_per_eval_batch=5000,
+        steps_per_save=20000,
+        steps_per_eval_all_images=1_000_000,
+        max_num_iterations=250_001,
+        mixed_precision=False,
+    ),
+    pipeline=VanillaPipelineConfig(
+        datamanager=VanillaDataManagerConfig(
+            dataparser=SDFStudioDataParserConfig(),
+            train_num_rays_per_batch=1024,
+            eval_num_rays_per_batch=1024,
+            camera_optimizer=CameraOptimizerConfig(
+                mode="off",
+                optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
+            ),
+        ),
+        model=NeuS2ModelConfig(
+            sdf_field=SDFFieldConfig(
+                use_grid_feature=True,
+                num_layers=1,
+                num_layers_color=4,
+                hidden_dim=256,
+                hidden_dim_color=256,
+                geometric_init=True,
+                bias=0.5,
+                beta_init=0.3,
+                inside_outside=False,
+                use_appearance_embedding=False,
+                position_encoding_max_degree=6,
+                use_numerical_gradients=False,  # rely on analytic double backward
+                base_res=64,
+                max_res=4096,
+                log2_hashmap_size=22,
+                hash_features_per_level=8,
+                hash_smoothstep=False,
+                use_position_encoding=False,
+            ),
+            background_model="mlp",
+            enable_progressive_hash_encoding=True,
+            enable_curvature_loss_schedule=True,
+            enable_numerical_gradients_schedule=False,
+            curvature_loss_multi=5e-4,
+        ),
+    ),
+    optimizers={
+        "fields": {
+            "optimizer": AdamWOptimizerConfig(lr=1e-3, weight_decay=0.01, eps=1e-15),
+            # Warmup + milestones (align with Neuralangelo defaults)
+            "scheduler": MultiStepWarmupSchedulerConfig(
+                warm_up_end=5000,
+                milestones=[300_000, 400_000],
+                gamma=0.1,
+            ),
+        },
+        "field_background": {
+            "optimizer": AdamWOptimizerConfig(lr=1e-3, eps=1e-15),
+            "scheduler": MultiStepWarmupSchedulerConfig(
+                warm_up_end=5000,
+                milestones=[300_000, 400_000],
+                gamma=0.1,
+            ),
         },
     },
     viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
