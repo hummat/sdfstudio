@@ -212,7 +212,7 @@ class MultiStepWarmupSchedulerConfig(InstantiateConfig):
     gamma: float = 0.33
     # Optional max_steps is accepted for CLI compatibility, but is not used by
     # MultiStepWarmupScheduler. Use `milestones` to control decay points.
-    max_steps: int | None = None
+    max_steps: Optional[int] = None
 
     def setup(self, optimizer=None, **kwargs) -> Any:
         """Returns the instantiated object using the config."""
