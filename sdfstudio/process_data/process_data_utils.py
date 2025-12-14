@@ -175,11 +175,14 @@ def convert_video_to_images(
 
         crop_cmd = ""
         if crop_factor != (0.0, 0.0, 0.0, 0.0):
-            height = 1 - crop_factor[0] - crop_factor[1]
-            width = 1 - crop_factor[2] - crop_factor[3]
-            start_x = crop_factor[2]
-            start_y = crop_factor[0]
-            crop_cmd = f"crop=w=iw*{width}:h=ih*{height}:x=iw*{start_x}:y=ih*{start_y},"
+            crop_top, crop_bottom, crop_left, crop_right = crop_factor
+            crop_cmd = (
+                "crop="
+                f"w=iw-round(iw*{crop_left})-round(iw*{crop_right}):"
+                f"h=ih-round(ih*{crop_top})-round(ih*{crop_bottom}):"
+                f"x=round(iw*{crop_left}):"
+                f"y=round(ih*{crop_top}),"
+            )
 
         downscale_chains = [f"[t{i}]scale=iw/{2**i}:ih/{2**i}[out{i}]" for i in range(num_downscales + 1)]
         downscale_dirs = [Path(str(image_dir) + (f"_{2**i}" if i > 0 else "")) for i in range(num_downscales + 1)]
@@ -352,11 +355,15 @@ def copy_images_list(
             crop_cmd = f"crop=iw-{crop_border_pixels * 2}:ih-{crop_border_pixels * 2}[cropped];[cropped]"
         elif crop_factors[framenum - 1] != (0.0, 0.0, 0.0, 0.0):
             cf = crop_factors[framenum - 1]
-            height = 1 - cf[0] - cf[1]
-            width = 1 - cf[2] - cf[3]
-            start_x = cf[2]
-            start_y = cf[0]
-            crop_cmd = f"crop=w=iw*{width}:h=ih*{height}:x=iw*{start_x}:y=ih*{start_y}[cropped];[cropped]"
+            crop_top, crop_bottom, crop_left, crop_right = cf
+            crop_cmd = (
+                "crop="
+                f"w=iw-round(iw*{crop_left})-round(iw*{crop_right}):"
+                f"h=ih-round(ih*{crop_top})-round(ih*{crop_bottom}):"
+                f"x=round(iw*{crop_left}):"
+                f"y=round(ih*{crop_top})"
+                "[cropped];[cropped]"
+            )
 
         select_cmd = "[0:v]"
         if upscale_factor is not None:

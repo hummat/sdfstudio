@@ -605,8 +605,19 @@ def adjust_intrinsics_for_crop(
         raise ValueError("Crop factors must be in [0, 1).")
     if crop_top + crop_bottom >= 1 or crop_left + crop_right >= 1:
         raise ValueError("The sum of crop factors for vertical or horizontal must be less than 1.")
-    new_width: int = int(np.round(width * (1 - crop_left - crop_right)))
-    new_height: int = int(np.round(height * (1 - crop_top - crop_bottom)))
-    new_cx: float = cx - crop_left * width
-    new_cy: float = cy - crop_top * height
+
+    left_px = int(np.round(width * crop_left))
+    right_px = int(np.round(width * crop_right))
+    top_px = int(np.round(height * crop_top))
+    bottom_px = int(np.round(height * crop_bottom))
+
+    new_width: int = width - left_px - right_px
+    new_height: int = height - top_px - bottom_px
+    if new_width <= 0 or new_height <= 0:
+        raise ValueError(
+            f"Crop factors {crop_factor} produce invalid size {(new_width, new_height)} from {(width, height)}"
+        )
+
+    new_cx: float = cx - float(left_px)
+    new_cy: float = cy - float(top_px)
     return new_width, new_height, new_cx, new_cy
