@@ -76,7 +76,6 @@ sdf-train neus --pipeline.model.sdf-field.inside-outside False sdfstudio-data --
 
 ```
 sdf-train monosdf --pipeline.model.sdf-field.inside-outside True sdfstudio-data --data data/sdfstudio-demo-data/replica-room0 --include-mono-prior True
-
 ```
 
 ## Mono-UniSurf
@@ -250,7 +249,7 @@ Notes:
 - These flags only affect the *appearance* model; SDF geometry is still learned from color + regularizers, but the
   gradient signal is often more geometry-friendly.
 - `use-n-dot-v` is cheap and generally safe to keep enabled whenever you care about good geometry.
-- `use-appearance-embedding` (in `SDFFieldConfig` / `SurfaceModelConfig`) adds a small per-image latent to the color
+- `use-appearance-embedding` (in `SDFFieldConfig`) adds a small per-image latent to the color
   network. On real-world captures with varying exposure / white balance / lighting (e.g. handheld smartphones), this
   usually helps because it lets the model absorb per-view photometric quirks without twisting geometry or BRDF
   parameters. On clean, studio-lit multi-view photo sets where you primarily care about geometry, you may prefer to
@@ -291,14 +290,9 @@ Two additional losses can be useful to stabilize geometry under adverse conditio
 
   This is most helpful when normals are noisy or flipped in low-texture regions.
 
-- **Distortion loss (Mip-NeRF 360-style)**  
-  Encourages compact, non-overlapping depth distributions along each ray. Available for:
-  - Proposal-based SDF methods (`neus-facto`, `bakedsdf`, `bakedangelo`) via `distortion_loss_mult` on
-    `weights_list` / `ray_samples_list`.
-  - Default `neus` via `distortion_loss_mult` and `nerfstudio_distortion_loss` on the main sampling hierarchy.
-
-  A small `distortion_loss_mult` can reduce “double walls” and smeared geometry, especially in cluttered or
-  unbounded scenes.
+- **Distortion loss (Mip-NeRF 360-style)**
+  Encourages compact, non-overlapping depth distributions along each ray. A small `distortion_loss_mult` can
+  reduce "double walls" and smeared geometry. See [Distortion Loss](#distortion-loss) for details and examples.
 
 ### 5. When It’s Still Not Enough
 

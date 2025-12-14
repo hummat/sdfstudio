@@ -69,6 +69,7 @@ from sdfstudio.models.semantic_nerfw import SemanticNerfWModelConfig
 from sdfstudio.models.tensorf import TensoRFModelConfig
 from sdfstudio.models.unisurf import UniSurfModelConfig
 from sdfstudio.models.vanilla_nerf import NeRFModel, VanillaModelConfig
+from sdfstudio.models.monosdf import MonoSDFModelConfig
 from sdfstudio.models.volsdf import VolSDFModelConfig
 from sdfstudio.pipelines.base_pipeline import (
     FlexibleInputPipelineConfig,
@@ -674,9 +675,7 @@ method_configs["monosdf"] = Config(
                 optimizer=AdamWOptimizerConfig(lr=6e-4, eps=1e-8, weight_decay=1e-2),
             ),
         ),
-        model=VolSDFModelConfig(
-            mono_depth_loss_mult=0.1,
-            mono_normal_loss_mult=0.05,
+        model=MonoSDFModelConfig(
             eval_num_rays_per_chunk=1024,
         ),
     ),
