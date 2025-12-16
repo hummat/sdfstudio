@@ -34,10 +34,6 @@ class TextureMesh:
     """Path to the output directory."""
     input_mesh_filename: Path
     """Mesh filename to texture."""
-    px_per_uv_triangle: int = 4
-    """Number of pixels per UV square (v1 only)."""
-    unwrap_method: Literal["xatlas", "custom"] = "xatlas"
-    """The method to use for unwrapping the mesh (v1 only)."""
     num_pixels_per_side: int = 2048
     """Pixels per side of the texture image."""
     target_num_faces: int | float | None = 50000
@@ -61,13 +57,12 @@ class TextureMesh:
         _, pipeline, _ = eval_setup(self.load_config, test_mode="inference")
 
         if self.implementation == "v1":
-            CONSOLE.print("[yellow]Using v1 (legacy) texture export")
+            CONSOLE.print("[yellow]Using v1 (legacy) texture export with xatlas")
             texture_utils.export_textured_mesh(
                 mesh,
                 pipeline,
-                px_per_uv_triangle=self.px_per_uv_triangle,
                 output_dir=self.output_dir,
-                unwrap_method=self.unwrap_method,
+                unwrap_method="xatlas",
                 num_pixels_per_side=self.num_pixels_per_side,
             )
         else:
