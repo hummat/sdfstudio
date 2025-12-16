@@ -413,7 +413,7 @@ def query_nerf_multidirection(
 
     progress = get_progress(f"Rendering {num_directions} directions")
     with torch.no_grad(), progress:
-        for d in progress.track(range(num_directions)):
+        for d in progress.track(range(num_directions), total=num_directions):
             dir_origins = flat_origins[:, d, :]  # (N, 3)
             dir_dirs = flat_dirs[:, d, :]  # (N, 3)
 
