@@ -438,7 +438,7 @@ def query_nerf_multidirection(
 
     # Reconstruct full texture
     rgb = torch.zeros(H, W, 3, device=device)
-    rgb[valid_mask] = avg_rgb
+    rgb[valid_mask] = avg_rgb.to(device)
 
     return rgb
 
