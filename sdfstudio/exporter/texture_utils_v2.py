@@ -261,8 +261,7 @@ def generate_hemisphere_directions(normal: Tensor, num_dirs: int = 6) -> Tensor:
 
     # If normal is parallel to up, use different vector
     parallel_mask = torch.abs(normal[..., 2]) > 0.99
-    up[parallel_mask, 0] = 1.0
-    up[parallel_mask, 2] = 0.0
+    up[parallel_mask] = torch.tensor([1.0, 0.0, 0.0], device=device)
 
     # Gram-Schmidt to get tangent and bitangent
     tangent = torch.cross(up, normal, dim=-1)
