@@ -8,7 +8,7 @@ version = "0.5.0"
 description = "All-in-one repository for state-of-the-art neural surface reconstruction"
 readme = "README.md"
 license = { text = "Apache 2.0" }
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python",
@@ -147,7 +147,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py39"
 
 [tool.ruff.lint]
 select = [
@@ -160,9 +160,9 @@ select = [
     "UP", # pyupgrade
 ]
 ignore = [
-    "E501", # line too long, handled by black
-    "B008", # do not perform function calls in argument defaults
-    "W191", # indentation contains tabs
+    "E501",  # line too long
+    "B008",  # do not perform function calls in argument defaults
+    "W191",  # indentation contains tabs
 ]
 
 [tool.ruff.lint.isort]
