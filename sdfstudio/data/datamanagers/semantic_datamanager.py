@@ -47,7 +47,12 @@ class SemanticDataManager(VanillaDataManager):  # pylint: disable=abstract-metho
         )
 
     def create_eval_dataset(self) -> SemanticDataset:
+        eval_scale = (
+            self.config.eval_camera_res_scale_factor
+            if self.config.eval_camera_res_scale_factor is not None
+            else self.config.camera_res_scale_factor * 0.5
+        )
         return SemanticDataset(
             dataparser_outputs=self.dataparser.get_dataparser_outputs(split=self.test_split),
-            scale_factor=self.config.camera_res_scale_factor,
+            scale_factor=eval_scale,
         )

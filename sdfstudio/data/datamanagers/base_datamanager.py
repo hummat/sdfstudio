@@ -287,7 +287,11 @@ class VanillaDataManagerConfig(InstantiateConfig):
     """Specifies the collate function to use for the train and eval dataloaders."""
     camera_res_scale_factor: float = 1.0
     """The scale factor for scaling spatial data such as images, mask, semantics
-    along with relevant information about camera intrinsics
+    along with relevant information about camera intrinsics.
+    """
+    eval_camera_res_scale_factor: Optional[float] = None
+    """The scale factor for eval data. If None (default), uses half of camera_res_scale_factor.
+    Set explicitly to override (e.g., 1.0 for full resolution eval).
     """
 
 
@@ -339,9 +343,14 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
 
     def create_eval_dataset(self) -> InputDataset:
         """Sets up the data loaders for evaluation"""
+        eval_scale = (
+            self.config.eval_camera_res_scale_factor
+            if self.config.eval_camera_res_scale_factor is not None
+            else self.config.camera_res_scale_factor * 0.5
+        )
         return GeneralizedDataset(
             dataparser_outputs=self.dataparser.get_dataparser_outputs(split=self.test_split),
-            scale_factor=self.config.camera_res_scale_factor,
+            scale_factor=eval_scale,
         )
 
     def _get_pixel_sampler(  # pylint: disable=no-self-use
