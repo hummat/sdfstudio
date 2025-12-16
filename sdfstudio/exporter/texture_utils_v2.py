@@ -411,8 +411,9 @@ def query_nerf_multidirection(
     # handle the internal chunking for memory efficiency
     all_rgb = []
 
-    with torch.no_grad():
-        for d in range(num_directions):
+    progress = get_progress(f"Rendering {num_directions} directions")
+    with torch.no_grad(), progress:
+        for d in progress.track(range(num_directions)):
             dir_origins = flat_origins[:, d, :]  # (N, 3)
             dir_dirs = flat_dirs[:, d, :]  # (N, 3)
 
@@ -427,7 +428,7 @@ def query_nerf_multidirection(
                 fars=torch.full((1, N, 1), ray_length, device=device),
             )
 
-            outputs = pipeline.model.get_outputs_for_camera_ray_bundle(ray_bundle, progress=(d == 0))
+            outputs = pipeline.model.get_outputs_for_camera_ray_bundle(ray_bundle, progress=False)
             # Output shape is (1, N, 3), flatten to (N, 3)
             all_rgb.append(outputs["rgb"].reshape(N, 3))
 
