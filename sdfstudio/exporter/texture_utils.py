@@ -360,12 +360,8 @@ def export_textured_mesh(
     faces = mesh.faces.to(device)
     vertex_normals = mesh.normals.to(device)
 
-    summary_log = []
-    summary_log.append(f"Unwrapped mesh using {unwrap_method} method.")
-    summary_log.append(f"Mesh has {len(vertices)} vertices and {len(faces)} faces.")
-
     if unwrap_method == "xatlas":
-        CONSOLE.print("Unwrapping mesh with xatlas method... this may take a while.")
+        CONSOLE.print("Running xatlas UV unwrapping... this may take a while.")
         texture_coordinates, origins, directions = unwrap_mesh_with_xatlas(
             vertices, faces, vertex_normals, num_pixels_per_side=num_pixels_per_side
         )
@@ -375,7 +371,6 @@ def export_textured_mesh(
         texture_coordinates, origins, directions = unwrap_mesh_per_uv_triangle(
             vertices, faces, vertex_normals, px_per_uv_triangle
         )
-        print("\033[A\033[A")
         CONSOLE.print("[bold green]:white_check_mark: Unwrapped mesh with custom method")
     else:
         raise ValueError(f"Unwrap method {unwrap_method} not supported.")
@@ -389,8 +384,6 @@ def export_textured_mesh(
         raylen = 0.0
     else:
         raise ValueError(f"Ray length method {raylen_method} not supported.")
-
-    summary_log.append(f"Length of rendered rays to compute texture values: {raylen}")
 
     origins = origins - 0.5 * raylen * directions
     pixel_area = torch.ones_like(origins[..., 0:1])
@@ -413,9 +406,18 @@ def export_textured_mesh(
         outputs = pipeline.model.get_outputs_for_camera_ray_bundle(camera_ray_bundle, progress=True)
     CONSOLE.print("[bold green]:white_check_mark: Rendered texture and normals")
 
-    # save the texture image
+    # Save the texture image.
+    #
+    # Historically this legacy exporter wrote `material_0.png` + `material_0.mtl`.
+    # The v2 exporters standardize on `texture.png` + `mesh.mtl`. Keeping the legacy
+    # outputs around causes confusing duplicates when users iterate on exports.
+    for legacy_name in ("material_0.png", "material_0.mtl"):
+        legacy_path = output_dir / legacy_name
+        if legacy_path.exists():
+            legacy_path.unlink()
+
     texture_image = outputs["rgb"].cpu().numpy()
-    media.write_image(str(output_dir / "material_0.png"), texture_image)
+    media.write_image(str(output_dir / "texture.png"), texture_image)
 
     if "diffuse" in outputs:
         diffuse_image = outputs["diffuse"].cpu().numpy()
@@ -443,7 +445,7 @@ def export_textured_mesh(
     # direction_image = (direction_image + 1.0) / 2.0
     # media.write_image(str(output_dir / "direction.png"), direction_image)
 
-    CONSOLE.print("Writing relevant OBJ information to files...")
+    CONSOLE.print("Writing mesh.obj + mesh.mtl...")
     # create the .mtl file
     lines_mtl = [
         "# Generated with sdfstudio",
@@ -454,17 +456,17 @@ def export_textured_mesh(
         "d 1.0",
         "illum 2",
         "Ns 1.00000000",
-        "map_Kd material_0.png",
+        "map_Kd texture.png",
     ]
     lines_mtl = [line + "\n" for line in lines_mtl]
-    file_mtl = open(output_dir / "material_0.mtl", "w", encoding="utf-8")  # pylint: disable=consider-using-with
+    file_mtl = open(output_dir / "mesh.mtl", "w", encoding="utf-8")  # pylint: disable=consider-using-with
     file_mtl.writelines(lines_mtl)
     file_mtl.close()
 
     # create the .obj file
     lines_obj = [
         "# Generated with sdfstudio",
-        "mtllib material_0.mtl",
+        "mtllib mesh.mtl",
         "usemtl material_0",
     ]
     lines_obj = [line + "\n" for line in lines_obj]
@@ -486,6 +488,8 @@ def export_textured_mesh(
         progress = get_progress("Writing texture coordinates to file", suffix="lines-per-sec")
         for i in progress.track(range(len(faces))):
             for uv in texture_coordinates[i]:
+                # OBJ expects V=0 at the bottom (OpenGL convention). Both legacy unwrap paths
+                # produce V=0 at the top (image convention), so we flip V here.
                 line = f"vt {uv[0]} {1.0 - uv[1]}\n"
                 file_obj.write(line)
 
@@ -518,14 +522,6 @@ def export_textured_mesh(
 
     file_obj.close()
 
-    summary_log.append(f"OBJ file saved to {output_dir / 'mesh.obj'}")
-    summary_log.append(f"MTL file saved to {output_dir / 'material_0.mtl'}")
-    summary_log.append(
-        f"Texture image saved to {output_dir / 'material_0.png'} "
-        f"with resolution {texture_image.shape[1]}x{texture_image.shape[0]} (WxH)"
-    )
-
-    CONSOLE.rule("[bold green]:tada: :tada: :tada: All DONE :tada: :tada: :tada:")
-    for summary in summary_log:
-        CONSOLE.print(summary, justify="center")
-    CONSOLE.rule()
+    CONSOLE.print("[bold green]:white_check_mark: Texture export complete!")
+    CONSOLE.print(f"  Mesh: {output_dir / 'mesh.obj'} (+ mesh.mtl)")
+    CONSOLE.print(f"  Texture: {output_dir / 'texture.png'}")
