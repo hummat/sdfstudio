@@ -495,10 +495,6 @@ def write_textured_mesh_fast(
     texture_uint8 = (np.clip(texture_image, 0, 1) * 255).astype(np.uint8)
     texture_pil = PIL.Image.fromarray(texture_uint8)
 
-    # Save texture image
-    texture_path = output_dir / f"{mesh_name}_texture.png"
-    texture_pil.save(texture_path)
-
     # Create trimesh with texture
     material = trimesh.visual.material.SimpleMaterial(  # type: ignore
         image=texture_pil,
@@ -581,16 +577,17 @@ def export_textured_mesh_v2(
         ray_length=ray_length,
     )
 
-    # Step 4: Write mesh with trimesh
+    # Step 4: Save texture and write mesh
     texture_image = rgb.cpu().numpy()
-    write_textured_mesh_fast(vertices, faces, vertex_normals, texture_uvs, texture_image, output_dir, mesh_name="mesh")
 
-    # Also save texture separately
     import mediapy as media  # type: ignore
-
     media.write_image(str(output_dir / "texture.png"), texture_image)
 
+    write_textured_mesh_fast(vertices, faces, vertex_normals, texture_uvs, texture_image, output_dir, mesh_name="mesh")
+
     CONSOLE.print("[bold green]Texture export complete!")
+    CONSOLE.print(f"  Texture: {output_dir / 'texture.png'}")
+    CONSOLE.print(f"  Mesh: {output_dir / 'mesh.obj'} and {output_dir / 'mesh.glb'}")
 
 
 # =============================================================================
