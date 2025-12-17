@@ -590,6 +590,8 @@ def write_textured_mesh_fast(
     texture_image: np.ndarray,
     output_dir: Path,
     mesh_name: str = "mesh",
+    *,
+    flip_v: bool = True,
 ) -> None:
     """Write textured mesh (OBJ+MTL + GLB).
 
@@ -601,6 +603,7 @@ def write_textured_mesh_fast(
         texture_image: Texture image (H, W, 3) as numpy array [0, 1]
         output_dir: Output directory
         mesh_name: Base name for output files
+        flip_v: Whether to flip V coordinate (OBJ convention vs texture raster convention)
     """
     import PIL.Image
 
@@ -626,8 +629,9 @@ def write_textured_mesh_fast(
     expanded_uvs = uvs_np.reshape(-1, 2)  # (F*3, 2)
     expanded_faces = np.arange(num_faces * 3).reshape(-1, 3)  # (F, 3)
 
-    # Flip V coordinate for OBJ convention
-    expanded_uvs[:, 1] = 1.0 - expanded_uvs[:, 1]
+    if flip_v:
+        # Flip V coordinate for OBJ convention (common when UVs were rasterized in image-space).
+        expanded_uvs[:, 1] = 1.0 - expanded_uvs[:, 1]
 
     # Export OBJ + MTL ourselves (trimesh's OBJ exporter writes an extra material_0.png
     # which duplicates texture.png; we want a single canonical texture file).
@@ -774,7 +778,14 @@ def export_textured_mesh_v2(
     # Write mesh (uses texture.png for the main material)
     texture_image = textures["rgb"].cpu().numpy()
     write_textured_mesh_fast(
-        vertices, faces_uv_order, vertex_normals, texture_uvs, texture_image, output_dir, mesh_name="mesh"
+        vertices,
+        faces_uv_order,
+        vertex_normals,
+        texture_uvs,
+        texture_image,
+        output_dir,
+        mesh_name="mesh",
+        flip_v=True,
     )
 
     # Log results
@@ -1283,12 +1294,15 @@ def export_textured_mesh_multiview(
     texture = None
     texture_uvs = None
     faces_for_export = None
+    flip_v_for_export = True
 
     if OPEN3D_AVAILABLE:
         try:
             texture, texture_uvs, vertices_for_export, faces_for_export, normals_for_export = project_views_to_texture_open3d(
                 mesh, rgbs, intrinsics, extrinsics, texture_size=texture_size
             )
+            # Open3D UVs are already in the same convention as typical OBJ importers.
+            flip_v_for_export = False
         except RuntimeError as e:
             if "project_images_to_albedo" not in str(e):
                 raise
@@ -1322,6 +1336,7 @@ def export_textured_mesh_multiview(
         faces_for_export = faces_uv_order
         vertices_for_export = vertices
         normals_for_export = vertex_normals
+        flip_v_for_export = True
 
     # Step 5: write results (texture + mesh)
     import mediapy as media  # type: ignore
@@ -1337,6 +1352,7 @@ def export_textured_mesh_multiview(
         texture_np,
         output_dir,
         mesh_name="mesh",
+        flip_v=flip_v_for_export,
     )
 
     CONSOLE.print("[bold green]Multiview texture export complete!")
