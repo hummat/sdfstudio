@@ -198,16 +198,36 @@ def rasterize_uv_cpu(
             d21 = (v0p * v0v2).sum(-1)
 
             denom = d00 * d11 - d01 * d01
-            denom = torch.where(torch.abs(denom) < 1e-10, torch.ones_like(denom), denom)
+            # Reject degenerate UV triangles.
+            #
+            # If we "fix" denom by setting it to 1 for near-zero-area triangles,
+            # barycentrics collapse to (1,0,0) and every pixel appears "inside"
+            # that triangle. That inflates coverage to ~100% and makes the CPU
+            # path query the NeRF for atlas background pixels.
+            degenerate = torch.abs(denom) < 1e-12
+            denom_safe = torch.where(degenerate, torch.ones_like(denom), denom)
 
             # bary_v is weight for V1, bary_w is weight for V2
-            bary_v = (d11 * d20 - d01 * d21) / denom  # (chunk, H*W)
-            bary_w = (d00 * d21 - d01 * d20) / denom
+            bary_v = (d11 * d20 - d01 * d21) / denom_safe  # (chunk, H*W)
+            bary_w = (d00 * d21 - d01 * d20) / denom_safe
             bary_u = 1.0 - bary_v - bary_w  # weight for V0
 
-            # Point is inside triangle if all barycentric coords in [0, 1]
-            eps = 1e-5
-            inside = (bary_u >= -eps) & (bary_v >= -eps) & (bary_w >= -eps)  # (chunk, H*W)
+            # Conservative inside test to avoid cracks between adjacent triangles.
+            #
+            # GPU rasterizers typically cover shared edges consistently; a strict
+            # float barycentric test on CPU often misses boundary pixels, creating
+            # "gaps" that later show up as seams. Use an epsilon tied to texel size
+            # and allow slight overshoot above 1 due to numeric error.
+            eps = max(1e-5, 2.0 / float(texture_size))
+            inside = (
+                (bary_u >= -eps)
+                & (bary_v >= -eps)
+                & (bary_w >= -eps)
+                & (bary_u <= 1.0 + eps)
+                & (bary_v <= 1.0 + eps)
+                & (bary_w <= 1.0 + eps)
+            )  # (chunk, H*W)
+            inside = inside & (~degenerate)  # broadcast (chunk, 1) over pixels
 
             # Distance metric for tie-breaking: deviation from center (1/3, 1/3, 1/3)
             dist = torch.abs(bary_u - 1 / 3) + torch.abs(bary_v - 1 / 3) + torch.abs(bary_w - 1 / 3)
@@ -243,6 +263,14 @@ def rasterize_uv_cpu(
             ).reshape(H, W, 3)
             bary_coords = torch.where(update_mask.unsqueeze(-1), new_bary, bary_coords)
 
+    # Clamp/renormalize barycentrics for numeric stability on boundary pixels we
+    # accepted via the conservative test above.
+    valid = triangle_ids >= 0
+    if bool(valid.any()):
+        bc = bary_coords[valid].clamp_min(0.0)
+        bc = bc / bc.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+        bary_coords[valid] = bc
+
     return triangle_ids, bary_coords, None
 
 
@@ -255,8 +283,11 @@ def pad_textures_nearest(
 
     This avoids black seams from rasterization gaps and prevents mipmap/bilinear
     bleeding from undefined atlas regions, without querying the NeRF outside the
-    rasterized triangles. Note: this is seam dilation; it does not "fill" the UV
-    atlas background (large empty regions are expected for typical unwraps).
+    rasterized triangles.
+
+    Note:
+      - This is seam dilation, not atlas-background filling. Large empty regions
+        are expected for typical unwraps, and should remain uncolored.
     """
     if pad_px <= 0:
         return textures
@@ -417,8 +448,11 @@ def unwrap_mesh_with_xatlas_v2(
     texture_uvs = uv_coords[uv_faces]  # (F, 3, 2)
 
     # Map UV vertices back to the original mesh vertex indices.
-    # xatlas may reorder face corners when creating seam-split UV vertices; using vmapping
-    # ensures barycentric weights from UV rasterization interpolate the correct 3D vertices.
+    #
+    # xatlas creates seam-split UV vertices and can reorder triangle corners. Since we
+    # rasterize in UV space, barycentric weights are with respect to that UV-corner
+    # order. Using vmapping keeps UV rasterization -> 3D interpolation aligned, which
+    # avoids corner swaps / wrong surface points.
     vmapping_t = torch.from_numpy(vmapping.astype(np.int64)).to(device)  # (num_new_verts,)
     faces_uv_order = vmapping_t[uv_faces]  # (F, 3) original vertex indices per UV corner
 
@@ -442,8 +476,13 @@ def unwrap_mesh_with_xatlas_v2(
 
     if use_gpu and NVDIFFRAST_AVAILABLE and device.type == "cuda" and rast_out is not None:
         # Interpolate on the UV vertex domain directly using nvdiffrast.
-        # This avoids relying on barycentric output ordering assumptions and
-        # keeps corner ordering consistent with uv_faces (including seam splits).
+        #
+        # Why:
+        # - Interpreting rasterizer barycentrics manually is easy to get subtly wrong
+        #   once seam splits / corner reindexing enter the picture.
+        # - dr.interpolate(...) performs interpolation in exactly the same space as
+        #   rasterization, which fixed the global "grain/noise" pattern seen in the
+        #   v2 GPU texture output.
         assert dr is not None, "nvdiffrast is required for GPU interpolation"
         pos_uv = vertices[vmapping_t].contiguous()  # (V_uv, 3)
         nrm_uv = vertex_normals[vmapping_t].contiguous()  # (V_uv, 3)
@@ -603,7 +642,14 @@ def write_textured_mesh_fast(
         texture_image: Texture image (H, W, 3) as numpy array [0, 1]
         output_dir: Output directory
         mesh_name: Base name for output files
-        flip_v: Whether to flip V coordinate (OBJ convention vs texture raster convention)
+        flip_v: Whether to flip V when exporting OBJ/GLB.
+
+            This is intentionally explicit because different UV sources used by
+            this file have different V conventions relative to how viewers sample
+            textures:
+            - xatlas unwrap + image-space textures: typically needs V flip for OBJ.
+            - Open3D uvatlas + project_images_to_albedo: already correct for OBJ;
+              flipping V breaks mapping (islands land on wrong parts).
     """
     import PIL.Image
 
@@ -630,11 +676,15 @@ def write_textured_mesh_fast(
     expanded_faces = np.arange(num_faces * 3).reshape(-1, 3)  # (F, 3)
 
     if flip_v:
-        # Flip V coordinate for OBJ convention (common when UVs were rasterized in image-space).
+        # OBJ importers usually interpret V as increasing upward; when the texture
+        # was generated in image space, we flip to keep sampling consistent.
         expanded_uvs[:, 1] = 1.0 - expanded_uvs[:, 1]
 
-    # Export OBJ + MTL ourselves (trimesh's OBJ exporter writes an extra material_0.png
-    # which duplicates texture.png; we want a single canonical texture file).
+    # Export OBJ + MTL ourselves.
+    #
+    # Trimesh's OBJ exporter tends to emit an extra `material_0.png` next to the OBJ,
+    # duplicating `texture.png` and confusing downstream tooling. We want a single
+    # canonical filename: `texture.png`.
     obj_path = output_dir / f"{mesh_name}.obj"
     mtl_path = output_dir / f"{mesh_name}.mtl"
 
@@ -716,7 +766,7 @@ def export_textured_mesh_v2(
     device = pipeline.device
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    # Remove legacy duplicate texture artifacts if present.
+    # Remove legacy duplicate artifacts if present (from older exporters / trimesh OBJ export).
     for legacy_name in ("material_0.png", "material_0.mtl"):
         legacy_path = output_dir / legacy_name
         if legacy_path.exists():
@@ -736,6 +786,8 @@ def export_textured_mesh_v2(
         texture_size=texture_size,
         use_gpu=use_gpu_rasterization,
     )
+    # Helpful debug signal: many unwraps have low coverage because the atlas is
+    # sparse by design. This is not the same thing as rasterization "gaps".
     coverage = float(valid_mask.float().mean().item() * 100.0)
     CONSOLE.print(f"UV atlas coverage: {coverage:.1f}%")
 
@@ -755,7 +807,7 @@ def export_textured_mesh_v2(
         ray_length=ray_length,
     )
 
-    # Step 3.5: Pad textures to avoid seam bleeding / raster gaps without querying outside triangles.
+    # Step 3.5: Seam dilation to avoid seam bleeding / raster gaps without querying outside triangles.
     textures = pad_textures_nearest(textures, valid_mask, pad_px=pad_px)
 
     # Step 4: Save all texture maps
@@ -930,7 +982,10 @@ def render_views_from_nerf(
         for cam_idx in progress.track(range(N)):
             camera_ray_bundle = cameras.generate_rays(camera_indices=cam_idx).to(device)
             with torch.no_grad():
-                # Avoid nested rich progress bars (outer loop already has a live display).
+                # Avoid nested rich progress bars:
+                # rich only allows one active "Live" display at a time, so the inner
+                # model ray-chunk progress must be disabled when we already show an
+                # outer view-render progress bar.
                 outputs = pipeline.model.get_outputs_for_camera_ray_bundle(camera_ray_bundle, progress=False)
             if "rgb" not in outputs:
                 raise KeyError(f"Model outputs did not contain 'rgb' (available: {list(outputs.keys())})")
@@ -994,7 +1049,11 @@ def project_views_to_texture_open3d(
         raise RuntimeError("Open3D Tensor TriangleMesh.from_legacy() not available")
     mesh_t = o3d.t.geometry.TriangleMesh.from_legacy(mesh_legacy)  # type: ignore[attr-defined]
 
-    # Compute UV atlas (in-place or functional depending on Open3D version)
+    # Compute UV atlas.
+    #
+    # Important: compute_uvatlas() mutates the mesh and returns stats (tuple).
+    # Assigning its return would replace the mesh with a tuple and make subsequent
+    # projection calls fail in misleading ways.
     if not hasattr(mesh_t, "compute_uvatlas"):
         raise RuntimeError("Open3D TriangleMesh.compute_uvatlas() not available")
     try:
@@ -1011,8 +1070,11 @@ def project_views_to_texture_open3d(
         o3d_images.append(o3d.t.geometry.Image(o3c.Tensor(img_np)))  # type: ignore[attr-defined]
 
     # Open3D expects extrinsics as world-to-camera and uses an OpenCV-style camera
-    # convention (x right, y down, z forward). SDFStudio's Cameras uses x right,
-    # y up, z backward (forward is -z). Convert via diag([1, -1, -1]).
+    # convention (x right, y down, z forward).
+    #
+    # SDFStudio's Cameras uses x right, y up, z backward (forward is -z). The axis
+    # flip (diag([1, -1, -1])) converts conventions so Open3D projects colors to the
+    # correct surface locations.
     w2c_sdf = torch.linalg.inv(extrinsics).detach().cpu().numpy().astype(np.float32)
     axis_flip = np.eye(4, dtype=np.float32)
     axis_flip[1, 1] = -1.0
@@ -1024,8 +1086,8 @@ def project_views_to_texture_open3d(
 
     tex_out = None
     try:
-        # Per docs:
-        # project_images_to_albedo(images, intrinsic_matrices, extrinsic_matrices, tex_size=..., update_material=...)
+        # Open3D expects lists of per-view matrices (not stacked tensors) and the
+        # kwarg name is `tex_size` (not `texture_size`).
         tex_out = mesh_t.project_images_to_albedo(
             o3d_images,
             intrinsic_matrices,
@@ -1068,8 +1130,10 @@ def project_views_to_texture_open3d(
     if tex_np.max() > 1.0:
         tex_np = tex_np / 255.0
 
-    # IMPORTANT: compute_uvatlas() may reorder triangles and/or vertices. Export the
-    # *UV-mapped* geometry from Open3D so texture_uvs stays aligned with faces.
+    # IMPORTANT: compute_uvatlas() may reorder triangles and/or vertices.
+    # We export the UV-mapped geometry from Open3D and use its triangle_uvs as the
+    # single source of truth. Mixing faces from one mesh with UVs from another is a
+    # common failure mode that looks like "texture islands on the wrong parts".
     legacy_with_uv = mesh_t.to_legacy()  # type: ignore[attr-defined]
     verts_out_np = np.asarray(legacy_with_uv.vertices, dtype=np.float32)  # type: ignore[attr-defined]
     faces_out_np = np.asarray(legacy_with_uv.triangles, dtype=np.int64)  # type: ignore[attr-defined]
@@ -1260,6 +1324,7 @@ def export_textured_mesh_multiview(
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    # Remove legacy duplicate artifacts if present (from older exporters / trimesh OBJ export).
     for legacy_name in ("material_0.png", "material_0.mtl"):
         legacy_path = output_dir / legacy_name
         if legacy_path.exists():
@@ -1291,6 +1356,9 @@ def export_textured_mesh_multiview(
     )
 
     # Step 4: project to UV texture via Open3D if available, otherwise fall back to reprojection.
+    #
+    # We keep an explicit flip flag because Open3D UVs and xatlas UVs differ in V
+    # convention relative to how typical OBJ viewers sample textures.
     texture = None
     texture_uvs = None
     faces_for_export = None
@@ -1320,6 +1388,8 @@ def export_textured_mesh_multiview(
             texture_size=texture_size,
             use_gpu=True,
         )
+        # Helpful debug signal: many unwraps have low coverage because the atlas is
+        # sparse by design. This is not the same thing as rasterization "gaps".
         coverage = float(valid_mask.float().mean().item() * 100.0)
         CONSOLE.print(f"UV atlas coverage: {coverage:.1f}%")
         texture = project_views_to_texture_reproject(

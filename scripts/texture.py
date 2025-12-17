@@ -41,7 +41,14 @@ class TextureMesh:
     target_num_faces: int | float | None = 50000
     """Target number of faces for the mesh to texture. If < 1, it is a fraction of the original mesh faces."""
     method: Literal["legacy", "cpu", "gpu", "open3d"] = "gpu"
-    """Texturing method."""
+    """Texturing method.
+
+    Notes:
+      - "cpu"/"gpu" use xatlas for UV unwrap + per-texel NeRF queries.
+      - "open3d" uses Open3D's UV atlas + multiview projection when available.
+        It uses a different UV V convention than xatlas, so the exporter must not
+        unconditionally flip V for OBJ output.
+    """
     num_directions: int = 6
     """Number of ray directions per texel for averaging (v2 cpu/gpu only)."""
     pad_px: int = 32
