@@ -33,7 +33,6 @@ import trimesh  # type: ignore
 import xatlas  # type: ignore
 from rich.console import Console
 from torch import Tensor
-from torch.nn import functional as F
 
 from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.exporter.exporter_utils import Mesh
@@ -65,7 +64,7 @@ def rasterize_uv_gpu(
     faces: Tensor,
     texture_size: int,
     device: torch.device,
-) -> tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, Tensor]:
     """Rasterize UV coordinates to get per-pixel triangle IDs and barycentric coords.
 
     Uses nvdiffrast for GPU-accelerated rasterization.
@@ -79,6 +78,7 @@ def rasterize_uv_gpu(
     Returns:
         triangle_ids: (H, W) tensor of triangle indices (-1 for empty pixels)
         bary_coords: (H, W, 3) tensor of barycentric coordinates
+        rast_out: (1, H, W, 4) raw raster output from nvdiffrast
     """
     if not NVDIFFRAST_AVAILABLE:
         raise RuntimeError("nvdiffrast not available, use rasterize_uv_cpu instead")
@@ -121,7 +121,7 @@ def rasterize_uv_gpu(
     w = 1.0 - u - v
     bary_coords = torch.stack([w, u, v], dim=-1)  # (H, W, 3)
 
-    return triangle_ids, bary_coords
+    return triangle_ids, bary_coords, rast_out
 
 
 def rasterize_uv_cpu(
@@ -335,7 +335,7 @@ def fill_rasterization_gaps(
 def pad_textures_nearest(
     textures: dict[str, Tensor],
     valid_mask: Tensor,
-    pad_px: int = 8,
+    pad_px: int = 32,
 ) -> dict[str, Tensor]:
     """Pad texture charts by propagating colors outward from valid pixels.
 
@@ -353,48 +353,64 @@ def pad_textures_nearest(
     if bool(valid_mask.all()):
         return textures
 
-    device = valid_mask.device
-    valid = valid_mask.clone()
-    valid_f = valid.float().unsqueeze(0).unsqueeze(0)  # (1, 1, H, W)
+    def shift_hw(x: Tensor, dy: int, dx: int) -> Tensor:
+        h, w = x.shape[:2]
+        out = torch.zeros_like(x)
 
-    # 3x3 neighborhood kernel
-    base_kernel = torch.ones((1, 1, 3, 3), device=device, dtype=torch.float32)
+        src_y0 = max(0, -dy)
+        src_y1 = h - max(0, dy)
+        src_x0 = max(0, -dx)
+        src_x1 = w - max(0, dx)
+
+        dst_y0 = max(0, dy)
+        dst_y1 = h - max(0, -dy)
+        dst_x0 = max(0, dx)
+        dst_x1 = w - max(0, -dx)
+
+        out[dst_y0:dst_y1, dst_x0:dst_x1] = x[src_y0:src_y1, src_x0:src_x1]
+        return out
+
+    neighbors = (
+        (0, 1),
+        (0, -1),
+        (1, 0),
+        (-1, 0),
+        (1, 1),
+        (1, -1),
+        (-1, 1),
+        (-1, -1),
+    )
 
     padded: dict[str, Tensor] = {}
     for name, tex in textures.items():
-        if tex.ndim != 3:
-            padded[name] = tex
-            continue
+        padded[name] = tex
 
-        # Work in NCHW for conv2d
-        tex_nchw = tex.permute(2, 0, 1).unsqueeze(0).float()  # (1, C, H, W)
-        channels = tex_nchw.shape[1]
-        kernel_c = base_kernel.expand(channels, 1, 3, 3)  # depthwise conv
+    valid = valid_mask.clone()
+    for _ in range(pad_px):
+        if bool(valid.all()):
+            break
 
-        v = valid
-        v_f = valid_f
-        x = tex_nchw
+        filled_any = False
+        inv = ~valid
 
-        for _ in range(pad_px):
-            if bool(v.all()):
-                break
-
-            # Sum colors of valid neighbors and count valid neighbors
-            summed = F.conv2d(x * v_f, kernel_c, padding=1, groups=channels)
-            counts = F.conv2d(v_f, base_kernel, padding=1)  # (1,1,H,W)
-
-            fill = (~v) & (counts[0, 0] > 0)
+        for dy, dx in neighbors:
+            neigh_valid = shift_hw(valid, dy, dx)
+            fill = inv & neigh_valid
             if not bool(fill.any()):
-                break
+                continue
 
-            avg = summed / counts.clamp_min(1e-6)
-            fill_nchw = fill.unsqueeze(0).unsqueeze(0)
-            x = torch.where(fill_nchw, avg, x)
+            for name, tex in padded.items():
+                if tex.ndim != 3:
+                    continue
+                neigh_tex = shift_hw(tex, dy, dx)
+                padded[name] = torch.where(fill.unsqueeze(-1), neigh_tex, tex)
 
-            v = v | fill
-            v_f = v.float().unsqueeze(0).unsqueeze(0)
+            valid = valid | fill
+            filled_any = True
+            inv = ~valid
 
-        padded[name] = x.squeeze(0).permute(1, 2, 0).to(device=tex.device, dtype=tex.dtype)
+        if not filled_any:
+            break
 
     return padded
 
@@ -500,7 +516,7 @@ def unwrap_mesh_with_xatlas_v2(
     CONSOLE.print(f"Rasterizing UV space ({texture_size}x{texture_size})...")
 
     if use_gpu and NVDIFFRAST_AVAILABLE and device.type == "cuda":
-        triangle_ids, bary_coords = rasterize_uv_gpu(uv_coords, uv_faces, texture_size, device)
+        triangle_ids, bary_coords, rast_out = rasterize_uv_gpu(uv_coords, uv_faces, texture_size, device)
     else:
         if use_gpu and not NVDIFFRAST_AVAILABLE:
             CONSOLE.print("[yellow]nvdiffrast not available, falling back to CPU rasterization")
@@ -509,21 +525,36 @@ def unwrap_mesh_with_xatlas_v2(
     # Valid mask: pixels that belong to a triangle (atlas background stays invalid)
     valid_mask = triangle_ids >= 0
 
-    # Clamp triangle IDs for gathering (invalid will be masked out anyway)
-    triangle_ids_clamped = triangle_ids.clamp(min=0)
+    if use_gpu and NVDIFFRAST_AVAILABLE and device.type == "cuda":
+        # Interpolate on the UV vertex domain directly using nvdiffrast.
+        # This avoids relying on barycentric output ordering assumptions and
+        # keeps corner ordering consistent with uv_faces (including seam splits).
+        assert dr is not None, "nvdiffrast is required for GPU interpolation"
+        pos_uv = vertices[vmapping_t].contiguous()  # (V_uv, 3)
+        nrm_uv = vertex_normals[vmapping_t].contiguous()  # (V_uv, 3)
+        uv_faces_int = uv_faces.int().contiguous()
 
-    # Get vertex indices for each pixel's triangle (aligned to UV corner order)
-    pixel_faces = faces_uv_order[triangle_ids_clamped]  # (H, W, 3)
+        interp_pos, _ = dr.interpolate(pos_uv.unsqueeze(0), rast_out, uv_faces_int)  # type: ignore
+        interp_nrm, _ = dr.interpolate(nrm_uv.unsqueeze(0), rast_out, uv_faces_int)  # type: ignore
 
-    # Gather vertex positions and normals
-    pixel_verts = vertices[pixel_faces]  # (H, W, 3, 3)
-    pixel_norms = vertex_normals[pixel_faces]  # (H, W, 3, 3)
+        origins = interp_pos[0]
+        normals = torch.nn.functional.normalize(interp_nrm[0], dim=-1)
+    else:
+        # Clamp triangle IDs for gathering (invalid will be masked out anyway)
+        triangle_ids_clamped = triangle_ids.clamp(min=0)
 
-    # Interpolate using barycentric coordinates
-    bary = bary_coords.unsqueeze(-1)  # (H, W, 3, 1)
-    origins = (pixel_verts * bary).sum(dim=2)  # (H, W, 3)
-    normals = (pixel_norms * bary).sum(dim=2)  # (H, W, 3)
-    normals = torch.nn.functional.normalize(normals, dim=-1)
+        # Get vertex indices for each pixel's triangle (aligned to UV corner order)
+        pixel_faces = faces_uv_order[triangle_ids_clamped]  # (H, W, 3)
+
+        # Gather vertex positions and normals
+        pixel_verts = vertices[pixel_faces]  # (H, W, 3, 3)
+        pixel_norms = vertex_normals[pixel_faces]  # (H, W, 3, 3)
+
+        # Interpolate using barycentric coordinates
+        bary = bary_coords.unsqueeze(-1)  # (H, W, 3, 1)
+        origins = (pixel_verts * bary).sum(dim=2)  # (H, W, 3)
+        normals = (pixel_norms * bary).sum(dim=2)  # (H, W, 3)
+        normals = torch.nn.functional.normalize(normals, dim=-1)
 
     CONSOLE.print("[green]Rasterization complete")
 
