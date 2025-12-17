@@ -241,6 +241,84 @@ def rasterize_uv_cpu(
     return triangle_ids, bary_coords
 
 
+def fill_rasterization_gaps(
+    triangle_ids: Tensor,
+    bary_coords: Tensor,
+    uv_coords: Tensor,
+    uv_faces: Tensor,
+    texture_size: int,
+) -> tuple[Tensor, Tensor]:
+    """Fill gaps in rasterization by assigning to nearest triangle center.
+
+    Args:
+        triangle_ids: (H, W) tensor with -1 for gap pixels
+        bary_coords: (H, W, 3) barycentric coordinates
+        uv_coords: (V, 2) UV coordinates per vertex
+        uv_faces: (F, 3) face indices into UV coords
+        texture_size: Texture resolution
+
+    Returns:
+        Updated triangle_ids and bary_coords with gaps filled
+    """
+    H, W = triangle_ids.shape
+    device = triangle_ids.device
+    gap_mask = triangle_ids < 0
+
+    num_gaps = gap_mask.sum().item()
+    if num_gaps == 0:
+        return triangle_ids, bary_coords
+
+    CONSOLE.print(f"Filling {num_gaps} gap pixels ({100 * num_gaps / (H * W):.1f}%)")
+
+    # Get triangle UVs and centers
+    tri_uvs = uv_coords[uv_faces]  # (F, 3, 2)
+    tri_centers = tri_uvs.mean(dim=1)  # (F, 2)
+
+    # Create pixel UV grid
+    px_size = 1.0 / texture_size
+    u = torch.linspace(px_size / 2, 1 - px_size / 2, W, device=device)
+    v = torch.linspace(px_size / 2, 1 - px_size / 2, H, device=device)
+    grid_u, grid_v = torch.meshgrid(u, v, indexing="xy")
+    pixel_uvs = torch.stack([grid_u, grid_v], dim=-1)  # (H, W, 2)
+
+    # For gap pixels, find nearest triangle center
+    gap_pixel_uvs = pixel_uvs[gap_mask]  # (N_gaps, 2)
+    dists = torch.cdist(gap_pixel_uvs, tri_centers)  # (N_gaps, F)
+    nearest_tri = dists.argmin(dim=1)  # (N_gaps,)
+
+    # Compute barycentric coordinates for gap pixels w.r.t. nearest triangles
+    # Using same math as rasterize_uv_cpu
+    v0 = tri_uvs[nearest_tri, 0, :]  # (N_gaps, 2)
+    v1 = tri_uvs[nearest_tri, 1, :]  # (N_gaps, 2)
+    v2 = tri_uvs[nearest_tri, 2, :]  # (N_gaps, 2)
+    p = gap_pixel_uvs  # (N_gaps, 2)
+
+    v0v1 = v1 - v0
+    v0v2 = v2 - v0
+    v0p = p - v0
+
+    d00 = (v0v1 * v0v1).sum(-1)
+    d01 = (v0v1 * v0v2).sum(-1)
+    d11 = (v0v2 * v0v2).sum(-1)
+    d20 = (v0p * v0v1).sum(-1)
+    d21 = (v0p * v0v2).sum(-1)
+
+    denom = d00 * d11 - d01 * d01
+    denom = torch.where(torch.abs(denom) < 1e-10, torch.ones_like(denom), denom)
+
+    bary_v = (d11 * d20 - d01 * d21) / denom
+    bary_w = (d00 * d21 - d01 * d20) / denom
+    bary_u = 1.0 - bary_v - bary_w
+
+    new_bary = torch.stack([bary_u, bary_v, bary_w], dim=-1)  # (N_gaps, 3)
+
+    # Update outputs
+    triangle_ids[gap_mask] = nearest_tri
+    bary_coords[gap_mask] = new_bary
+
+    return triangle_ids, bary_coords
+
+
 def generate_hemisphere_directions(normal: Tensor, num_dirs: int = 6) -> Tensor:
     """Generate directions on a hemisphere oriented along the normal.
 
@@ -338,7 +416,10 @@ def unwrap_mesh_with_xatlas_v2(
             CONSOLE.print("[yellow]nvdiffrast not available, falling back to CPU rasterization")
         triangle_ids, bary_coords = rasterize_uv_cpu(uv_coords, uv_faces, texture_size)
 
-    # Valid mask: pixels that belong to a triangle
+    # Fill gaps by assigning to nearest triangle center
+    triangle_ids, bary_coords = fill_rasterization_gaps(triangle_ids, bary_coords, uv_coords, uv_faces, texture_size)
+
+    # Valid mask: pixels that belong to a triangle (should be all True after gap filling)
     valid_mask = triangle_ids >= 0
 
     # Clamp triangle IDs for gathering (invalid will be masked out anyway)
