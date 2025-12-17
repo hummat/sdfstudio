@@ -976,7 +976,8 @@ def render_views_from_nerf(
         for cam_idx in progress.track(range(N)):
             camera_ray_bundle = cameras.generate_rays(camera_indices=cam_idx).to(device)
             with torch.no_grad():
-                outputs = pipeline.model.get_outputs_for_camera_ray_bundle(camera_ray_bundle, progress=True)
+                # Avoid nested rich progress bars (outer loop already has a live display).
+                outputs = pipeline.model.get_outputs_for_camera_ray_bundle(camera_ray_bundle, progress=False)
             if "rgb" not in outputs:
                 raise KeyError(f"Model outputs did not contain 'rgb' (available: {list(outputs.keys())})")
             images.append(outputs["rgb"])
