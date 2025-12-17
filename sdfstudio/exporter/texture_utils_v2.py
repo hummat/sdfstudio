@@ -131,7 +131,7 @@ def rasterize_uv_cpu(
     uv_coords: Tensor,
     faces: Tensor,
     texture_size: int,
-) -> tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, None]:
     """CPU fallback for UV rasterization using vectorized operations.
 
     Args:
@@ -142,6 +142,7 @@ def rasterize_uv_cpu(
     Returns:
         triangle_ids: (H, W) tensor of triangle indices (-1 for empty pixels)
         bary_coords: (H, W, 3) tensor of barycentric coordinates
+        rast_out: Always None (API parity with rasterize_uv_gpu)
     """
     device = uv_coords.device
     H = W = texture_size
@@ -242,97 +243,7 @@ def rasterize_uv_cpu(
             ).reshape(H, W, 3)
             bary_coords = torch.where(update_mask.unsqueeze(-1), new_bary, bary_coords)
 
-    return triangle_ids, bary_coords
-
-
-def fill_rasterization_gaps(
-    triangle_ids: Tensor,
-    bary_coords: Tensor,
-    uv_coords: Tensor,
-    uv_faces: Tensor,
-    texture_size: int,
-) -> tuple[Tensor, Tensor]:
-    """Fill gaps in rasterization by assigning to nearest triangle center.
-
-    Args:
-        triangle_ids: (H, W) tensor with -1 for gap pixels
-        bary_coords: (H, W, 3) barycentric coordinates
-        uv_coords: (V, 2) UV coordinates per vertex
-        uv_faces: (F, 3) face indices into UV coords
-        texture_size: Texture resolution
-
-    Returns:
-        Updated triangle_ids and bary_coords with gaps filled
-    """
-    H, W = triangle_ids.shape
-    device = triangle_ids.device
-    gap_mask = triangle_ids < 0
-
-    num_gaps = gap_mask.sum().item()
-    if num_gaps == 0:
-        return triangle_ids, bary_coords
-
-    CONSOLE.print(f"Filling {num_gaps} gap pixels ({100 * num_gaps / (H * W):.1f}%)")
-
-    # Get triangle UVs and centers
-    tri_uvs = uv_coords[uv_faces]  # (F, 3, 2)
-    tri_centers = tri_uvs.mean(dim=1)  # (F, 2)
-
-    # Create pixel UV grid
-    px_size = 1.0 / texture_size
-    u = torch.linspace(px_size / 2, 1 - px_size / 2, W, device=device)
-    v = torch.linspace(px_size / 2, 1 - px_size / 2, H, device=device)
-    grid_u, grid_v = torch.meshgrid(u, v, indexing="xy")
-    pixel_uvs = torch.stack([grid_u, grid_v], dim=-1)  # (H, W, 2)
-
-    # For gap pixels, find nearest triangle center
-    # Process in chunks to avoid OOM (cdist creates N_gaps × N_faces matrix)
-    gap_pixel_uvs = pixel_uvs[gap_mask]  # (N_gaps, 2)
-    N_gaps = gap_pixel_uvs.shape[0]
-    chunk_size = 10000  # Process 10k gap pixels at a time
-
-    nearest_tri = torch.empty(N_gaps, dtype=torch.long, device=device)
-    new_bary = torch.empty(N_gaps, 3, dtype=torch.float32, device=device)
-
-    for start in range(0, N_gaps, chunk_size):
-        end = min(start + chunk_size, N_gaps)
-        chunk_uvs = gap_pixel_uvs[start:end]  # (chunk, 2)
-
-        # Find nearest triangle for this chunk
-        dists = torch.cdist(chunk_uvs, tri_centers)  # (chunk, F)
-        chunk_nearest = dists.argmin(dim=1)  # (chunk,)
-        nearest_tri[start:end] = chunk_nearest
-
-        # Compute barycentric coordinates
-        v0 = tri_uvs[chunk_nearest, 0, :]  # (chunk, 2)
-        v1 = tri_uvs[chunk_nearest, 1, :]  # (chunk, 2)
-        v2 = tri_uvs[chunk_nearest, 2, :]  # (chunk, 2)
-        p = chunk_uvs  # (chunk, 2)
-
-        v0v1 = v1 - v0
-        v0v2 = v2 - v0
-        v0p = p - v0
-
-        d00 = (v0v1 * v0v1).sum(-1)
-        d01 = (v0v1 * v0v2).sum(-1)
-        d11 = (v0v2 * v0v2).sum(-1)
-        d20 = (v0p * v0v1).sum(-1)
-        d21 = (v0p * v0v2).sum(-1)
-
-        denom = d00 * d11 - d01 * d01
-        denom = torch.where(torch.abs(denom) < 1e-10, torch.ones_like(denom), denom)
-
-        bary_v = (d11 * d20 - d01 * d21) / denom
-        bary_w = (d00 * d21 - d01 * d20) / denom
-        bary_u = 1.0 - bary_v - bary_w
-
-        new_bary[start:end] = torch.stack([bary_u, bary_v, bary_w], dim=-1)
-
-    # Update outputs
-    triangle_ids[gap_mask] = nearest_tri
-    bary_coords[gap_mask] = new_bary
-
-    return triangle_ids, bary_coords
+    return triangle_ids, bary_coords, None
 
 
 def pad_textures_nearest(
@@ -344,7 +255,8 @@ def pad_textures_nearest(
 
     This avoids black seams from rasterization gaps and prevents mipmap/bilinear
     bleeding from undefined atlas regions, without querying the NeRF outside the
-    rasterized triangles.
+    rasterized triangles. Note: this is seam dilation; it does not "fill" the UV
+    atlas background (large empty regions are expected for typical unwraps).
     """
     if pad_px <= 0:
         return textures
@@ -523,12 +435,12 @@ def unwrap_mesh_with_xatlas_v2(
     else:
         if use_gpu and not NVDIFFRAST_AVAILABLE:
             CONSOLE.print("[yellow]nvdiffrast not available, falling back to CPU rasterization")
-        triangle_ids, bary_coords = rasterize_uv_cpu(uv_coords, uv_faces, texture_size)
+        triangle_ids, bary_coords, rast_out = rasterize_uv_cpu(uv_coords, uv_faces, texture_size)
 
     # Valid mask: pixels that belong to a triangle (atlas background stays invalid)
     valid_mask = triangle_ids >= 0
 
-    if use_gpu and NVDIFFRAST_AVAILABLE and device.type == "cuda":
+    if use_gpu and NVDIFFRAST_AVAILABLE and device.type == "cuda" and rast_out is not None:
         # Interpolate on the UV vertex domain directly using nvdiffrast.
         # This avoids relying on barycentric output ordering assumptions and
         # keeps corner ordering consistent with uv_faces (including seam splits).
@@ -679,7 +591,7 @@ def write_textured_mesh_fast(
     output_dir: Path,
     mesh_name: str = "mesh",
 ) -> None:
-    """Write textured mesh using trimesh for fast I/O.
+    """Write textured mesh (OBJ+MTL + GLB).
 
     Args:
         vertices: Mesh vertices (V, 3)
@@ -717,38 +629,64 @@ def write_textured_mesh_fast(
     # Flip V coordinate for OBJ convention
     expanded_uvs[:, 1] = 1.0 - expanded_uvs[:, 1]
 
-    # Convert texture to uint8 image
+    # Export OBJ + MTL ourselves (trimesh's OBJ exporter writes an extra material_0.png
+    # which duplicates texture.png; we want a single canonical texture file).
+    obj_path = output_dir / f"{mesh_name}.obj"
+    mtl_path = output_dir / f"{mesh_name}.mtl"
+
+    # MTL assumes texture.png already exists in output_dir.
+    mtl_path.write_text(
+        "\n".join(
+            [
+                "newmtl material_0",
+                "Ka 0 0 0",
+                "Kd 1 1 1",
+                "Ks 0 0 0",
+                "d 1.0",
+                "illum 1",
+                "map_Kd texture.png",
+                "",
+            ]
+        )
+    )
+
+    lines: list[str] = []
+    lines.append(f"mtllib {mtl_path.name}")
+    lines.append(f"o {mesh_name}")
+    for v in expanded_verts:
+        lines.append(f"v {v[0]:.6f} {v[1]:.6f} {v[2]:.6f}")
+    for vt in expanded_uvs:
+        lines.append(f"vt {vt[0]:.6f} {vt[1]:.6f}")
+    for vn in expanded_normals:
+        lines.append(f"vn {vn[0]:.6f} {vn[1]:.6f} {vn[2]:.6f}")
+    lines.append("usemtl material_0")
+    for i in range(num_faces):
+        a = 3 * i + 1
+        b = 3 * i + 2
+        c = 3 * i + 3
+        lines.append(f"f {a}/{a}/{a} {b}/{b}/{b} {c}/{c}/{c}")
+    obj_path.write_text("\n".join(lines) + "\n")
+
+    # Also export GLB for convenience
     texture_uint8 = (np.clip(texture_image, 0, 1) * 255).astype(np.uint8)
     texture_pil = PIL.Image.fromarray(texture_uint8)
-
-    # Create trimesh with texture
     material = trimesh.visual.material.SimpleMaterial(  # type: ignore
         image=texture_pil,
         diffuse=[255, 255, 255, 255],
     )
-
     visuals = trimesh.visual.TextureVisuals(  # type: ignore
         uv=expanded_uvs,
         material=material,
     )
-
-    mesh = trimesh.Trimesh(
+    mesh_tm = trimesh.Trimesh(
         vertices=expanded_verts,
         faces=expanded_faces,
         vertex_normals=expanded_normals,
         visual=visuals,
         process=False,  # Don't merge vertices
     )
-
-    # Export OBJ
-    obj_path = output_dir / f"{mesh_name}.obj"
-    mesh.export(obj_path, file_type="obj")
-
-    # Also export GLB for convenience
     glb_path = output_dir / f"{mesh_name}.glb"
-    mesh.export(glb_path, file_type="glb")
-
-    CONSOLE.print(f"[green]Mesh exported to {obj_path} and {glb_path}")
+    mesh_tm.export(glb_path, file_type="glb")
 
 
 def export_textured_mesh_v2(
@@ -760,7 +698,7 @@ def export_textured_mesh_v2(
     use_gpu_rasterization: bool = True,
     pad_px: int = 32,
 ) -> None:
-    """Export textured mesh using improved pipeline (Path A).
+    """Export textured mesh using improved pipeline.
 
     Args:
         mesh: Input mesh
@@ -774,12 +712,11 @@ def export_textured_mesh_v2(
     device = pipeline.device
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Warn if old v1 files exist
-    old_v1_files = ["material_0.mtl", "material_0.png", "normal_0.png"]
-    if any((output_dir / f).exists() for f in old_v1_files):
-        CONSOLE.print("[yellow]Warning: Old v1 output files detected in output directory")
-        CONSOLE.print("[yellow]Consider cleaning the directory for a fresh v2 export")
+    # Remove legacy duplicate texture artifacts if present.
+    for legacy_name in ("material_0.png", "material_0.mtl"):
+        legacy_path = output_dir / legacy_name
+        if legacy_path.exists():
+            legacy_path.unlink()
 
     vertices = mesh.vertices.to(device)
     faces = mesh.faces.to(device)
@@ -795,6 +732,8 @@ def export_textured_mesh_v2(
         texture_size=texture_size,
         use_gpu=use_gpu_rasterization,
     )
+    coverage = float(valid_mask.float().mean().item() * 100.0)
+    CONSOLE.print(f"UV atlas coverage: {coverage:.1f}%")
 
     # Step 2: Compute ray length from mesh scale
     face_verts = vertices[faces_uv_order]
@@ -848,7 +787,7 @@ def export_textured_mesh_v2(
 
 
 # =============================================================================
-# Path B: Render-and-Reproject (Stubs)
+# Multiview render-and-project/reproject
 # =============================================================================
 
 
@@ -975,7 +914,7 @@ def render_views_from_nerf(
 
     rgbs: list[Tensor] = []
     depths: list[Tensor] = []
-    progress = get_progress("Rendering synthetic views (Path B)")
+    progress = get_progress("Rendering synthetic views")
     with progress:
         for cam_idx in progress.track(range(N)):
             camera_ray_bundle = cameras.generate_rays(camera_indices=cam_idx).to(device)
@@ -992,7 +931,7 @@ def render_views_from_nerf(
             else:
                 raise KeyError(
                     f"Model outputs did not contain 'depth' (available: {list(outputs.keys())}); "
-                    "Path B reprojection needs depth for visibility"
+                    "Multiview reprojection needs depth for visibility"
                 )
 
     return rgbs, depths
@@ -1022,7 +961,7 @@ def project_views_to_texture_open3d(
         vertex_normals: Vertex normals for the UV-mapped mesh (V, 3)
     """
     if not OPEN3D_AVAILABLE:
-        raise RuntimeError("Open3D not available for Path B")
+        raise RuntimeError("Open3D not available for multiview projection")
 
     import open3d as o3d  # type: ignore
     import open3d.core as o3c  # type: ignore
@@ -1118,25 +1057,21 @@ def project_views_to_texture_open3d(
     if tex_np.max() > 1.0:
         tex_np = tex_np / 255.0
 
-    # Extract per-face UVs from the mesh
-    texture_uvs_np = None
-    try:
-        # Tensor mesh attribute name in Open3D is typically 'texture_uvs'
-        if "texture_uvs" in mesh_t.triangle:  # type: ignore[operator]
-            uv = mesh_t.triangle["texture_uvs"].numpy()  # type: ignore[index]
-            texture_uvs_np = uv
-    except Exception:  # noqa: BLE001
-        texture_uvs_np = None
+    # IMPORTANT: compute_uvatlas() may reorder triangles and/or vertices. Export the
+    # *UV-mapped* geometry from Open3D so texture_uvs stays aligned with faces.
+    legacy_with_uv = mesh_t.to_legacy()  # type: ignore[attr-defined]
+    verts_out_np = np.asarray(legacy_with_uv.vertices, dtype=np.float32)  # type: ignore[attr-defined]
+    faces_out_np = np.asarray(legacy_with_uv.triangles, dtype=np.int64)  # type: ignore[attr-defined]
 
-    if texture_uvs_np is None:
-        legacy_with_uv = mesh_t.to_legacy()  # type: ignore[attr-defined]
-        uv = np.asarray(legacy_with_uv.triangle_uvs, dtype=np.float32)  # type: ignore[attr-defined]
-        texture_uvs_np = uv
+    # Extract per-face UVs from the UV-mapped mesh (authoritative).
+    texture_uvs_np = np.asarray(legacy_with_uv.triangle_uvs, dtype=np.float32)  # type: ignore[attr-defined]
+    if texture_uvs_np.size == 0:
+        raise RuntimeError("Open3D UV atlas did not populate triangle_uvs")
 
     # Normalize/reshape to (F, 3, 2)
     if texture_uvs_np.ndim == 2 and texture_uvs_np.shape[1] == 2:
-        if texture_uvs_np.shape[0] == faces_np.shape[0] * 3:
-            texture_uvs_np = texture_uvs_np.reshape(faces_np.shape[0], 3, 2)
+        if texture_uvs_np.shape[0] == faces_out_np.shape[0] * 3:
+            texture_uvs_np = texture_uvs_np.reshape(faces_out_np.shape[0], 3, 2)
         else:
             raise RuntimeError(f"Unexpected UV shape: {texture_uvs_np.shape}")
     elif texture_uvs_np.ndim == 3 and texture_uvs_np.shape[1:] == (3, 2):
@@ -1144,11 +1079,6 @@ def project_views_to_texture_open3d(
     else:
         raise RuntimeError(f"Unexpected UV shape: {texture_uvs_np.shape}")
 
-    # IMPORTANT: compute_uvatlas() may reorder triangles and/or vertices. Export the
-    # *UV-mapped* geometry from Open3D so texture_uvs stays aligned with faces.
-    legacy_with_uv = mesh_t.to_legacy()  # type: ignore[attr-defined]
-    verts_out_np = np.asarray(legacy_with_uv.vertices, dtype=np.float32)  # type: ignore[attr-defined]
-    faces_out_np = np.asarray(legacy_with_uv.triangles, dtype=np.int64)  # type: ignore[attr-defined]
     normals_out_np = None
     try:
         normals_out_np = np.asarray(legacy_with_uv.vertex_normals, dtype=np.float32)  # type: ignore[attr-defined]
@@ -1298,7 +1228,7 @@ def export_textured_mesh_multiview(
     radius_mult: float = 2.0,
     pad_px: int = 32,
 ) -> None:
-    """Export textured mesh using render-and-reproject approach (Path B).
+    """Export textured mesh using multiview render-and-project/reproject.
 
     This approach:
     1. Generates camera poses around the object
@@ -1319,6 +1249,10 @@ def export_textured_mesh_multiview(
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    for legacy_name in ("material_0.png", "material_0.mtl"):
+        legacy_path = output_dir / legacy_name
+        if legacy_path.exists():
+            legacy_path.unlink()
 
     device = pipeline.device
     vertices = mesh.vertices.to(device)
@@ -1328,7 +1262,7 @@ def export_textured_mesh_multiview(
     # Step 1: bounding sphere for camera placement
     center = vertices.mean(dim=0)
     radius = (vertices - center).norm(dim=-1).max().item() * radius_mult
-    CONSOLE.print(f"[bold]Path B cameras: {num_views} views, radius={radius:.4f}, fov={fov_degrees:.1f}°")
+    CONSOLE.print(f"[bold]Cameras: {num_views} views, radius={radius:.4f}, fov={fov_degrees:.1f}°")
 
     # Step 2: camera poses
     intrinsics, extrinsics = generate_camera_poses_on_sphere(
@@ -1372,6 +1306,8 @@ def export_textured_mesh_multiview(
             texture_size=texture_size,
             use_gpu=True,
         )
+        coverage = float(valid_mask.float().mean().item() * 100.0)
+        CONSOLE.print(f"UV atlas coverage: {coverage:.1f}%")
         texture = project_views_to_texture_reproject(
             origins,
             surf_normals,
