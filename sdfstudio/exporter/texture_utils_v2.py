@@ -16,7 +16,7 @@
 Texture utils v2 - Improved texture export with GPU rasterization and multi-view support.
 
 Path A: GPU rasterization (nvdiffrast) + fast mesh I/O (trimesh) + multi-direction averaging
-Path B: Render-and-reproject using synthetic NeRF views (stubs)
+Path B: Render-and-reproject using synthetic NeRF views
 """
 
 # pylint: disable=no-member

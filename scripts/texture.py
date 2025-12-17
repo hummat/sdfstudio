@@ -44,6 +44,8 @@ class TextureMesh:
     """Texturing method.
 
     Notes:
+      - "legacy" is the original implementation. It now writes the same canonical
+        filenames as v2 (`mesh.obj` + `mesh.mtl` + `texture.png`) to avoid duplicates.
       - "cpu"/"gpu" use xatlas for UV unwrap + per-texel NeRF queries.
       - "open3d" uses Open3D's UV atlas + multiview projection when available.
         It uses a different UV V convention than xatlas, so the exporter must not
@@ -78,7 +80,7 @@ class TextureMesh:
         _, pipeline, _ = eval_setup(self.load_config, test_mode="inference")
 
         if self.method == "legacy":
-            CONSOLE.print("[yellow]Using legacy (v1) texture export with xatlas")
+            CONSOLE.print("[yellow]Using legacy (v1) texture export")
             texture_utils.export_textured_mesh(
                 mesh,
                 pipeline,
