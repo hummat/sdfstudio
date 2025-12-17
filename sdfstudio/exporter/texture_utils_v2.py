@@ -758,6 +758,7 @@ def export_textured_mesh_v2(
     texture_size: int = 2048,
     num_directions: int = 6,
     use_gpu_rasterization: bool = True,
+    pad_px: int = 32,
 ) -> None:
     """Export textured mesh using improved pipeline (Path A).
 
@@ -768,6 +769,7 @@ def export_textured_mesh_v2(
         texture_size: Texture resolution
         num_directions: Number of ray directions per texel for averaging
         use_gpu_rasterization: Whether to use GPU rasterization
+        pad_px: Number of pixels to dilate charts outward to avoid seam bleeding
     """
     device = pipeline.device
     output_dir = Path(output_dir)
@@ -811,7 +813,7 @@ def export_textured_mesh_v2(
     )
 
     # Step 3.5: Pad textures to avoid seam bleeding / raster gaps without querying outside triangles.
-    textures = pad_textures_nearest(textures, valid_mask, pad_px=8)
+    textures = pad_textures_nearest(textures, valid_mask, pad_px=pad_px)
 
     # Step 4: Save all texture maps
     import mediapy as media  # type: ignore
@@ -932,7 +934,7 @@ def render_views_from_nerf(
     intrinsics: Tensor,
     extrinsics: Tensor,
     image_size: tuple[int, int] = (1024, 1024),
-) -> list[Tensor]:
+) -> tuple[list[Tensor], list[Tensor]]:
     """Render synthetic views from NeRF at given camera poses.
 
     Args:
@@ -942,7 +944,8 @@ def render_views_from_nerf(
         image_size: Output image resolution (H, W)
 
     Returns:
-        images: List of rendered RGB images (N,) each (H, W, 3)
+        rgbs: List of rendered RGB images (N,) each (H, W, 3)
+        depths: List of rendered depth images (N,) each (H, W, 1)
     """
     device = pipeline.device
     H, W = image_size
@@ -970,7 +973,8 @@ def render_views_from_nerf(
         camera_to_worlds=extrinsics[:, :3, :4],
     ).to(device)
 
-    images: list[Tensor] = []
+    rgbs: list[Tensor] = []
+    depths: list[Tensor] = []
     progress = get_progress("Rendering synthetic views (Path B)")
     with progress:
         for cam_idx in progress.track(range(N)):
@@ -980,9 +984,18 @@ def render_views_from_nerf(
                 outputs = pipeline.model.get_outputs_for_camera_ray_bundle(camera_ray_bundle, progress=False)
             if "rgb" not in outputs:
                 raise KeyError(f"Model outputs did not contain 'rgb' (available: {list(outputs.keys())})")
-            images.append(outputs["rgb"])
+            rgbs.append(outputs["rgb"])
+            if "depth" in outputs:
+                depths.append(outputs["depth"])
+            elif "expected_depth" in outputs:
+                depths.append(outputs["expected_depth"])
+            else:
+                raise KeyError(
+                    f"Model outputs did not contain 'depth' (available: {list(outputs.keys())}); "
+                    "Path B reprojection needs depth for visibility"
+                )
 
-    return images
+    return rgbs, depths
 
 
 def project_views_to_texture_open3d(
@@ -1050,18 +1063,21 @@ def project_views_to_texture_open3d(
     K_o3c = o3c.Tensor(K)
     w2c_o3c = o3c.Tensor(w2c)
 
-    if not hasattr(mesh_t, "project_images_to_albedo"):
-        raise RuntimeError("Open3D TriangleMesh.project_images_to_albedo() not available")
-
     # Call with a few common Open3D signatures.
     tex_out = None
     try:
-        tex_out = mesh_t.project_images_to_albedo(o3d_images, K_o3c, w2c_o3c, texture_size=texture_size)  # type: ignore[call-arg]
-    except TypeError:
         try:
+            tex_out = mesh_t.project_images_to_albedo(o3d_images, K_o3c, w2c_o3c, texture_size=texture_size)  # type: ignore[call-arg]
+        except TypeError:
             tex_out = mesh_t.project_images_to_albedo(o3d_images, K_o3c, w2c_o3c, texture_size)  # type: ignore[misc]
-        except TypeError as e:
-            raise RuntimeError("Unsupported Open3D project_images_to_albedo() signature") from e
+    except AttributeError as e:
+        version = getattr(o3d, "__version__", "unknown")
+        raise RuntimeError(
+            f"Open3D {version} does not expose TriangleMesh.project_images_to_albedo() on this build "
+            f"(mesh type: {type(mesh_t)})."
+        ) from e
+    except TypeError as e:
+        raise RuntimeError("Unsupported Open3D project_images_to_albedo() signature") from e
 
     # Extract texture tensor
     if isinstance(tex_out, o3d.t.geometry.Image):  # type: ignore[attr-defined]
@@ -1120,14 +1136,133 @@ def project_views_to_texture_open3d(
     return texture, texture_uvs
 
 
+def project_views_to_texture_reproject(
+    origins: Tensor,
+    normals: Tensor,
+    valid_mask: Tensor,
+    rgbs: list[Tensor],
+    depths: list[Tensor],
+    intrinsics: Tensor,
+    extrinsics: Tensor,
+    *,
+    depth_tolerance: float,
+    chunk_size: int = 200_000,
+) -> Tensor:
+    """Project rendered view images back onto the UV texture by reprojection.
+
+    Uses per-texel 3D positions (origins) and normals (from UV rasterization) and
+    blends colors from multiple synthetic views. Occlusions are handled by comparing
+    the projected texel depth against the rendered depth map.
+    """
+    device = origins.device
+    H_tex, W_tex = origins.shape[:2]
+
+    if valid_mask.dtype != torch.bool:
+        valid_mask = valid_mask.bool()
+
+    texel_coords = valid_mask.nonzero(as_tuple=False)  # (M, 2)
+    if texel_coords.numel() == 0:
+        return torch.zeros((H_tex, W_tex, 3), device=device)
+
+    P_all = origins[valid_mask].reshape(-1, 3)  # (M, 3)
+    N_all = normals[valid_mask].reshape(-1, 3)  # (M, 3)
+
+    M = P_all.shape[0]
+    accum = torch.zeros((M, 3), device=device, dtype=torch.float32)
+    wsum = torch.zeros((M, 1), device=device, dtype=torch.float32)
+
+    num_views = len(rgbs)
+    if num_views != len(depths) or num_views != intrinsics.shape[0] or num_views != extrinsics.shape[0]:
+        raise ValueError("rgbs/depths/intrinsics/extrinsics must have the same number of views")
+
+    for view_idx in range(num_views):
+        K = intrinsics[view_idx].to(device=device, dtype=torch.float32)
+        c2w = extrinsics[view_idx, :3, :4].to(device=device, dtype=torch.float32)
+        R = c2w[:, :3]  # (3, 3)
+        t = c2w[:, 3]  # (3,)
+
+        rgb_img = rgbs[view_idx].to(device=device, dtype=torch.float32)
+        depth_img = depths[view_idx].to(device=device, dtype=torch.float32)
+
+        if rgb_img.ndim != 3 or rgb_img.shape[-1] != 3:
+            raise ValueError(f"Expected rgb image (H, W, 3), got {tuple(rgb_img.shape)}")
+        if depth_img.ndim == 3 and depth_img.shape[-1] == 1:
+            pass
+        elif depth_img.ndim == 2:
+            depth_img = depth_img.unsqueeze(-1)
+        else:
+            raise ValueError(f"Expected depth image (H, W, 1) or (H, W), got {tuple(depth_img.shape)}")
+
+        H_img, W_img = rgb_img.shape[:2]
+        fx = K[0, 0]
+        fy = K[1, 1]
+        cx = K[0, 2]
+        cy = K[1, 2]
+
+        # Prepare for grid_sample
+        rgb_nchw = rgb_img.permute(2, 0, 1).unsqueeze(0)  # (1, 3, H, W)
+        depth_nchw = depth_img.permute(2, 0, 1).unsqueeze(0)  # (1, 1, H, W)
+
+        for start in range(0, M, chunk_size):
+            end = min(start + chunk_size, M)
+            P = P_all[start:end]  # (C, 3)
+            N = N_all[start:end]  # (C, 3)
+
+            Pc = (P - t) @ R  # (C, 3) world -> camera
+            z = -Pc[:, 2]  # camera looks along -Z
+
+            in_front = z > 1e-6
+            denom = z.clamp_min(1e-6)
+            x_norm = Pc[:, 0] / denom
+            y_norm = Pc[:, 1] / denom
+
+            u = fx * x_norm + cx
+            v = cy - fy * y_norm
+
+            in_bounds = (u >= 0.0) & (u <= (W_img - 1)) & (v >= 0.0) & (v <= (H_img - 1))
+
+            # Facing term: prefer views where the surface normal points towards the camera.
+            view_dir = (t[None, :] - P)
+            view_dir = view_dir / (view_dir.norm(dim=-1, keepdim=True) + 1e-8)
+            cos = (N * view_dir).sum(dim=-1).clamp(min=0.0)  # (C,)
+            facing = cos > 0.0
+
+            # Sample rendered rgb/depth
+            u_norm_gs = (u / (W_img - 1)) * 2.0 - 1.0
+            v_norm_gs = (v / (H_img - 1)) * 2.0 - 1.0
+            grid = torch.stack([u_norm_gs, v_norm_gs], dim=-1).view(1, -1, 1, 2)  # (1, C, 1, 2)
+
+            rgb_s = torch.nn.functional.grid_sample(rgb_nchw, grid, align_corners=True, mode="bilinear")
+            rgb_s = rgb_s[0, :, :, 0].permute(1, 0)  # (C, 3)
+
+            depth_s = torch.nn.functional.grid_sample(depth_nchw, grid, align_corners=True, mode="bilinear")
+            depth_s = depth_s[0, 0, :, 0]  # (C,)
+
+            depth_ok = torch.abs(depth_s - z) <= depth_tolerance
+
+            m = in_front & in_bounds & facing & depth_ok
+            w = (cos * cos).unsqueeze(-1) * m.float().unsqueeze(-1)  # (C, 1)
+
+            accum[start:end] = accum[start:end] + w * rgb_s
+            wsum[start:end] = wsum[start:end] + w
+
+    rgb_out = torch.zeros((H_tex, W_tex, 3), device=device, dtype=torch.float32)
+    rgb_valid = accum / wsum.clamp_min(1e-6)
+    rgb_out[valid_mask] = rgb_valid
+    return rgb_out
+
+
 def export_textured_mesh_multiview(
     mesh: Mesh,
     pipeline: Pipeline,
     output_dir: Path,
     texture_size: int = 2048,
     num_views: int = 30,
-    image_size: tuple[int, int] = (1024, 1024),
+    render_pixels_per_side: int = 768,
     fov_degrees: float = 60.0,
+    elevation_range: tuple[float, float] = (-30.0, 60.0),
+    radius_mult: float = 2.0,
+    pad_px: int = 32,
 ) -> None:
     """Export textured mesh using render-and-reproject approach (Path B).
 
@@ -1142,14 +1277,14 @@ def export_textured_mesh_multiview(
         output_dir: Output directory
         texture_size: Texture resolution
         num_views: Number of synthetic views to render
-        image_size: Resolution for NeRF rendering (H, W)
+        render_pixels_per_side: Render resolution (square) for NeRF views
         fov_degrees: Vertical field of view for synthetic cameras
+        elevation_range: Min/max elevation angles in degrees
+        radius_mult: Multiplier for the mesh bounding sphere radius
+        pad_px: Number of pixels to dilate charts outward to avoid seam bleeding (fallback path)
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    if not OPEN3D_AVAILABLE:
-        raise RuntimeError("Open3D not available; cannot run Path B multiview texturing")
 
     device = pipeline.device
     vertices = mesh.vertices.to(device)
@@ -1158,7 +1293,7 @@ def export_textured_mesh_multiview(
 
     # Step 1: bounding sphere for camera placement
     center = vertices.mean(dim=0)
-    radius = (vertices - center).norm(dim=-1).max().item() * 2.0
+    radius = (vertices - center).norm(dim=-1).max().item() * radius_mult
     CONSOLE.print(f"[bold]Path B cameras: {num_views} views, radius={radius:.4f}, fov={fov_degrees:.1f}°")
 
     # Step 2: camera poses
@@ -1166,15 +1301,56 @@ def export_textured_mesh_multiview(
         center=center,
         radius=radius,
         num_views=num_views,
-        image_size=image_size,
+        elevation_range=elevation_range,
+        image_size=(render_pixels_per_side, render_pixels_per_side),
         fov_degrees=fov_degrees,
     )
 
     # Step 3: render synthetic views
-    images = render_views_from_nerf(pipeline, intrinsics, extrinsics, image_size=image_size)
+    rgbs, depths = render_views_from_nerf(
+        pipeline, intrinsics, extrinsics, image_size=(render_pixels_per_side, render_pixels_per_side)
+    )
 
-    # Step 4: project to UV texture via Open3D
-    texture, texture_uvs = project_views_to_texture_open3d(mesh, images, intrinsics, extrinsics, texture_size=texture_size)
+    # Step 4: project to UV texture via Open3D if available, otherwise fall back to reprojection.
+    texture = None
+    texture_uvs = None
+    faces_for_export = None
+
+    if OPEN3D_AVAILABLE:
+        try:
+            texture, texture_uvs = project_views_to_texture_open3d(
+                mesh, rgbs, intrinsics, extrinsics, texture_size=texture_size
+            )
+            faces_for_export = faces
+        except RuntimeError as e:
+            if "project_images_to_albedo" not in str(e):
+                raise
+            CONSOLE.print("[yellow]Open3D projection API not available; falling back to xatlas + reprojection")
+
+    if texture is None or texture_uvs is None or faces_for_export is None:
+        if not OPEN3D_AVAILABLE:
+            CONSOLE.print("[yellow]Open3D not available; using xatlas + reprojection instead")
+
+        # UV unwrap & per-texel surface points for reprojection
+        texture_uvs, faces_uv_order, origins, surf_normals, valid_mask = unwrap_mesh_with_xatlas_v2(
+            vertices,
+            faces,
+            vertex_normals,
+            texture_size=texture_size,
+            use_gpu=True,
+        )
+        texture = project_views_to_texture_reproject(
+            origins,
+            surf_normals,
+            valid_mask,
+            rgbs,
+            depths,
+            intrinsics,
+            extrinsics,
+            depth_tolerance=0.01 * radius,
+        )
+        texture = pad_textures_nearest({"rgb": texture}, valid_mask, pad_px=pad_px)["rgb"]
+        faces_for_export = faces_uv_order
 
     # Step 5: write results (texture + mesh)
     import mediapy as media  # type: ignore
@@ -1184,7 +1360,7 @@ def export_textured_mesh_multiview(
 
     write_textured_mesh_fast(
         vertices,
-        faces,
+        faces_for_export,
         vertex_normals,
         texture_uvs.to(device),
         texture_np,

@@ -44,14 +44,20 @@ class TextureMesh:
     """Texturing method."""
     num_directions: int = 6
     """Number of ray directions per texel for averaging (v2 cpu/gpu only)."""
+    pad_px: int = 32
+    """Number of pixels to dilate charts outward (v2 cpu/gpu/open3d)."""
     num_views: int = 30
     """Number of synthetic views for --method open3d."""
-    render_height: int = 1024
-    """Render height for --method open3d."""
-    render_width: int = 1024
-    """Render width for --method open3d."""
+    render_pixels_per_side: int = 768
+    """Square render resolution for --method open3d."""
     fov_degrees: float = 60.0
     """Vertical field of view for --method open3d."""
+    elev_min_degrees: float = -30.0
+    """Minimum elevation angle for --method open3d."""
+    elev_max_degrees: float = 60.0
+    """Maximum elevation angle for --method open3d."""
+    radius_mult: float = 2.0
+    """Multiplier for mesh bounding sphere radius for --method open3d."""
 
     def main(self) -> None:
         """Export textured mesh"""
@@ -82,6 +88,7 @@ class TextureMesh:
                 texture_size=self.num_pixels_per_side,
                 num_directions=self.num_directions,
                 use_gpu_rasterization=(self.method == "gpu"),
+                pad_px=self.pad_px,
             )
         elif self.method == "open3d":
             CONSOLE.print("[green]Using v2 multiview texture export (open3d)")
@@ -91,8 +98,11 @@ class TextureMesh:
                 output_dir=self.output_dir,
                 texture_size=self.num_pixels_per_side,
                 num_views=self.num_views,
-                image_size=(self.render_height, self.render_width),
+                render_pixels_per_side=self.render_pixels_per_side,
                 fov_degrees=self.fov_degrees,
+                elevation_range=(self.elev_min_degrees, self.elev_max_degrees),
+                radius_mult=self.radius_mult,
+                pad_px=self.pad_px,
             )
         else:
             raise ValueError(f"Unknown method: {self.method}")
