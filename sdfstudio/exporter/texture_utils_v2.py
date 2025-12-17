@@ -545,6 +545,13 @@ def export_textured_mesh_v2(
     """
     device = pipeline.device
     output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Warn if old v1 files exist
+    old_v1_files = ["material_0.mtl", "material_0.png", "normal_0.png"]
+    if any((output_dir / f).exists() for f in old_v1_files):
+        CONSOLE.print("[yellow]Warning: Old v1 output files detected in output directory")
+        CONSOLE.print("[yellow]Consider cleaning the directory for a fresh v2 export")
 
     vertices = mesh.vertices.to(device)
     faces = mesh.faces.to(device)
@@ -587,7 +594,8 @@ def export_textured_mesh_v2(
 
     CONSOLE.print("[bold green]Texture export complete!")
     CONSOLE.print(f"  Texture: {output_dir / 'texture.png'}")
-    CONSOLE.print(f"  Mesh: {output_dir / 'mesh.obj'} and {output_dir / 'mesh.glb'}")
+    CONSOLE.print(f"  Mesh: {output_dir / 'mesh.obj'} (+ mesh.mtl)")
+    CONSOLE.print(f"  Binary: {output_dir / 'mesh.glb'}")
 
 
 # =============================================================================
