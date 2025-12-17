@@ -282,35 +282,47 @@ def fill_rasterization_gaps(
     pixel_uvs = torch.stack([grid_u, grid_v], dim=-1)  # (H, W, 2)
 
     # For gap pixels, find nearest triangle center
+    # Process in chunks to avoid OOM (cdist creates N_gaps × N_faces matrix)
     gap_pixel_uvs = pixel_uvs[gap_mask]  # (N_gaps, 2)
-    dists = torch.cdist(gap_pixel_uvs, tri_centers)  # (N_gaps, F)
-    nearest_tri = dists.argmin(dim=1)  # (N_gaps,)
+    N_gaps = gap_pixel_uvs.shape[0]
+    chunk_size = 10000  # Process 10k gap pixels at a time
 
-    # Compute barycentric coordinates for gap pixels w.r.t. nearest triangles
-    # Using same math as rasterize_uv_cpu
-    v0 = tri_uvs[nearest_tri, 0, :]  # (N_gaps, 2)
-    v1 = tri_uvs[nearest_tri, 1, :]  # (N_gaps, 2)
-    v2 = tri_uvs[nearest_tri, 2, :]  # (N_gaps, 2)
-    p = gap_pixel_uvs  # (N_gaps, 2)
+    nearest_tri = torch.empty(N_gaps, dtype=torch.long, device=device)
+    new_bary = torch.empty(N_gaps, 3, dtype=torch.float32, device=device)
 
-    v0v1 = v1 - v0
-    v0v2 = v2 - v0
-    v0p = p - v0
+    for start in range(0, N_gaps, chunk_size):
+        end = min(start + chunk_size, N_gaps)
+        chunk_uvs = gap_pixel_uvs[start:end]  # (chunk, 2)
 
-    d00 = (v0v1 * v0v1).sum(-1)
-    d01 = (v0v1 * v0v2).sum(-1)
-    d11 = (v0v2 * v0v2).sum(-1)
-    d20 = (v0p * v0v1).sum(-1)
-    d21 = (v0p * v0v2).sum(-1)
+        # Find nearest triangle for this chunk
+        dists = torch.cdist(chunk_uvs, tri_centers)  # (chunk, F)
+        chunk_nearest = dists.argmin(dim=1)  # (chunk,)
+        nearest_tri[start:end] = chunk_nearest
 
-    denom = d00 * d11 - d01 * d01
-    denom = torch.where(torch.abs(denom) < 1e-10, torch.ones_like(denom), denom)
+        # Compute barycentric coordinates
+        v0 = tri_uvs[chunk_nearest, 0, :]  # (chunk, 2)
+        v1 = tri_uvs[chunk_nearest, 1, :]  # (chunk, 2)
+        v2 = tri_uvs[chunk_nearest, 2, :]  # (chunk, 2)
+        p = chunk_uvs  # (chunk, 2)
 
-    bary_v = (d11 * d20 - d01 * d21) / denom
-    bary_w = (d00 * d21 - d01 * d20) / denom
-    bary_u = 1.0 - bary_v - bary_w
+        v0v1 = v1 - v0
+        v0v2 = v2 - v0
+        v0p = p - v0
 
-    new_bary = torch.stack([bary_u, bary_v, bary_w], dim=-1)  # (N_gaps, 3)
+        d00 = (v0v1 * v0v1).sum(-1)
+        d01 = (v0v1 * v0v2).sum(-1)
+        d11 = (v0v2 * v0v2).sum(-1)
+        d20 = (v0p * v0v1).sum(-1)
+        d21 = (v0p * v0v2).sum(-1)
+
+        denom = d00 * d11 - d01 * d01
+        denom = torch.where(torch.abs(denom) < 1e-10, torch.ones_like(denom), denom)
+
+        bary_v = (d11 * d20 - d01 * d21) / denom
+        bary_w = (d00 * d21 - d01 * d20) / denom
+        bary_u = 1.0 - bary_v - bary_w
+
+        new_bary[start:end] = torch.stack([bary_u, bary_v, bary_w], dim=-1)
 
     # Update outputs
     triangle_ids[gap_mask] = nearest_tri
