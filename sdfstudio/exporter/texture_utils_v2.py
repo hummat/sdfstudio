@@ -1043,13 +1043,11 @@ def project_views_to_texture_open3d(
     if not hasattr(mesh_t, "compute_uvatlas"):
         raise RuntimeError("Open3D TriangleMesh.compute_uvatlas() not available")
     try:
-        out = mesh_t.compute_uvatlas(size=texture_size)  # type: ignore[call-arg]
-        if out is not None:
-            mesh_t = out
+        # NOTE: compute_uvatlas() mutates the mesh and returns statistics
+        # (max_stretch, num_charts, num_partitions), not a mesh.
+        mesh_t.compute_uvatlas(size=texture_size)  # type: ignore[call-arg]
     except TypeError:
-        out = mesh_t.compute_uvatlas(texture_size)  # type: ignore[misc]
-        if out is not None:
-            mesh_t = out
+        mesh_t.compute_uvatlas(texture_size)  # type: ignore[misc]
 
     # Convert rendered images to Open3D tensor images (uint8 RGB)
     o3d_images = []
@@ -1057,19 +1055,29 @@ def project_views_to_texture_open3d(
         img_np = (img.detach().cpu().numpy().clip(0.0, 1.0) * 255.0).astype(np.uint8)
         o3d_images.append(o3d.t.geometry.Image(o3c.Tensor(img_np)))  # type: ignore[attr-defined]
 
-    # Open3D typically expects extrinsics as world-to-camera.
-    w2c = torch.linalg.inv(extrinsics).detach().cpu().numpy().astype(np.float32)
+    # Open3D expects extrinsics as world-to-camera and uses an OpenCV-style camera
+    # convention (x right, y down, z forward). SDFStudio's Cameras uses x right,
+    # y up, z backward (forward is -z). Convert via diag([1, -1, -1]).
+    w2c_sdf = torch.linalg.inv(extrinsics).detach().cpu().numpy().astype(np.float32)
+    axis_flip = np.eye(4, dtype=np.float32)
+    axis_flip[1, 1] = -1.0
+    axis_flip[2, 2] = -1.0
+    w2c = axis_flip[None, :, :] @ w2c_sdf
     K = intrinsics.detach().cpu().numpy().astype(np.float32)
-    K_o3c = o3c.Tensor(K)
-    w2c_o3c = o3c.Tensor(w2c)
+    intrinsic_matrices = [o3c.Tensor(K[i]) for i in range(K.shape[0])]
+    extrinsic_matrices = [o3c.Tensor(w2c[i]) for i in range(w2c.shape[0])]
 
-    # Call with a few common Open3D signatures.
     tex_out = None
     try:
-        try:
-            tex_out = mesh_t.project_images_to_albedo(o3d_images, K_o3c, w2c_o3c, texture_size=texture_size)  # type: ignore[call-arg]
-        except TypeError:
-            tex_out = mesh_t.project_images_to_albedo(o3d_images, K_o3c, w2c_o3c, texture_size)  # type: ignore[misc]
+        # Per docs:
+        # project_images_to_albedo(images, intrinsic_matrices, extrinsic_matrices, tex_size=..., update_material=...)
+        tex_out = mesh_t.project_images_to_albedo(
+            o3d_images,
+            intrinsic_matrices,
+            extrinsic_matrices,
+            tex_size=texture_size,
+            update_material=False,
+        )
     except AttributeError as e:
         version = getattr(o3d, "__version__", "unknown")
         raise RuntimeError(
@@ -1077,7 +1085,8 @@ def project_views_to_texture_open3d(
             f"(mesh type: {type(mesh_t)})."
         ) from e
     except TypeError as e:
-        raise RuntimeError("Unsupported Open3D project_images_to_albedo() signature") from e
+        version = getattr(o3d, "__version__", "unknown")
+        raise RuntimeError(f"Open3D {version}: project_images_to_albedo() call failed (type mismatch/signature)") from e
 
     # Extract texture tensor
     if isinstance(tex_out, o3d.t.geometry.Image):  # type: ignore[attr-defined]
