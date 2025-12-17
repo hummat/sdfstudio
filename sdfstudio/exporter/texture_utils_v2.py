@@ -33,6 +33,7 @@ import trimesh  # type: ignore
 import xatlas  # type: ignore
 from rich.console import Console
 from torch import Tensor
+from torch.nn import functional as F
 
 from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.exporter.exporter_utils import Mesh
@@ -331,6 +332,73 @@ def fill_rasterization_gaps(
     return triangle_ids, bary_coords
 
 
+def pad_textures_nearest(
+    textures: dict[str, Tensor],
+    valid_mask: Tensor,
+    pad_px: int = 8,
+) -> dict[str, Tensor]:
+    """Pad texture charts by propagating colors outward from valid pixels.
+
+    This avoids black seams from rasterization gaps and prevents mipmap/bilinear
+    bleeding from undefined atlas regions, without querying the NeRF outside the
+    rasterized triangles.
+    """
+    if pad_px <= 0:
+        return textures
+
+    if valid_mask.dtype != torch.bool:
+        valid_mask = valid_mask.bool()
+
+    # Nothing to do if already full coverage
+    if bool(valid_mask.all()):
+        return textures
+
+    device = valid_mask.device
+    valid = valid_mask.clone()
+    valid_f = valid.float().unsqueeze(0).unsqueeze(0)  # (1, 1, H, W)
+
+    # 3x3 neighborhood kernel
+    base_kernel = torch.ones((1, 1, 3, 3), device=device, dtype=torch.float32)
+
+    padded: dict[str, Tensor] = {}
+    for name, tex in textures.items():
+        if tex.ndim != 3:
+            padded[name] = tex
+            continue
+
+        # Work in NCHW for conv2d
+        tex_nchw = tex.permute(2, 0, 1).unsqueeze(0).float()  # (1, C, H, W)
+        channels = tex_nchw.shape[1]
+        kernel_c = base_kernel.expand(channels, 1, 3, 3)  # depthwise conv
+
+        v = valid
+        v_f = valid_f
+        x = tex_nchw
+
+        for _ in range(pad_px):
+            if bool(v.all()):
+                break
+
+            # Sum colors of valid neighbors and count valid neighbors
+            summed = F.conv2d(x * v_f, kernel_c, padding=1, groups=channels)
+            counts = F.conv2d(v_f, base_kernel, padding=1)  # (1,1,H,W)
+
+            fill = (~v) & (counts[0, 0] > 0)
+            if not bool(fill.any()):
+                break
+
+            avg = summed / counts.clamp_min(1e-6)
+            fill_nchw = fill.unsqueeze(0).unsqueeze(0)
+            x = torch.where(fill_nchw, avg, x)
+
+            v = v | fill
+            v_f = v.float().unsqueeze(0).unsqueeze(0)
+
+        padded[name] = x.squeeze(0).permute(1, 2, 0).to(device=tex.device, dtype=tex.dtype)
+
+    return padded
+
+
 def generate_hemisphere_directions(normal: Tensor, num_dirs: int = 6) -> Tensor:
     """Generate directions on a hemisphere oriented along the normal.
 
@@ -385,7 +453,7 @@ def unwrap_mesh_with_xatlas_v2(
     vertex_normals: Tensor,
     texture_size: int = 1024,
     use_gpu: bool = True,
-) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
     """Unwrap mesh using xatlas and rasterize to get per-pixel 3D positions/normals.
 
     Args:
@@ -397,6 +465,7 @@ def unwrap_mesh_with_xatlas_v2(
 
     Returns:
         texture_uvs: Per-face UV coordinates (F, 3, 2)
+        faces_uv_order: Per-face vertex indices aligned to UV corner order (F, 3)
         origins: Per-pixel 3D positions (H, W, 3)
         normals: Per-pixel normals (H, W, 3)
         valid_mask: Per-pixel validity mask (H, W)
@@ -416,6 +485,15 @@ def unwrap_mesh_with_xatlas_v2(
     uv_faces = torch.from_numpy(indices.astype(np.int64)).to(device)
     texture_uvs = uv_coords[uv_faces]  # (F, 3, 2)
 
+    # Map UV vertices back to the original mesh vertex indices.
+    # xatlas may reorder face corners when creating seam-split UV vertices; using vmapping
+    # ensures barycentric weights from UV rasterization interpolate the correct 3D vertices.
+    vmapping_t = torch.from_numpy(vmapping.astype(np.int64)).to(device)  # (num_new_verts,)
+    faces_uv_order = vmapping_t[uv_faces]  # (F, 3) original vertex indices per UV corner
+
+    if not torch.equal(faces_uv_order, faces):
+        CONSOLE.print("[yellow]xatlas remapped face corner order; using vmapping for geometry alignment")
+
     CONSOLE.print(f"[green]UV unwrapping complete: {len(uvs)} UV vertices")
 
     # Rasterize UV space
@@ -428,17 +506,14 @@ def unwrap_mesh_with_xatlas_v2(
             CONSOLE.print("[yellow]nvdiffrast not available, falling back to CPU rasterization")
         triangle_ids, bary_coords = rasterize_uv_cpu(uv_coords, uv_faces, texture_size)
 
-    # Fill gaps by assigning to nearest triangle center
-    triangle_ids, bary_coords = fill_rasterization_gaps(triangle_ids, bary_coords, uv_coords, uv_faces, texture_size)
-
-    # Valid mask: pixels that belong to a triangle (should be all True after gap filling)
+    # Valid mask: pixels that belong to a triangle (atlas background stays invalid)
     valid_mask = triangle_ids >= 0
 
     # Clamp triangle IDs for gathering (invalid will be masked out anyway)
     triangle_ids_clamped = triangle_ids.clamp(min=0)
 
-    # Get vertex indices for each pixel's triangle
-    pixel_faces = faces[triangle_ids_clamped]  # (H, W, 3)
+    # Get vertex indices for each pixel's triangle (aligned to UV corner order)
+    pixel_faces = faces_uv_order[triangle_ids_clamped]  # (H, W, 3)
 
     # Gather vertex positions and normals
     pixel_verts = vertices[pixel_faces]  # (H, W, 3, 3)
@@ -452,7 +527,7 @@ def unwrap_mesh_with_xatlas_v2(
 
     CONSOLE.print("[green]Rasterization complete")
 
-    return texture_uvs, origins, normals, valid_mask
+    return texture_uvs, faces_uv_order, origins, normals, valid_mask
 
 
 def query_nerf_textures(
@@ -677,7 +752,7 @@ def export_textured_mesh_v2(
     CONSOLE.print(f"[bold]Texturing mesh: {len(vertices)} vertices, {len(faces)} faces")
 
     # Step 1: UV unwrap and rasterize
-    texture_uvs, origins, normals, valid_mask = unwrap_mesh_with_xatlas_v2(
+    texture_uvs, faces_uv_order, origins, normals, valid_mask = unwrap_mesh_with_xatlas_v2(
         vertices,
         faces,
         vertex_normals,
@@ -686,7 +761,7 @@ def export_textured_mesh_v2(
     )
 
     # Step 2: Compute ray length from mesh scale
-    face_verts = vertices[faces]
+    face_verts = vertices[faces_uv_order]
     edge_lengths = torch.norm(face_verts[:, 1] - face_verts[:, 0], dim=-1)
     ray_length = 2.0 * edge_lengths.mean().item()
     CONSOLE.print(f"Ray length: {ray_length:.4f}")
@@ -700,6 +775,9 @@ def export_textured_mesh_v2(
         num_directions=num_directions,
         ray_length=ray_length,
     )
+
+    # Step 3.5: Pad textures to avoid seam bleeding / raster gaps without querying outside triangles.
+    textures = pad_textures_nearest(textures, valid_mask, pad_px=8)
 
     # Step 4: Save all texture maps
     import mediapy as media  # type: ignore
@@ -720,7 +798,9 @@ def export_textured_mesh_v2(
 
     # Write mesh (uses texture.png for the main material)
     texture_image = textures["rgb"].cpu().numpy()
-    write_textured_mesh_fast(vertices, faces, vertex_normals, texture_uvs, texture_image, output_dir, mesh_name="mesh")
+    write_textured_mesh_fast(
+        vertices, faces_uv_order, vertex_normals, texture_uvs, texture_image, output_dir, mesh_name="mesh"
+    )
 
     # Log results
     CONSOLE.print("[bold green]Texture export complete!")
