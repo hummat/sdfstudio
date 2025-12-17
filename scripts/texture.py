@@ -1,9 +1,11 @@
 """
 Script to texture an existing mesh file.
 
-Supports two implementations:
-- v1 (legacy): Original implementation with CPU rasterization
-- v2: Improved implementation with GPU rasterization, fast I/O, multi-direction averaging
+Supports multiple methods:
+- legacy: Original implementation (v1)
+- cpu: v2 with CPU rasterization
+- gpu: v2 with GPU rasterization (nvdiffrast)
+- open3d: v2 multiview render-and-reproject (Open3D)
 """
 
 from __future__ import annotations
@@ -38,12 +40,18 @@ class TextureMesh:
     """Pixels per side of the texture image."""
     target_num_faces: int | float | None = 50000
     """Target number of faces for the mesh to texture. If < 1, it is a fraction of the original mesh faces."""
-    implementation: Literal["v1", "v2"] = "v2"
-    """Which implementation to use: v1 (legacy) or v2 (improved)."""
+    method: Literal["legacy", "cpu", "gpu", "open3d"] = "gpu"
+    """Texturing method."""
     num_directions: int = 6
-    """Number of ray directions per texel for averaging (v2 only)."""
-    use_gpu_rasterization: bool = True
-    """Use GPU rasterization if available (v2 only, requires nvdiffrast)."""
+    """Number of ray directions per texel for averaging (v2 cpu/gpu only)."""
+    num_views: int = 30
+    """Number of synthetic views for --method open3d."""
+    render_height: int = 1024
+    """Render height for --method open3d."""
+    render_width: int = 1024
+    """Render width for --method open3d."""
+    fov_degrees: float = 60.0
+    """Vertical field of view for --method open3d."""
 
     def main(self) -> None:
         """Export textured mesh"""
@@ -56,8 +64,8 @@ class TextureMesh:
         # Load the pipeline
         _, pipeline, _ = eval_setup(self.load_config, test_mode="inference")
 
-        if self.implementation == "v1":
-            CONSOLE.print("[yellow]Using v1 (legacy) texture export with xatlas")
+        if self.method == "legacy":
+            CONSOLE.print("[yellow]Using legacy (v1) texture export with xatlas")
             texture_utils.export_textured_mesh(
                 mesh,
                 pipeline,
@@ -65,16 +73,29 @@ class TextureMesh:
                 unwrap_method="xatlas",
                 num_pixels_per_side=self.num_pixels_per_side,
             )
-        else:
-            CONSOLE.print("[green]Using v2 (improved) texture export")
+        elif self.method in ("cpu", "gpu"):
+            CONSOLE.print(f"[green]Using v2 texture export ({self.method})")
             texture_utils_v2.export_textured_mesh_v2(
                 mesh,
                 pipeline,
                 output_dir=self.output_dir,
                 texture_size=self.num_pixels_per_side,
                 num_directions=self.num_directions,
-                use_gpu_rasterization=self.use_gpu_rasterization,
+                use_gpu_rasterization=(self.method == "gpu"),
             )
+        elif self.method == "open3d":
+            CONSOLE.print("[green]Using v2 multiview texture export (open3d)")
+            texture_utils_v2.export_textured_mesh_multiview(
+                mesh,
+                pipeline,
+                output_dir=self.output_dir,
+                texture_size=self.num_pixels_per_side,
+                num_views=self.num_views,
+                image_size=(self.render_height, self.render_width),
+                fov_degrees=self.fov_degrees,
+            )
+        else:
+            raise ValueError(f"Unknown method: {self.method}")
 
 
 def entrypoint():

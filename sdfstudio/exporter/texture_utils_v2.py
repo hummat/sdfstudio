@@ -34,9 +34,12 @@ import xatlas  # type: ignore
 from rich.console import Console
 from torch import Tensor
 
+from sdfstudio.cameras import camera_utils
+from sdfstudio.cameras.cameras import Cameras
 from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.exporter.exporter_utils import Mesh
 from sdfstudio.pipelines.base_pipeline import Pipeline
+from sdfstudio.utils import poses as pose_utils
 from sdfstudio.utils.rich_utils import get_progress
 
 # Optional nvdiffrast import
@@ -852,28 +855,76 @@ def generate_camera_poses_on_sphere(
     radius: float,
     num_views: int = 30,
     elevation_range: tuple[float, float] = (-30, 60),
+    image_size: tuple[int, int] = (1024, 1024),
+    fov_degrees: float = 60.0,
 ) -> tuple[Tensor, Tensor]:
     """Generate camera poses on a sphere looking at center.
-
-    TODO: Implement camera pose generation
-    - Distribute cameras on sphere using fibonacci spiral or similar
-    - Compute look-at matrices
-    - Return intrinsics and extrinsics
 
     Args:
         center: Center point to look at (3,)
         radius: Distance from center
         num_views: Number of camera views
         elevation_range: Min/max elevation angles in degrees
+        image_size: Render resolution (H, W) used to construct intrinsics
+        fov_degrees: Vertical field of view in degrees
 
     Returns:
         intrinsics: Camera intrinsics (num_views, 3, 3)
-        extrinsics: Camera extrinsics/poses (num_views, 4, 4)
+        extrinsics: Camera-to-world poses (num_views, 4, 4)
     """
-    # TODO: Implement fibonacci sphere sampling
-    # TODO: Compute look-at matrices
-    # TODO: Create reasonable intrinsics (FOV ~60 degrees)
-    raise NotImplementedError("Path B: generate_camera_poses_on_sphere not yet implemented")
+    device = center.device
+    center_f = center.to(dtype=torch.float32)
+
+    elev_min_deg, elev_max_deg = elevation_range
+    elev_min = math.radians(elev_min_deg)
+    elev_max = math.radians(elev_max_deg)
+
+    # Deterministic sampling: golden-angle spiral in azimuth + linear elevation sweep.
+    # Coordinates are in a z-up world.
+    i = torch.arange(num_views, device=device, dtype=torch.float32)
+    golden_angle = math.pi * (3.0 - math.sqrt(5.0))
+    azimuth = i * golden_angle
+    elevation = torch.linspace(elev_min, elev_max, num_views, device=device, dtype=torch.float32)
+
+    cos_e = torch.cos(elevation)
+    sin_e = torch.sin(elevation)
+    x = cos_e * torch.cos(azimuth)
+    y = cos_e * torch.sin(azimuth)
+    z = sin_e
+
+    positions = center_f[None, :] + radius * torch.stack([x, y, z], dim=-1)  # (N, 3)
+
+    # Camera-to-world poses (3x4)
+    up_default = torch.tensor([0.0, 0.0, 1.0], device=device)
+    up_fallback = torch.tensor([0.0, 1.0, 0.0], device=device)
+    c2ws = []
+    for pos in positions:
+        # camera_utils.viewmatrix expects "lookat" to be the camera's +Z axis (back direction);
+        # for cameras looking at the center, that's (pos - center).
+        lookat = pos - center_f
+        lookat_n = lookat / (lookat.norm() + 1e-8)
+        up = up_fallback if torch.abs(torch.dot(lookat_n, up_default)) > 0.99 else up_default
+        c2w = camera_utils.viewmatrix(lookat, up, pos)  # (3, 4)
+        c2ws.append(c2w)
+    c2ws_t = torch.stack(c2ws, dim=0)  # (N, 3, 4)
+    extrinsics = pose_utils.to4x4(c2ws_t)  # (N, 4, 4)
+
+    # Intrinsics (same for all views)
+    H, W = image_size
+    # Use vertical fov to derive focal length in pixels.
+    fy = 0.5 * H / math.tan(math.radians(fov_degrees) / 2.0)
+    fx = fy
+    cx = W / 2.0
+    cy = H / 2.0
+
+    intrinsics = torch.zeros((num_views, 3, 3), device=device, dtype=torch.float32)
+    intrinsics[:, 0, 0] = fx
+    intrinsics[:, 1, 1] = fy
+    intrinsics[:, 0, 2] = cx
+    intrinsics[:, 1, 2] = cy
+    intrinsics[:, 2, 2] = 1.0
+
+    return intrinsics, extrinsics
 
 
 def render_views_from_nerf(
@@ -884,25 +935,53 @@ def render_views_from_nerf(
 ) -> list[Tensor]:
     """Render synthetic views from NeRF at given camera poses.
 
-    TODO: Implement NeRF rendering at arbitrary camera poses
-    - Create camera objects from intrinsics/extrinsics
-    - Render RGB images
-    - Optionally render depth for occlusion handling
-
     Args:
         pipeline: Trained NeRF pipeline
         intrinsics: Camera intrinsics (N, 3, 3)
-        extrinsics: Camera extrinsics (N, 4, 4)
+        extrinsics: Camera-to-world poses (N, 4, 4)
         image_size: Output image resolution (H, W)
 
     Returns:
         images: List of rendered RGB images (N,) each (H, W, 3)
     """
-    # TODO: Create Cameras object from intrinsics/extrinsics
-    # TODO: Generate rays for each camera
-    # TODO: Batch render through pipeline
-    # TODO: Return list of RGB images
-    raise NotImplementedError("Path B: render_views_from_nerf not yet implemented")
+    device = pipeline.device
+    H, W = image_size
+
+    if intrinsics.ndim != 3 or intrinsics.shape[-2:] != (3, 3):
+        raise ValueError(f"Expected intrinsics of shape (N, 3, 3), got {tuple(intrinsics.shape)}")
+    if extrinsics.ndim != 3 or extrinsics.shape[-2:] != (4, 4):
+        raise ValueError(f"Expected extrinsics of shape (N, 4, 4), got {tuple(extrinsics.shape)}")
+    if intrinsics.shape[0] != extrinsics.shape[0]:
+        raise ValueError("intrinsics and extrinsics must have the same number of views")
+
+    N = intrinsics.shape[0]
+    fx = intrinsics[:, 0, 0]
+    fy = intrinsics[:, 1, 1]
+    cx = intrinsics[:, 0, 2]
+    cy = intrinsics[:, 1, 2]
+
+    cameras = Cameras(
+        fx=fx,
+        fy=fy,
+        cx=cx,
+        cy=cy,
+        width=W,
+        height=H,
+        camera_to_worlds=extrinsics[:, :3, :4],
+    ).to(device)
+
+    images: list[Tensor] = []
+    progress = get_progress("Rendering synthetic views (Path B)")
+    with progress:
+        for cam_idx in progress.track(range(N)):
+            camera_ray_bundle = cameras.generate_rays(camera_indices=cam_idx).to(device)
+            with torch.no_grad():
+                outputs = pipeline.model.get_outputs_for_camera_ray_bundle(camera_ray_bundle, progress=True)
+            if "rgb" not in outputs:
+                raise KeyError(f"Model outputs did not contain 'rgb' (available: {list(outputs.keys())})")
+            images.append(outputs["rgb"])
+
+    return images
 
 
 def project_views_to_texture_open3d(
@@ -911,33 +990,133 @@ def project_views_to_texture_open3d(
     intrinsics: Tensor,
     extrinsics: Tensor,
     texture_size: int = 2048,
-) -> Tensor:
+) -> tuple[Tensor, Tensor]:
     """Project rendered views onto mesh texture using Open3D.
-
-    TODO: Implement view projection using Open3D's project_images_to_albedo
-    - Convert mesh to Open3D tensor mesh
-    - Compute UV atlas if not present
-    - Project images with blending
 
     Args:
         mesh: Input mesh
         images: Rendered RGB images
         intrinsics: Camera intrinsics (N, 3, 3)
-        extrinsics: Camera extrinsics (N, 4, 4)
+        extrinsics: Camera-to-world poses (N, 4, 4)
         texture_size: Output texture resolution
 
     Returns:
         texture: Projected texture (H, W, 3)
+        texture_uvs: Per-face UV coordinates (F, 3, 2) in [0, 1]
     """
     if not OPEN3D_AVAILABLE:
         raise RuntimeError("Open3D not available for Path B")
 
-    # TODO: Convert mesh to o3d.t.geometry.TriangleMesh
-    # TODO: Compute UV atlas with compute_uvatlas()
-    # TODO: Convert images and cameras to Open3D format
-    # TODO: Call project_images_to_albedo()
-    # TODO: Extract and return texture
-    raise NotImplementedError("Path B: project_views_to_texture_open3d not yet implemented")
+    import open3d as o3d  # type: ignore
+    import open3d.core as o3c  # type: ignore
+
+    if intrinsics.shape[0] != extrinsics.shape[0] or len(images) != intrinsics.shape[0]:
+        raise ValueError("images, intrinsics, and extrinsics must have the same number of views")
+
+    # Convert mesh to Open3D
+    verts_np = mesh.vertices.detach().cpu().numpy().astype(np.float32)
+    faces_np = mesh.faces.detach().cpu().numpy().astype(np.int32)
+
+    mesh_legacy = o3d.geometry.TriangleMesh()  # type: ignore[attr-defined]
+    mesh_legacy.vertices = o3d.utility.Vector3dVector(verts_np)  # type: ignore[attr-defined]
+    mesh_legacy.triangles = o3d.utility.Vector3iVector(faces_np)  # type: ignore[attr-defined]
+
+    if not hasattr(o3d.t.geometry.TriangleMesh, "from_legacy"):
+        raise RuntimeError("Open3D Tensor TriangleMesh.from_legacy() not available")
+    mesh_t = o3d.t.geometry.TriangleMesh.from_legacy(mesh_legacy)  # type: ignore[attr-defined]
+
+    # Compute UV atlas (in-place or functional depending on Open3D version)
+    if not hasattr(mesh_t, "compute_uvatlas"):
+        raise RuntimeError("Open3D TriangleMesh.compute_uvatlas() not available")
+    try:
+        out = mesh_t.compute_uvatlas(size=texture_size)  # type: ignore[call-arg]
+        if out is not None:
+            mesh_t = out
+    except TypeError:
+        out = mesh_t.compute_uvatlas(texture_size)  # type: ignore[misc]
+        if out is not None:
+            mesh_t = out
+
+    # Convert rendered images to Open3D tensor images (uint8 RGB)
+    o3d_images = []
+    for img in images:
+        img_np = (img.detach().cpu().numpy().clip(0.0, 1.0) * 255.0).astype(np.uint8)
+        o3d_images.append(o3d.t.geometry.Image(o3c.Tensor(img_np)))  # type: ignore[attr-defined]
+
+    # Open3D typically expects extrinsics as world-to-camera.
+    w2c = torch.linalg.inv(extrinsics).detach().cpu().numpy().astype(np.float32)
+    K = intrinsics.detach().cpu().numpy().astype(np.float32)
+    K_o3c = o3c.Tensor(K)
+    w2c_o3c = o3c.Tensor(w2c)
+
+    if not hasattr(mesh_t, "project_images_to_albedo"):
+        raise RuntimeError("Open3D TriangleMesh.project_images_to_albedo() not available")
+
+    # Call with a few common Open3D signatures.
+    tex_out = None
+    try:
+        tex_out = mesh_t.project_images_to_albedo(o3d_images, K_o3c, w2c_o3c, texture_size=texture_size)  # type: ignore[call-arg]
+    except TypeError:
+        try:
+            tex_out = mesh_t.project_images_to_albedo(o3d_images, K_o3c, w2c_o3c, texture_size)  # type: ignore[misc]
+        except TypeError as e:
+            raise RuntimeError("Unsupported Open3D project_images_to_albedo() signature") from e
+
+    # Extract texture tensor
+    if isinstance(tex_out, o3d.t.geometry.Image):  # type: ignore[attr-defined]
+        tex_tensor = tex_out.as_tensor()
+    elif isinstance(tex_out, o3c.Tensor):
+        tex_tensor = tex_out
+    else:
+        # Some versions may return a dict or a mesh; try to extract a known field.
+        tex_tensor = getattr(tex_out, "as_tensor", None)
+        if callable(tex_tensor):
+            tex_tensor = tex_out.as_tensor()
+        elif isinstance(tex_out, dict):
+            for k in ("albedo", "texture", "image"):
+                if k in tex_out:
+                    v = tex_out[k]
+                    tex_tensor = v.as_tensor() if hasattr(v, "as_tensor") else v
+                    break
+        if tex_tensor is None:
+            raise RuntimeError(f"Unexpected project_images_to_albedo() return type: {type(tex_out)}")
+
+    tex_np = tex_tensor.numpy()
+    if tex_np.dtype != np.float32:
+        tex_np = tex_np.astype(np.float32)
+    if tex_np.max() > 1.0:
+        tex_np = tex_np / 255.0
+
+    # Extract per-face UVs from the mesh
+    texture_uvs_np = None
+    try:
+        # Tensor mesh attribute name in Open3D is typically 'texture_uvs'
+        if "texture_uvs" in mesh_t.triangle:  # type: ignore[operator]
+            uv = mesh_t.triangle["texture_uvs"].numpy()  # type: ignore[index]
+            texture_uvs_np = uv
+    except Exception:  # noqa: BLE001
+        texture_uvs_np = None
+
+    if texture_uvs_np is None:
+        legacy_with_uv = mesh_t.to_legacy()  # type: ignore[attr-defined]
+        uv = np.asarray(legacy_with_uv.triangle_uvs, dtype=np.float32)  # type: ignore[attr-defined]
+        texture_uvs_np = uv
+
+    # Normalize/reshape to (F, 3, 2)
+    if texture_uvs_np.ndim == 2 and texture_uvs_np.shape[1] == 2:
+        if texture_uvs_np.shape[0] == faces_np.shape[0] * 3:
+            texture_uvs_np = texture_uvs_np.reshape(faces_np.shape[0], 3, 2)
+        else:
+            raise RuntimeError(f"Unexpected UV shape: {texture_uvs_np.shape}")
+    elif texture_uvs_np.ndim == 3 and texture_uvs_np.shape[1:] == (3, 2):
+        pass
+    else:
+        raise RuntimeError(f"Unexpected UV shape: {texture_uvs_np.shape}")
+
+    texture = torch.from_numpy(tex_np)
+    texture_uvs = torch.from_numpy(texture_uvs_np.astype(np.float32))
+
+    return texture, texture_uvs
 
 
 def export_textured_mesh_multiview(
@@ -946,6 +1125,8 @@ def export_textured_mesh_multiview(
     output_dir: Path,
     texture_size: int = 2048,
     num_views: int = 30,
+    image_size: tuple[int, int] = (1024, 1024),
+    fov_degrees: float = 60.0,
 ) -> None:
     """Export textured mesh using render-and-reproject approach (Path B).
 
@@ -954,34 +1135,63 @@ def export_textured_mesh_multiview(
     2. Renders synthetic views from the NeRF
     3. Projects/blends views onto UV-mapped mesh texture
 
-    TODO: Implement full pipeline
-
     Args:
         mesh: Input mesh
         pipeline: Trained NeRF/SDF pipeline
         output_dir: Output directory
         texture_size: Texture resolution
         num_views: Number of synthetic views to render
+        image_size: Resolution for NeRF rendering (H, W)
+        fov_degrees: Vertical field of view for synthetic cameras
     """
-    _ = pipeline.device  # Will be used when implemented
     output_dir = Path(output_dir)
-    _ = output_dir  # Will be used when implemented
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # TODO: Step 1 - Compute mesh bounding sphere for camera placement
-    # vertices = mesh.vertices.to(device)
-    # center = vertices.mean(dim=0)
-    # radius = (vertices - center).norm(dim=-1).max().item() * 2.0
+    if not OPEN3D_AVAILABLE:
+        raise RuntimeError("Open3D not available; cannot run Path B multiview texturing")
 
-    # TODO: Step 2 - Generate camera poses
-    # intrinsics, extrinsics = generate_camera_poses_on_sphere(center, radius, num_views)
+    device = pipeline.device
+    vertices = mesh.vertices.to(device)
+    faces = mesh.faces.to(device)
+    vertex_normals = mesh.normals.to(device)
 
-    # TODO: Step 3 - Render views from NeRF
-    # images = render_views_from_nerf(pipeline, intrinsics, extrinsics)
+    # Step 1: bounding sphere for camera placement
+    center = vertices.mean(dim=0)
+    radius = (vertices - center).norm(dim=-1).max().item() * 2.0
+    CONSOLE.print(f"[bold]Path B cameras: {num_views} views, radius={radius:.4f}, fov={fov_degrees:.1f}°")
 
-    # TODO: Step 4 - Project views to texture
-    # texture = project_views_to_texture_open3d(mesh, images, intrinsics, extrinsics, texture_size)
+    # Step 2: camera poses
+    intrinsics, extrinsics = generate_camera_poses_on_sphere(
+        center=center,
+        radius=radius,
+        num_views=num_views,
+        image_size=image_size,
+        fov_degrees=fov_degrees,
+    )
 
-    # TODO: Step 5 - Write mesh
-    # write_textured_mesh_fast(...)
+    # Step 3: render synthetic views
+    images = render_views_from_nerf(pipeline, intrinsics, extrinsics, image_size=image_size)
 
-    raise NotImplementedError("Path B: export_textured_mesh_multiview not yet implemented")
+    # Step 4: project to UV texture via Open3D
+    texture, texture_uvs = project_views_to_texture_open3d(mesh, images, intrinsics, extrinsics, texture_size=texture_size)
+
+    # Step 5: write results (texture + mesh)
+    import mediapy as media  # type: ignore
+
+    texture_np = texture.detach().cpu().numpy().clip(0.0, 1.0)
+    media.write_image(str(output_dir / "texture.png"), texture_np)
+
+    write_textured_mesh_fast(
+        vertices,
+        faces,
+        vertex_normals,
+        texture_uvs.to(device),
+        texture_np,
+        output_dir,
+        mesh_name="mesh",
+    )
+
+    CONSOLE.print("[bold green]Multiview texture export complete!")
+    CONSOLE.print(f"  Mesh: {output_dir / 'mesh.obj'} (+ mesh.mtl)")
+    CONSOLE.print(f"  Binary: {output_dir / 'mesh.glb'}")
+    CONSOLE.print(f"  Texture: {output_dir / 'texture.png'}")
