@@ -362,26 +362,32 @@ def unwrap_mesh_with_xatlas_v2(
     return texture_uvs, origins, normals, valid_mask
 
 
-def query_nerf_multidirection(
+def query_nerf_textures(
     pipeline: Pipeline,
     origins: Tensor,
     normals: Tensor,
     valid_mask: Tensor,
     num_directions: int = 6,
     ray_length: float = 0.1,
-) -> Tensor:
-    """Query NeRF from multiple directions per texel and average results.
+) -> dict[str, Tensor]:
+    """Query NeRF to extract all texture maps (RGB, normals, PBR).
+
+    RGB is averaged across multiple directions (view-dependent).
+    Normals and material properties (diffuse, specular, roughness, tint)
+    are extracted from a single query along the surface normal (intrinsic).
 
     Args:
         pipeline: NeRF pipeline
         origins: Surface positions (H, W, 3)
         normals: Surface normals (H, W, 3)
         valid_mask: Valid pixel mask (H, W)
-        num_directions: Number of ray directions per texel
+        num_directions: Number of ray directions per texel for RGB averaging
         ray_length: Length of rays to cast
 
     Returns:
-        rgb: Texture colors (H, W, 3)
+        Dict with texture maps. Always contains "rgb". May also contain
+        "normal", "diffuse", "specular", "roughness", "tint" if available.
+        All tensors are (H, W, 3) or (H, W, 1) depending on channels.
     """
     device = pipeline.device
     H, W = origins.shape[:2]
@@ -402,14 +408,13 @@ def query_nerf_multidirection(
 
     N = flat_origins.shape[0]
     if N == 0:
-        return torch.zeros(H, W, 3, device=device)
+        return {"rgb": torch.zeros(H, W, 3, device=device)}
 
     CONSOLE.print(f"Querying NeRF: {N} valid texels x {num_directions} directions")
 
-    # Query NeRF for each direction
-    # We process each direction separately, letting get_outputs_for_camera_ray_bundle
-    # handle the internal chunking for memory efficiency
+    # Storage for all outputs
     all_rgb = []
+    other_outputs: dict[str, Tensor] = {}
 
     with torch.no_grad():
         for d in range(num_directions):
@@ -430,18 +435,37 @@ def query_nerf_multidirection(
 
             # Inner progress bar shows ray chunking (many samples = good ETA)
             outputs = pipeline.model.get_outputs_for_camera_ray_bundle(ray_bundle, progress=True)
-            # Output shape is (1, N, 3), flatten to (N, 3)
+
+            # First direction: extract all available outputs for normals/PBR
+            if d == 0:
+                for key in ["normal", "diffuse", "specular", "roughness", "tint"]:
+                    if key in outputs:
+                        # Output shape is (1, N, C), flatten to (N, C)
+                        other_outputs[key] = outputs[key].reshape(N, -1)
+
+            # All directions: collect RGB for averaging
             all_rgb.append(outputs["rgb"].reshape(N, 3))
 
     # Average RGB across directions
     stacked_rgb = torch.stack(all_rgb, dim=1)  # (N, num_dirs, 3)
     avg_rgb = stacked_rgb.mean(dim=1)  # (N, 3)
 
-    # Reconstruct full texture
+    # Reconstruct full textures
+    result = {}
+
+    # RGB (averaged)
     rgb = torch.zeros(H, W, 3, device=device)
     rgb[valid_mask] = avg_rgb.to(device)
+    result["rgb"] = rgb
 
-    return rgb
+    # Other outputs (single query, not averaged)
+    for key, value in other_outputs.items():
+        channels = value.shape[-1]
+        tex = torch.zeros(H, W, channels, device=device)
+        tex[valid_mask] = value.to(device)
+        result[key] = tex
+
+    return result
 
 
 def write_textured_mesh_fast(
@@ -574,8 +598,8 @@ def export_textured_mesh_v2(
     ray_length = 2.0 * edge_lengths.mean().item()
     CONSOLE.print(f"Ray length: {ray_length:.4f}")
 
-    # Step 3: Query NeRF with multi-direction averaging
-    rgb = query_nerf_multidirection(
+    # Step 3: Query NeRF with multi-direction averaging (RGB) and single query (normals/PBR)
+    textures = query_nerf_textures(
         pipeline,
         origins,
         normals,
@@ -584,18 +608,34 @@ def export_textured_mesh_v2(
         ray_length=ray_length,
     )
 
-    # Step 4: Save texture and write mesh
-    texture_image = rgb.cpu().numpy()
-
+    # Step 4: Save all texture maps
     import mediapy as media  # type: ignore
-    media.write_image(str(output_dir / "texture.png"), texture_image)
 
+    saved_textures = []
+    for name, tex in textures.items():
+        img = tex.cpu().numpy()
+
+        # Normals are in [-1, 1], convert to [0, 1] for image saving
+        if name == "normal":
+            img = img * 0.5 + 0.5
+
+        # Use "texture.png" for RGB to maintain compatibility with mesh.mtl
+        filename = "texture.png" if name == "rgb" else f"{name}.png"
+        filepath = output_dir / filename
+        media.write_image(str(filepath), img)
+        saved_textures.append(filepath)
+
+    # Write mesh (uses texture.png for the main material)
+    texture_image = textures["rgb"].cpu().numpy()
     write_textured_mesh_fast(vertices, faces, vertex_normals, texture_uvs, texture_image, output_dir, mesh_name="mesh")
 
+    # Log results
     CONSOLE.print("[bold green]Texture export complete!")
-    CONSOLE.print(f"  Texture: {output_dir / 'texture.png'}")
     CONSOLE.print(f"  Mesh: {output_dir / 'mesh.obj'} (+ mesh.mtl)")
     CONSOLE.print(f"  Binary: {output_dir / 'mesh.glb'}")
+    CONSOLE.print("  Textures:")
+    for tex_path in saved_textures:
+        CONSOLE.print(f"    - {tex_path}")
 
 
 # =============================================================================
