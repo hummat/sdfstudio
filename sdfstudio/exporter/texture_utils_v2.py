@@ -1004,7 +1004,7 @@ def project_views_to_texture_open3d(
     intrinsics: Tensor,
     extrinsics: Tensor,
     texture_size: int = 2048,
-) -> tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
     """Project rendered views onto mesh texture using Open3D.
 
     Args:
@@ -1017,6 +1017,9 @@ def project_views_to_texture_open3d(
     Returns:
         texture: Projected texture (H, W, 3)
         texture_uvs: Per-face UV coordinates (F, 3, 2) in [0, 1]
+        vertices: Vertex positions for the UV-mapped mesh (V, 3)
+        faces: Triangle indices for the UV-mapped mesh (F, 3)
+        vertex_normals: Vertex normals for the UV-mapped mesh (V, 3)
     """
     if not OPEN3D_AVAILABLE:
         raise RuntimeError("Open3D not available for Path B")
@@ -1034,6 +1037,8 @@ def project_views_to_texture_open3d(
     mesh_legacy = o3d.geometry.TriangleMesh()  # type: ignore[attr-defined]
     mesh_legacy.vertices = o3d.utility.Vector3dVector(verts_np)  # type: ignore[attr-defined]
     mesh_legacy.triangles = o3d.utility.Vector3iVector(faces_np)  # type: ignore[attr-defined]
+    # Keep normals sane if Open3D decides to duplicate / reorder vertices during UV atlas generation.
+    mesh_legacy.compute_vertex_normals()  # type: ignore[attr-defined]
 
     if not hasattr(o3d.t.geometry.TriangleMesh, "from_legacy"):
         raise RuntimeError("Open3D Tensor TriangleMesh.from_legacy() not available")
@@ -1139,10 +1144,30 @@ def project_views_to_texture_open3d(
     else:
         raise RuntimeError(f"Unexpected UV shape: {texture_uvs_np.shape}")
 
+    # IMPORTANT: compute_uvatlas() may reorder triangles and/or vertices. Export the
+    # *UV-mapped* geometry from Open3D so texture_uvs stays aligned with faces.
+    legacy_with_uv = mesh_t.to_legacy()  # type: ignore[attr-defined]
+    verts_out_np = np.asarray(legacy_with_uv.vertices, dtype=np.float32)  # type: ignore[attr-defined]
+    faces_out_np = np.asarray(legacy_with_uv.triangles, dtype=np.int64)  # type: ignore[attr-defined]
+    normals_out_np = None
+    try:
+        normals_out_np = np.asarray(legacy_with_uv.vertex_normals, dtype=np.float32)  # type: ignore[attr-defined]
+        if normals_out_np.shape != verts_out_np.shape:
+            normals_out_np = None
+    except Exception:  # noqa: BLE001
+        normals_out_np = None
+    if normals_out_np is None:
+        # Fallback: if vertex normals are missing, compute in Open3D and re-read.
+        legacy_with_uv.compute_vertex_normals()  # type: ignore[attr-defined]
+        normals_out_np = np.asarray(legacy_with_uv.vertex_normals, dtype=np.float32)  # type: ignore[attr-defined]
+
     texture = torch.from_numpy(tex_np)
     texture_uvs = torch.from_numpy(texture_uvs_np.astype(np.float32))
+    vertices_out = torch.from_numpy(verts_out_np)
+    faces_out = torch.from_numpy(faces_out_np)
+    vertex_normals_out = torch.from_numpy(normals_out_np)
 
-    return texture, texture_uvs
+    return texture, texture_uvs, vertices_out, faces_out, vertex_normals_out
 
 
 def project_views_to_texture_reproject(
@@ -1327,10 +1352,9 @@ def export_textured_mesh_multiview(
 
     if OPEN3D_AVAILABLE:
         try:
-            texture, texture_uvs = project_views_to_texture_open3d(
+            texture, texture_uvs, vertices_for_export, faces_for_export, normals_for_export = project_views_to_texture_open3d(
                 mesh, rgbs, intrinsics, extrinsics, texture_size=texture_size
             )
-            faces_for_export = faces
         except RuntimeError as e:
             if "project_images_to_albedo" not in str(e):
                 raise
@@ -1360,6 +1384,8 @@ def export_textured_mesh_multiview(
         )
         texture = pad_textures_nearest({"rgb": texture}, valid_mask, pad_px=pad_px)["rgb"]
         faces_for_export = faces_uv_order
+        vertices_for_export = vertices
+        normals_for_export = vertex_normals
 
     # Step 5: write results (texture + mesh)
     import mediapy as media  # type: ignore
@@ -1368,9 +1394,9 @@ def export_textured_mesh_multiview(
     media.write_image(str(output_dir / "texture.png"), texture_np)
 
     write_textured_mesh_fast(
-        vertices,
+        vertices_for_export,
         faces_for_export,
-        vertex_normals,
+        normals_for_export,
         texture_uvs.to(device),
         texture_np,
         output_dir,
