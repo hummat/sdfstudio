@@ -367,53 +367,64 @@ Lower priority, only after core pipeline works:
 
 ## References
 
-## Core References (PBR / BRDF / Shading)
-
 These are “go-to” references to build working knowledge and to consult during implementation.
+
+### Blender workflow (practical correctness)
+
+- Blender Manual — **Principled BSDF**: https://docs.blender.org/manual/en/latest/render/shader_nodes/shader/principled.html
+- Blender Manual — **Normal Map** node (OpenGL/Y+ convention; set image to Non-Color): https://docs.blender.org/manual/en/latest/render/shader_nodes/vector/normal_map.html
+- Blender Manual — **Color Management** (Filmic/OCIO; how display transforms affect what you see): https://docs.blender.org/manual/en/latest/render/color_management.html
+
+### File formats / conventions (export correctness)
+
+- Khronos — **glTF 2.0 Specification** (PBR metallic-roughness; color spaces; ORM packing): https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html
 
 ### Books (best for fundamentals)
 
-- **Physically Based Rendering (PBRT), 3rd or 4th ed.** (Pharr, Jakob, Humphreys)
-  - BRDF/BSDF fundamentals, radiometry, microfacet models, Fresnel, sampling, and practical implementation details.
-- **Real-Time Rendering, 4th ed.** (Akenine-Möller, Haines, Hoffman)
-  - Pragmatic PBR in engines: approximations, parameter conventions, and implementation tradeoffs.
+- Pharr, Jakob, Humphreys — **Physically Based Rendering: From Theory To Implementation (PBRT), 4th ed.**: https://pbr-book.org/
+- Akenine-Möller, Haines, Hoffman — **Real-Time Rendering, 4th ed.**: https://www.realtimerendering.com/
 
-### Practical engine notes (high signal for “metal–rough”)
+### Practical shading notes (high signal for “metal–rough”)
 
-- **“Real Shading in Unreal Engine 4”** (Brian Karis)
-  - Widely used GGX + Schlick Fresnel + Smith masking-shadowing recipe; very implementation-oriented.
-- **Disney BRDF notes** (Brent Burley)
-  - Clear explanations of artist-friendly parameterizations and energy considerations; good intuition-builder.
+- Karis — **Real Shading in Unreal Engine 4** (SIGGRAPH “Physically Based Shading” course notes/slides):
+  - course hub: https://blog.selfshadow.com/publications/s2013-shading-course/
+  - notes PDF: https://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+- Burley — **Physically-Based Shading at Disney** (SIGGRAPH 2012 course notes):
+  - https://media.disneyanimation.com/uploads/production/publication_asset/48/asset/s2012_pbs_disney_brdf_notes_v3.pdf
 
-### Key microfacet + Fresnel papers (for the “why” behind GGX)
+### Microfacet, Fresnel, and related “core equations”
 
-- **Schlick (1994)** — Fresnel approximation (“Schlick Fresnel”)
-- **Walter et al. (2007)** — Microfacet models for refraction / full microfacet framework
-- **Heitz (2014+)** — Masking-shadowing and microfacet model understanding (excellent for correctness intuition)
+- Schlick (1994) — **An Inexpensive BRDF Model for Physically-based Rendering** (Graphics Gems IV):
+  - (one canonical listing) https://dblp.org/rec/books/el/94/Schlick94.html
+- Walter et al. (2007) — **Microfacet Models for Refraction through Rough Surfaces** (EGSR):
+  - (Cornell mirror) https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf
+- Heitz (2014) — **Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs** (JCGT):
+  - (reference listing) https://www.scitepress.org/publishedPapers/2014/46514/pdf/index.html
 
 ### Lighting representations (for SH / env lighting baselines)
 
-- **Ramamoorthi & Hanrahan (2001)** — Irradiance environment maps / low-frequency lighting representation
-- **Debevec (late 1990s)** — Light probes / rendering synthetic objects into real scenes (practical IBL intuition)
+- Ramamoorthi & Hanrahan (2001) — **An Efficient Representation for Irradiance Environment Maps**:
+  - https://graphics.stanford.edu/papers/envmap/
+- Debevec (1998) — **Rendering Synthetic Objects into Real Scenes: Bridging Traditional and Image-based Graphics with Global Illumination and High Dynamic Range Photography**:
+  - https://www.pauldebevec.com/Research/IBL/
 
-### Neural-field factorization / “NeuSFactor-lite” context
+### Tangent space (to match Blender)
 
-- **Ref-NeRF (Verbin et al., 2022)** — reflection-dir encoding, diffuse/spec split, tint, angular cues
-- **NeRFactor (Zhang et al., 2021)** — explicit reflectance + lighting factorization under unknown illumination
-- **NeRD (Boss et al., 2021)** — reflectance decomposition from image collections (priors, degeneracy discussion)
+- **MikkTSpace** (tangent basis reference implementation; Blender uses MikkTSpace):
+  - https://github.com/mmikk/MikkTSpace
 
-### File formats / conventions (for export correctness)
+### Neural-field factorization context (“NeuSFactor-lite” lineage)
 
-- **glTF 2.0 spec (PBR metallic-roughness)** — map packing conventions, color space expectations, normal map semantics
+- Verbin et al. (2022) — **Ref-NeRF: Structured View-Dependent Appearance for Neural Radiance Fields**:
+  - https://arxiv.org/abs/2112.03907
+- Zhang et al. (2021) — **NeRFactor: Neural Factorization of Shape and Reflectance under an Unknown Illumination**:
+  - https://arxiv.org/abs/2106.01970
+- Boss et al. (2021) — **NeRD: Neural Reflectance Decomposition from Image Collections**:
+  - https://arxiv.org/abs/2012.03918
 
-### Inverse Rendering
-- **nvdiffrec**: Munkberg et al., CVPR 2022 — "Extracting Triangular 3D Models, Materials, and Lighting From Images"
-- **nvdiffrecmc**: Hasselgren et al., SIGGRAPH Asia 2022 — Monte Carlo version
+### External refinement (optional)
 
-### Generative SVBRDF
-- **Material Palette**: Lopes et al., CVPR 2024 — "Material Palette: Extraction of Materials from a Single Image"
-- **MatFusion**: Sartor & Peers, SIGGRAPH Asia 2023 — "MatFusion: a Generative Diffusion Model for SVBRDF Capture"
-
-### Neural Field Factorization
-- **Ref-NeRF**: Verbin et al., CVPR 2022 — reflection direction encoding, diffuse/specular split
-- **NeRFactor**: Zhang et al., SIGGRAPH Asia 2021 — neural factorization of shape and reflectance
+- Munkberg et al. (CVPR 2022) — **Extracting Triangular 3D Models, Materials, and Lighting From Images** (“nvdiffrec”)
+- Hasselgren et al. (SIGGRAPH Asia 2022) — Monte Carlo variant (“nvdiffrecmc”)
+- Lopes et al. (CVPR 2024) — **Material Palette: Extraction of Materials from a Single Image**
+- Sartor & Peers (SIGGRAPH Asia 2023) — **MatFusion: a Generative Diffusion Model for SVBRDF Capture**
