@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import pymeshlab
@@ -170,8 +170,8 @@ class TSDF:
         c2w: TensorType[batch, 4, 4],
         K: TensorType[batch, 3, 3],
         depth_images: TensorType[batch, 1, height, width],
-        color_images: TensorType[batch, 3, height, width] | None = None,
-        mask_images: TensorType[batch, 1, height, width] | None = None,
+        color_images: Optional[TensorType[batch, 3, height, width]] = None,
+        mask_images: Optional[TensorType[batch, 1, height, width]] = None,
     ):
         """Integrates a batch of depth images into the TSDF.
 

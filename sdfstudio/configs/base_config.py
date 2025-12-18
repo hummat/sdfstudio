@@ -103,7 +103,7 @@ class LocalWriterConfig(InstantiateConfig):
     max_log_size: int = 10
     """maximum number of rows to print before wrapping. if 0, will print everything."""
 
-    def setup(self, banner_messages: list[str] | None = None, **kwargs) -> Any:
+    def setup(self, banner_messages: Optional[list[str]] = None, **kwargs) -> Any:
         """Instantiate local writer
 
         Args:

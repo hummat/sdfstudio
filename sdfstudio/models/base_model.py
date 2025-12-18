@@ -21,7 +21,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 
 import torch
 from torch import nn
@@ -45,7 +45,7 @@ class ModelConfig(InstantiateConfig):
     """target class to instantiate"""
     enable_collider: bool = True
     """Whether to create a scene collider to filter rays."""
-    collider_params: dict[str, float] | None = to_immutable_dict({"near_plane": 2.0, "far_plane": 6.0})
+    collider_params: Optional[dict[str, float]] = to_immutable_dict({"near_plane": 2.0, "far_plane": 6.0})
     """parameters to instantiate scene collider with"""
     loss_coefficients: dict[str, float] = to_immutable_dict({"rgb_loss_coarse": 1.0, "rgb_loss_fine": 1.0})
     """parameters to instantiate density field with"""
