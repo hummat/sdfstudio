@@ -131,7 +131,12 @@ class SurfaceModelConfig(ModelConfig):
     periodic_tvl_mult: float = 0.0
     """Total variational loss mutliplier"""
     orientation_loss_mult: float = 0.0
-    """Orientation loss multiplier (encourages visible normals to face the camera)."""
+    """Orientation loss multiplier. Penalizes backfacing normals on visible surfaces (Ref-NeRF-style)."""
+    roughness_sparsity_loss_mult: float = 0.0
+    """L1 penalty on roughness values. Encourages low roughness (smooth/specular surfaces).
+
+    Ref-NeRF uses this to prevent the network from explaining all view-dependence via high
+    roughness. Set to ~0.01 as a starting point. Requires enable_pred_roughness=True in SDFFieldConfig."""
     overwrite_near_far_plane: bool = False
     """whether to use near and far collider from command line"""
     scene_contraction_norm: Literal["inf", "l2"] = "inf"
@@ -330,6 +335,8 @@ class SurfaceModel(Model):
             outputs["tint"] = self.renderer_rgb(rgb=field_outputs["tint"], weights=weights)
         if "roughness" in field_outputs:
             outputs["roughness"] = self.renderer_normal(semantics=field_outputs["roughness"], weights=weights)
+        if "specular_scale" in field_outputs:
+            outputs["specular_scale"] = self.renderer_normal(semantics=field_outputs["specular_scale"], weights=weights)
         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
         # the rendered depth is point-to-point distance and we should convert to depth
         depth = depth / ray_bundle.directions_norm
@@ -521,6 +528,17 @@ class SurfaceModel(Model):
                         viewdirs,
                     )
                     loss_dict["orientation_loss"] = rendered_orientation_loss.mean() * self.config.orientation_loss_mult
+
+            # roughness regularization losses (Ref-NeRF-style)
+            # outputs["roughness"] is already the rendered (alpha-weighted) roughness per ray
+            if "roughness" in outputs:
+                rendered_roughness = outputs["roughness"]  # shape: (num_rays, 1)
+
+                # sparsity loss: L1 penalty encourages low roughness (specular default)
+                if self.config.roughness_sparsity_loss_mult > 0.0:
+                    loss_dict["roughness_sparsity_loss"] = (
+                        rendered_roughness.mean() * self.config.roughness_sparsity_loss_mult
+                    )
 
         return loss_dict
 

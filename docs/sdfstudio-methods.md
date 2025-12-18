@@ -315,6 +315,26 @@ Enable appearance embedding to absorb per-frame photometric variation. Use conse
 
 Add more BRDF flags based on the dominant material in the scene (see above).
 
+#### Roughness Regularization (Ref-NeRF-style)
+
+When using `enable-pred-roughness`, add these regularizers to help the network learn sensible roughness values:
+
+| Loss | Flag | Description | Suggested Value |
+|------|------|-------------|-----------------|
+| Roughness sparsity | `--pipeline.model.roughness-sparsity-loss-mult` | L1 penalty on roughness. Encourages low roughness (specular default). | 0.01 |
+| Orientation | `--pipeline.model.orientation-loss-mult` | Penalizes backfacing normals on visible surfaces. | 0.01 |
+
+Example for plastic/glossy objects:
+
+```bash
+--pipeline.model.roughness-sparsity-loss-mult 0.01 \
+--pipeline.model.orientation-loss-mult 0.01
+```
+
+Note: Ref-NeRF also uses a roughness smoothness prior (TV loss on roughness). This is not implemented here
+because SDFStudio uses random ray sampling, making spatial neighbor computation non-trivial. The sparsity
+prior alone is usually sufficient to prevent degenerate roughness solutions.
+
 #### Notes
 
 - These flags only affect the *appearance* model; SDF geometry is still learned from color + regularizers, but the
@@ -324,6 +344,8 @@ Add more BRDF flags based on the dominant material in the scene (see above).
   forces all color variation through the diffuse branch, preventing albedo from leaking into specular.
 - `use-roughness-gated-specular` provides a clean physical prior: rough surfaces should have less specular. This
   helps the network converge to sensible roughness values.
+- The roughness sparsity regularizer helps prevent the network from explaining all view-dependence via high
+  roughness. Without it, the model may set roughness=1 everywhere (fully diffuse) and ignore the reflection encoding.
 - `use-appearance-embedding` adds a small per-image latent to the color network. On real-world captures with varying
   exposure / white balance / lighting (e.g. handheld smartphones), this usually helps because it lets the model
   absorb per-view photometric quirks without twisting geometry or BRDF parameters. On clean, studio-lit multi-view
