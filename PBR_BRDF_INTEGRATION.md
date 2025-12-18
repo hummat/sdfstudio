@@ -70,6 +70,60 @@ SDFField already has Ref-NeRF-style factorization. Enable it:
 
 ---
 
+## Stage 1.5: NeuSFactor-lite (Training-Time “BRDF-ish” Rendering)
+
+This stage targets “works somewhat better than today for indoor smartphone object scans” by making the *training-time* image formation more physically structured than a pure radiance MLP, without trying to solve full inverse rendering.
+
+Key idea:
+- Predict **material** (start with dielectric albedo + roughness).
+- Use an **explicit lighting model** (start with global SH + per-image exposure).
+- Render via a **simple forward shader** (Lambert first, then “GGX-ish”).
+- Keep a small **residual view-dependent term** early on (anneal down) to avoid destabilizing geometry training.
+
+### 1.5A) Minimum viable assumptions (to keep it engineering)
+
+- Geometry comes from NeuS/NeuS-facto as usual (no special capture rig).
+- Lighting is “approximately static in world” and reasonably smooth (typical indoor scans).
+- Start **dielectric-only**:
+  - `metallic=0`
+  - fixed `F0≈0.04`
+
+### 1.5B) Model outputs and parameters
+
+Per sample (or per surface hit) predict:
+- [ ] `albedo A(x)` (view-independent, linear)
+- [ ] `roughness r(x)` (view-independent, linear in `(0,1]`)
+- [ ] optional: `specular_tint(x)` / `metallic(x)` later
+
+Global / per-image latent parameters:
+- [ ] global low-order SH lighting coefficients (RGB)
+- [ ] per-image exposure scalar (and optionally WB) as a small embedding
+
+### 1.5C) Forward renderer (start simple)
+
+- [ ] Lambert baseline:
+  - `rgb_linear = exposure_i * ( A(x) * Irradiance_SH(N(x)) )`
+- [ ] Add “GGX-ish” later:
+  - keep it simple initially (dielectric only, fixed F0)
+  - consider starting with a heuristic spec term before full GGX to reduce implementation risk
+
+### 1.5D) Training schedule (avoid breaking geometry)
+
+To prevent the structured renderer from underfitting early and harming geometry:
+- [ ] Warmup with the existing radiance head for `N_warmup` steps.
+- [ ] Then blend losses:
+  - `L = w_radiance(step) * L_rgb(radiance_rgb, gt) + w_brdf(step) * L_rgb(brdf_rgb, gt)`
+  - ramp `w_brdf ↑` and (optionally) `w_radiance ↓`.
+- [ ] Keep a small “residual” branch (view-dependent) early; regularize/anneal it down.
+
+### 1.5E) What “success” looks like
+
+- Diffuse/basecolor becomes less contaminated by highlights/shadows on average.
+- Roughness maps become more spatially stable and correlate with perceived gloss.
+- Rendered outputs remain visually competitive (even if not perfect PBR).
+
+---
+
 ## Stage 2: glTF/GLB Export with PBR Material
 
 Current texture export saves raw PNGs (`diffuse_0.png`, `roughness_0.png`, etc.) but doesn't wire them into a proper material.
