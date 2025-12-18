@@ -24,8 +24,8 @@ from typing import Any, Optional
 import torch
 from torch import Tensor as TensorType
 
-import sdfstudio.configs.base_config as cfg
 from sdfstudio.cameras.cameras import Cameras
+from sdfstudio.configs.base_types import InstantiateConfig
 from sdfstudio.configs.config_utils import to_immutable_dict
 from sdfstudio.data.scene_box import SceneBox
 
@@ -81,7 +81,7 @@ class DataparserOutputs:
 
 
 @dataclass
-class DataParserConfig(cfg.InstantiateConfig):
+class DataParserConfig(InstantiateConfig):
     """Basic dataset config"""
 
     _target: type = field(default_factory=lambda: DataParser)

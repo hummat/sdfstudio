@@ -34,7 +34,7 @@ from typing_extensions import Literal
 from sdfstudio.cameras.camera_optimizers import CameraOptimizerConfig
 from sdfstudio.cameras.cameras import CameraType
 from sdfstudio.cameras.rays import RayBundle
-from sdfstudio.configs.base_config import InstantiateConfig
+from sdfstudio.configs.base_types import InstantiateConfig
 from sdfstudio.data.dataparsers.blender_dataparser import BlenderDataParserConfig
 from sdfstudio.data.dataparsers.dnerf_dataparser import DNeRFDataParserConfig
 from sdfstudio.data.dataparsers.friends_dataparser import FriendsDataParserConfig

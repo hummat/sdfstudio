@@ -22,7 +22,7 @@ from typing import Any, Optional
 import numpy as np
 from torch.optim import Optimizer, lr_scheduler
 
-from sdfstudio.configs.base_config import InstantiateConfig
+from sdfstudio.configs.base_types import InstantiateConfig
 
 
 @dataclass

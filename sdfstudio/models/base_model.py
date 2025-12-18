@@ -28,7 +28,7 @@ from torch import nn
 from torch.nn import Parameter
 
 from sdfstudio.cameras.rays import RayBundle
-from sdfstudio.configs.base_config import InstantiateConfig
+from sdfstudio.configs.base_types import InstantiateConfig
 from sdfstudio.configs.config_utils import to_immutable_dict
 from sdfstudio.data.scene_box import SceneBox
 from sdfstudio.engine.callbacks import TrainingCallback, TrainingCallbackAttributes

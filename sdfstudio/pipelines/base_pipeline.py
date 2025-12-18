@@ -37,7 +37,7 @@ from torch.nn import Parameter
 from torch.nn.parallel import DistributedDataParallel as DDP
 from typing_extensions import Literal
 
-from sdfstudio.configs import base_config as cfg
+from sdfstudio.configs.base_types import InstantiateConfig
 from sdfstudio.data.datamanagers.base_datamanager import (
     DataManager,
     FlexibleDataManagerConfig,
@@ -181,7 +181,7 @@ class Pipeline(nn.Module):
 
 
 @dataclass
-class VanillaPipelineConfig(cfg.InstantiateConfig):
+class VanillaPipelineConfig(InstantiateConfig):
     """Configuration for pipeline instantiation"""
 
     _target: type = field(default_factory=lambda: VanillaPipeline)

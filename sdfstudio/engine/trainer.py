@@ -23,13 +23,12 @@ import functools
 import os
 import pickle
 import time
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import torch
 from rich.console import Console
 from torch.amp.grad_scaler import GradScaler
 
-from sdfstudio.configs import base_config as cfg
 from sdfstudio.engine.callbacks import (
     TrainingCallback,
     TrainingCallbackAttributes,
@@ -46,6 +45,9 @@ from sdfstudio.utils.decorators import (
 from sdfstudio.utils.misc import step_check
 from sdfstudio.utils.writer import EventName, TimeWriter
 from sdfstudio.viewer.server import viewer_utils
+
+if TYPE_CHECKING:
+    from sdfstudio.configs.base_config import Config
 
 CONSOLE = Console(width=120)
 
@@ -72,7 +74,7 @@ class Trainer:
     optimizers: Optimizers
     callbacks: list[TrainingCallback]
 
-    def __init__(self, config: cfg.Config, local_rank: int = 0, world_size: int = 1):
+    def __init__(self, config: Config, local_rank: int = 0, world_size: int = 1):
         self.config = config
         self.local_rank = local_rank
         self.world_size = world_size

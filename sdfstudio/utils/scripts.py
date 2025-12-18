@@ -1,4 +1,5 @@
 """Helpers for running script commands."""
+
 from __future__ import annotations
 
 # Copyright 2022 The Nerfstudio Team. All rights reserved.

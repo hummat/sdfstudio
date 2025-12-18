@@ -22,20 +22,22 @@ import os
 import pickle
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import torch
 import yaml
 from rich.console import Console
 from typing_extensions import Literal
 
-from sdfstudio.configs import base_config as cfg
 from sdfstudio.pipelines.base_pipeline import Pipeline
+
+if TYPE_CHECKING:
+    from sdfstudio.configs.base_config import Config, TrainerConfig
 
 CONSOLE = Console(width=120)
 
 
-def eval_load_checkpoint(config: cfg.TrainerConfig, pipeline: Pipeline) -> Path:
+def eval_load_checkpoint(config: TrainerConfig, pipeline: Pipeline) -> Path:
     ## TODO: ideally eventually want to get this to be the same as whatever is used to load train checkpoint too
     """Helper function to load checkpointed pipeline
 
@@ -81,7 +83,7 @@ def eval_setup(
     config_path: Path,
     eval_num_rays_per_chunk: Optional[int] = None,
     test_mode: Literal["test", "val", "inference"] = "test",
-) -> tuple[cfg.Config, Pipeline, Path]:
+) -> tuple[Config, Pipeline, Path]:
     """Shared setup for loading a saved pipeline for evaluation.
 
     Args:
@@ -96,9 +98,11 @@ def eval_setup(
     Returns:
         Loaded config, pipeline module, and corresponding checkpoint.
     """
+    from sdfstudio.configs.base_config import Config
+
     # load save config
     config = yaml.load(config_path.read_text(), Loader=yaml.Loader)
-    assert isinstance(config, cfg.Config)
+    assert isinstance(config, Config)
 
     if eval_num_rays_per_chunk:
         config.pipeline.model.eval_num_rays_per_chunk = eval_num_rays_per_chunk

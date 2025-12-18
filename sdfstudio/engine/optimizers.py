@@ -19,18 +19,21 @@ Optimizers class.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import torch
 from torch.nn.parameter import Parameter
 
-from sdfstudio.configs import base_config
+from sdfstudio.configs.base_types import PrintableConfig
 from sdfstudio.utils import writer
+
+if TYPE_CHECKING:
+    from sdfstudio.configs.base_config import Config
 
 
 # Optimizer related configs
 @dataclass
-class OptimizerConfig(base_config.PrintableConfig):
+class OptimizerConfig(PrintableConfig):
     """Basic optimizer config with RAdam"""
 
     _target: type = torch.optim.Adam
@@ -69,7 +72,7 @@ class RAdamOptimizerConfig(OptimizerConfig):
     _target: type = torch.optim.RAdam
 
 
-def setup_optimizers(config: base_config.Config, param_groups: dict[str, list[Parameter]]) -> Optimizers:
+def setup_optimizers(config: Config, param_groups: dict[str, list[Parameter]]) -> Optimizers:
     """Helper to set up the optimizers
 
     Args:

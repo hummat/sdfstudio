@@ -27,7 +27,7 @@ from torch import Tensor as TensorType
 from torch import nn
 
 from sdfstudio.cameras.rays import Frustums, RaySamples
-from sdfstudio.configs.base_config import InstantiateConfig
+from sdfstudio.configs.base_types import InstantiateConfig
 from sdfstudio.field_components.field_heads import FieldHeadNames
 
 
