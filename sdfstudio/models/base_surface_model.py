@@ -328,6 +328,8 @@ class SurfaceModel(Model):
             outputs["specular"] = self.renderer_rgb(rgb=field_outputs["specular"], weights=weights)
         if "tint" in field_outputs:
             outputs["tint"] = self.renderer_rgb(rgb=field_outputs["tint"], weights=weights)
+        if "roughness" in field_outputs:
+            outputs["roughness"] = self.renderer_normal(semantics=field_outputs["roughness"], weights=weights)
         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
         # the rendered depth is point-to-point distance and we should convert to depth
         depth = depth / ray_bundle.directions_norm

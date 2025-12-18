@@ -336,6 +336,7 @@ def export_textured_mesh(
     unwrap_method: Literal["xatlas", "custom"] = "xatlas",
     raylen_method: Literal["edge", "none"] = "edge",
     num_pixels_per_side=1024,
+    camera_index: int = 0,
 ):
     """Textures a mesh using the radiance field from the Pipeline.
     The mesh is written to an OBJ file in the output directory,
@@ -350,6 +351,7 @@ def export_textured_mesh(
         unwrap_method: The method to use for unwrapping the mesh.
         offset_method: The method to use for computing the ray length to render.
         num_pixels_per_side: The number of pixels per side of the texture image.
+        camera_index: Camera index used for appearance embeddings, if the model uses them.
     """
 
     # pylint: disable=too-many-statements
@@ -387,7 +389,12 @@ def export_textured_mesh(
 
     origins = origins - 0.5 * raylen * directions
     pixel_area = torch.ones_like(origins[..., 0:1])
-    camera_indices = torch.zeros_like(origins[..., 0:1])
+    camera_indices = torch.full(
+        origins[..., 0:1].shape,
+        int(camera_index),
+        device=device,
+        dtype=torch.long,
+    )
     nears = torch.zeros_like(origins[..., 0:1])
     fars = torch.ones_like(origins[..., 0:1]) * raylen
     directions_norm = torch.ones_like(origins[..., 0:1])  # for surface model

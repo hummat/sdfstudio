@@ -69,6 +69,12 @@ class TextureMesh:
     """Multiplier for mesh bounding sphere radius for --method open3d."""
     eval_num_rays_per_chunk: Optional[int] = None
     """Override `pipeline.model.eval_num_rays_per_chunk` used during texture queries."""
+    appearance_idx: Optional[int] = None
+    """Override camera indices for appearance embeddings.
+
+    - v2 cpu/gpu and legacy exporters query the model with a single camera index; if unset, defaults to 0.
+    - v2 open3d multiview exporter renders multiple synthetic cameras; if unset, preserves per-view indices.
+    """
 
     def main(self) -> None:
         """Export textured mesh"""
@@ -91,6 +97,7 @@ class TextureMesh:
                 output_dir=self.output_dir,
                 unwrap_method="xatlas",
                 num_pixels_per_side=self.num_pixels_per_side,
+                camera_index=0 if self.appearance_idx is None else self.appearance_idx,
             )
         elif self.method in ("cpu", "gpu"):
             CONSOLE.print(f"[green]Using v2 texture export ({self.method})")
@@ -102,6 +109,7 @@ class TextureMesh:
                 num_directions=self.num_directions,
                 use_gpu_rasterization=(self.method == "gpu"),
                 pad_px=self.pad_px,
+                camera_index=0 if self.appearance_idx is None else self.appearance_idx,
             )
         elif self.method == "open3d":
             CONSOLE.print("[green]Using v2 multiview texture export (open3d)")
@@ -116,6 +124,7 @@ class TextureMesh:
                 elevation_range=(self.elev_min_degrees, self.elev_max_degrees),
                 radius_mult=self.radius_mult,
                 pad_px=self.pad_px,
+                appearance_idx=self.appearance_idx,
             )
         else:
             raise ValueError(f"Unknown method: {self.method}")

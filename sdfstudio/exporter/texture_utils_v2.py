@@ -532,6 +532,7 @@ def query_nerf_textures(
     valid_mask: Tensor,
     num_directions: int = 6,
     ray_length: float = 0.1,
+    camera_index: int = 0,
 ) -> dict[str, Tensor]:
     """Query NeRF to extract all texture maps (RGB, normals, PBR).
 
@@ -546,6 +547,7 @@ def query_nerf_textures(
         valid_mask: Valid pixel mask (H, W)
         num_directions: Number of ray directions per texel for RGB averaging
         ray_length: Length of rays to cast
+        camera_index: Camera index used for appearance embeddings, if the model uses them.
 
     Returns:
         Dict with texture maps. Always contains "rgb". May also contain
@@ -587,7 +589,7 @@ def query_nerf_textures(
                 origins=dir_origins.unsqueeze(0),  # (1, N, 3)
                 directions=dir_dirs.unsqueeze(0),  # (1, N, 3)
                 pixel_area=torch.ones(1, N, 1, device=device),
-                camera_indices=torch.zeros(1, N, 1, device=device, dtype=torch.long),
+                camera_indices=torch.full((1, N, 1), int(camera_index), device=device, dtype=torch.long),
                 directions_norm=torch.ones(1, N, 1, device=device),
                 nears=torch.zeros(1, N, 1, device=device),
                 fars=torch.full((1, N, 1), ray_length, device=device),
@@ -758,6 +760,7 @@ def export_textured_mesh_v2(
     num_directions: int = 6,
     use_gpu_rasterization: bool = True,
     pad_px: int = 32,
+    camera_index: int = 0,
 ) -> None:
     """Export textured mesh using improved pipeline.
 
@@ -769,6 +772,7 @@ def export_textured_mesh_v2(
         num_directions: Number of ray directions per texel for averaging
         use_gpu_rasterization: Whether to use GPU rasterization
         pad_px: Number of pixels to dilate charts outward to avoid seam bleeding
+        camera_index: Camera index used for appearance embeddings, if the model uses them.
     """
     device = pipeline.device
     output_dir = Path(output_dir)
@@ -812,6 +816,7 @@ def export_textured_mesh_v2(
         valid_mask,
         num_directions=num_directions,
         ray_length=ray_length,
+        camera_index=camera_index,
     )
 
     # Step 3.5: Seam dilation to avoid seam bleeding / raster gaps without querying outside triangles.
@@ -943,6 +948,7 @@ def render_views_from_nerf(
     intrinsics: Tensor,
     extrinsics: Tensor,
     image_size: tuple[int, int] = (1024, 1024),
+    appearance_idx: int | None = None,
 ) -> tuple[list[Tensor], list[Tensor]]:
     """Render synthetic views from NeRF at given camera poses.
 
@@ -951,6 +957,7 @@ def render_views_from_nerf(
         intrinsics: Camera intrinsics (N, 3, 3)
         extrinsics: Camera-to-world poses (N, 4, 4)
         image_size: Output image resolution (H, W)
+        appearance_idx: Override camera indices for appearance embeddings (keeps geometry cameras unchanged).
 
     Returns:
         rgbs: List of rendered RGB images (N,) each (H, W, 3)
@@ -988,6 +995,10 @@ def render_views_from_nerf(
     with progress:
         for cam_idx in progress.track(range(N)):
             camera_ray_bundle = cameras.generate_rays(camera_indices=cam_idx).to(device)
+            if appearance_idx is not None:
+                camera_ray_bundle.camera_indices = torch.full_like(
+                    camera_ray_bundle.camera_indices, int(appearance_idx), dtype=torch.long
+                )
             with torch.no_grad():
                 # Avoid nested rich progress bars:
                 # rich only allows one active "Live" display at a time, so the inner
@@ -1309,6 +1320,7 @@ def export_textured_mesh_multiview(
     elevation_range: tuple[float, float] = (-30.0, 60.0),
     radius_mult: float = 2.0,
     pad_px: int = 32,
+    appearance_idx: int | None = None,
 ) -> None:
     """Export textured mesh using multiview render-and-project/reproject.
 
@@ -1328,6 +1340,7 @@ def export_textured_mesh_multiview(
         elevation_range: Min/max elevation angles in degrees
         radius_mult: Multiplier for the mesh bounding sphere radius
         pad_px: Number of pixels to dilate charts outward to avoid seam bleeding (fallback path)
+        appearance_idx: Override camera indices for appearance embeddings, if the model uses them.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1359,7 +1372,11 @@ def export_textured_mesh_multiview(
 
     # Step 3: render synthetic views
     rgbs, depths = render_views_from_nerf(
-        pipeline, intrinsics, extrinsics, image_size=(render_pixels_per_side, render_pixels_per_side)
+        pipeline,
+        intrinsics,
+        extrinsics,
+        image_size=(render_pixels_per_side, render_pixels_per_side),
+        appearance_idx=appearance_idx,
     )
 
     # Step 4: project to UV texture via Open3D if available, otherwise fall back to reprojection.
