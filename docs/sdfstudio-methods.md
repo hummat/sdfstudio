@@ -219,41 +219,137 @@ sdf-train neus sdfstudio-data --data YOUR_DATA \
 
 ### 2. Robust BRDF Settings for SDF Fields
 
-For SDF-based methods (`neus`, `neus-facto`, `volsdf`, `geo-neus`, etc.), the following `SDFFieldConfig` flags often
-improve geometry on reflective or weakly textured surfaces by giving the color MLP better cues:
+For SDF-based methods (`neus`, `neus-facto`, `volsdf`, `geo-neus`, etc.), the following `SDFFieldConfig` flags
+improve geometry on reflective or weakly textured surfaces by giving the color MLP better cues.
 
-- **Baseline for most scenes (even mostly diffuse)**:
+#### BRDF Flag Reference
+
+All flags are set via `--pipeline.model.sdf-field.<flag-name>`.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `use-diffuse-color` | False | Separates view-independent diffuse (albedo) from view-dependent specular. Adds a diffuse head that sees only geometry features. |
+| `use-specular-tint` | False | Learns RGB tint for specular component. Needed for colored reflections (metals). Plastic/dielectric should leave this off. |
+| `use-reflections` | False | Encodes reflection direction (not just view direction) for the color MLP. Improves specular highlight placement. |
+| `use-n-dot-v` | False | Provides cos(angle) between normal and view as explicit input. Helps with Fresnel-like rim effects. Cheap, almost always beneficial. |
+| `enable-pred-roughness` | False | Predicts per-point roughness in [0,1]. Used to blend view/reflection encodings (rough=view, smooth=reflection). |
+| `roughness-blend-space` | "encoding" | How to blend view/reflection when roughness is enabled. "encoding" blends encoded features; "direction" blends raw directions then encodes. |
+| `use-roughness-in-color-mlp` | False | Pass roughness as extra input to color MLP. Useful for mixed-material scenes where specular behavior varies. |
+| `use-fresnel-term` | False | Computes Schlick Fresnel and passes to color MLP. Alternative to `use-n-dot-v` with more physical basis. |
+| `specular-exclude-geo-features` | False | Removes geometry features from specular MLP input. Forces specular to be purely view-dependent; all spatial color goes through diffuse. |
+| `use-roughness-gated-specular` | False | Multiplies specular by (1 - roughness). Rough surfaces get less specular contribution. Requires `enable-pred-roughness` and `use-diffuse-color`. |
+| `learned-specular-scale` | False | Learns per-point specular intensity instead of fixed 0.5. Requires `use-diffuse-color`. |
+
+#### Recommended Configurations by Scene Type
+
+**Diffuse objects (matte surfaces, paper, cloth)**
+
+No BRDF flags needed. The baseline model handles diffuse materials well.
 
 ```bash
---pipeline.model.sdf-field.use-diffuse-color True
---pipeline.model.sdf-field.use-n-dot-v True
+# Just use defaults
+sdf-train neus-facto sdfstudio-data --data YOUR_DATA
 ```
 
-- **Scenes with clear gloss / specular highlights**:
+**Plastic objects (lego, toys, household items)**
+
+Plastic has white/neutral specular highlights and uniform roughness. Separate diffuse from specular, exclude geo
+features from specular branch so albedo stays in diffuse.
 
 ```bash
---pipeline.model.sdf-field.use-diffuse-color True
---pipeline.model.sdf-field.use-specular-tint True
---pipeline.model.sdf-field.use-reflections True
---pipeline.model.sdf-field.use-n-dot-v True
+--pipeline.model.sdf-field.use-diffuse-color True \
+--pipeline.model.sdf-field.specular-exclude-geo-features True \
+--pipeline.model.sdf-field.use-reflections True \
+--pipeline.model.sdf-field.use-n-dot-v True \
+--pipeline.model.sdf-field.enable-pred-roughness True \
+--pipeline.model.sdf-field.use-roughness-gated-specular True
 ```
 
-- **Very shiny / metallic objects (strong mirror-like reflections)**:
+**Metal objects (chrome, steel, jewelry)**
+
+Metals have colored specular (the "reflection" is tinted by the metal color). Enable specular tint and roughness.
 
 ```bash
+--pipeline.model.sdf-field.use-diffuse-color True \
+--pipeline.model.sdf-field.use-specular-tint True \
+--pipeline.model.sdf-field.use-reflections True \
+--pipeline.model.sdf-field.use-n-dot-v True \
 --pipeline.model.sdf-field.enable-pred-roughness True
 ```
 
-Notes:
+**Glossy/shiny objects (ceramics, polished wood, lacquered surfaces)**
+
+Similar to plastic but may have spatially varying roughness. Use learned specular scale if shininess varies.
+
+```bash
+--pipeline.model.sdf-field.use-diffuse-color True \
+--pipeline.model.sdf-field.use-reflections True \
+--pipeline.model.sdf-field.use-n-dot-v True \
+--pipeline.model.sdf-field.enable-pred-roughness True \
+--pipeline.model.sdf-field.use-roughness-gated-specular True \
+--pipeline.model.sdf-field.learned-specular-scale True
+```
+
+**Mixed materials (scenes with both rough and shiny surfaces)**
+
+Enable roughness prediction and pass it to color MLP so the network can learn material-dependent behavior.
+
+```bash
+--pipeline.model.sdf-field.use-diffuse-color True \
+--pipeline.model.sdf-field.use-reflections True \
+--pipeline.model.sdf-field.use-n-dot-v True \
+--pipeline.model.sdf-field.enable-pred-roughness True \
+--pipeline.model.sdf-field.use-roughness-in-color-mlp True \
+--pipeline.model.sdf-field.use-roughness-gated-specular True
+```
+
+**Indoor smartphone video (varying exposure, mixed lighting)**
+
+Enable appearance embedding to absorb per-frame photometric variation. Use conservative BRDF settings.
+
+```bash
+--pipeline.model.sdf-field.use-appearance-embedding True \
+--pipeline.model.sdf-field.use-diffuse-color True \
+--pipeline.model.sdf-field.use-n-dot-v True
+```
+
+Add more BRDF flags based on the dominant material in the scene (see above).
+
+#### Roughness Regularization (Ref-NeRF-style)
+
+When using `enable-pred-roughness`, add these regularizers to help the network learn sensible roughness values:
+
+| Loss | Flag | Description | Suggested Value |
+|------|------|-------------|-----------------|
+| Roughness sparsity | `--pipeline.model.roughness-sparsity-loss-mult` | L1 penalty on roughness. Encourages low roughness (specular default). | 0.01 |
+| Orientation | `--pipeline.model.orientation-loss-mult` | Penalizes backfacing normals on visible surfaces. | 0.01 |
+
+Example for plastic/glossy objects:
+
+```bash
+--pipeline.model.roughness-sparsity-loss-mult 0.01 \
+--pipeline.model.orientation-loss-mult 0.01
+```
+
+Note: Ref-NeRF also uses a roughness smoothness prior (TV loss on roughness). This is not implemented here
+because SDFStudio uses random ray sampling, making spatial neighbor computation non-trivial. The sparsity
+prior alone is usually sufficient to prevent degenerate roughness solutions.
+
+#### Notes
 
 - These flags only affect the *appearance* model; SDF geometry is still learned from color + regularizers, but the
-  gradient signal is often more geometry-friendly.
+  gradient signal is often more geometry-friendly when view-dependent effects are properly modeled.
 - `use-n-dot-v` is cheap and generally safe to keep enabled whenever you care about good geometry.
-- `use-appearance-embedding` (in `SDFFieldConfig`) adds a small per-image latent to the color
-  network. On real-world captures with varying exposure / white balance / lighting (e.g. handheld smartphones), this
-  usually helps because it lets the model absorb per-view photometric quirks without twisting geometry or BRDF
-  parameters. On clean, studio-lit multi-view photo sets where you primarily care about geometry, you may prefer to
-  disable it so that more of the supervision flows directly into the SDF and normals.
+- `specular-exclude-geo-features` is recommended for scenes with uniform specular behavior (single material). It
+  forces all color variation through the diffuse branch, preventing albedo from leaking into specular.
+- `use-roughness-gated-specular` provides a clean physical prior: rough surfaces should have less specular. This
+  helps the network converge to sensible roughness values.
+- The roughness sparsity regularizer helps prevent the network from explaining all view-dependence via high
+  roughness. Without it, the model may set roughness=1 everywhere (fully diffuse) and ignore the reflection encoding.
+- `use-appearance-embedding` adds a small per-image latent to the color network. On real-world captures with varying
+  exposure / white balance / lighting (e.g. handheld smartphones), this usually helps because it lets the model
+  absorb per-view photometric quirks without twisting geometry or BRDF parameters. On clean, studio-lit multi-view
+  photo sets where you primarily care about geometry, you may prefer to disable it.
 
 ### 3. Turn Up Existing Geometry Priors
 

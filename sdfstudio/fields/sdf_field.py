@@ -204,6 +204,24 @@ class SDFFieldConfig(FieldConfig):
     """
     use_fresnel_term: bool = False
     """Append a Schlick-style Fresnel term (scalar) as an extra input to the view-dependent color MLP."""
+    specular_exclude_geo_features: bool = False
+    """When use_diffuse_color=True, exclude geo_features from the specular MLP.
+
+    Forces the specular branch to be purely view-dependent, with all spatial color
+    variation going through the diffuse branch. Recommended for scenes with uniform
+    specular behavior (e.g., plastic objects like lego)."""
+    use_roughness_gated_specular: bool = False
+    """Gate the specular contribution by (1 - roughness).
+
+    When enabled with enable_pred_roughness=True and use_diffuse_color=True, the
+    final color becomes: rgb = diffuse + specular * (1 - roughness).
+    This allows rough surfaces to have minimal specular contribution."""
+    learned_specular_scale: bool = False
+    """Learn a per-point specular scale instead of using fixed 0.5.
+
+    Predicts a scalar in [0, 1] from geo_features that multiplies the specular
+    contribution, allowing the network to control specular intensity spatially.
+    Requires use_diffuse_color=True."""
     rgb_padding: float = 0.001
     """Padding added to the RGB outputs"""
     off_axis: bool = False
@@ -247,6 +265,17 @@ class SDFField(Field):
         self.config = config
         if self.config.use_roughness_in_color_mlp and not self.config.enable_pred_roughness:
             raise ValueError("`use_roughness_in_color_mlp=True` requires `enable_pred_roughness=True`.")
+        if self.config.specular_exclude_geo_features and not self.config.use_diffuse_color:
+            raise ValueError("`specular_exclude_geo_features=True` requires `use_diffuse_color=True`.")
+        if self.config.use_roughness_gated_specular and not (
+            self.config.enable_pred_roughness and self.config.use_diffuse_color
+        ):
+            raise ValueError(
+                "`use_roughness_gated_specular=True` requires both `enable_pred_roughness=True` "
+                "and `use_diffuse_color=True`."
+            )
+        if self.config.learned_specular_scale and not self.config.use_diffuse_color:
+            raise ValueError("`learned_specular_scale=True` requires `use_diffuse_color=True`.")
 
         # TODO do we need aabb here?
         self.aabb = Parameter(aabb, requires_grad=False)
@@ -364,22 +393,22 @@ class SDFField(Field):
         # deviation_network to compute alpha from sdf from NeuS
         self.deviation_network = SingleVarianceNetwork(init_val=self.config.beta_init)
 
-        # diffuse, specular tint, and roughness layers
+        # diffuse, specular tint, roughness, and specular scale layers
         if self.config.use_diffuse_color:
             self.diffuse_color_pred = nn.Linear(self.config.geo_feat_dim, 3)
         if self.config.use_specular_tint:
             self.specular_tint_pred = nn.Linear(self.config.geo_feat_dim, 3)
         if self.config.enable_pred_roughness:
             self.roughness_pred = nn.Linear(self.config.geo_feat_dim, 1)
+        if self.config.learned_specular_scale:
+            self.specular_scale_pred = nn.Linear(self.config.geo_feat_dim, 1)
 
         # view dependent color network
         dims = [self.config.hidden_dim_color for _ in range(self.config.num_layers_color)]
         if self.config.use_diffuse_color:
-            in_dim = (
-                self.direction_encoding.get_out_dim()
-                + self.config.geo_feat_dim
-                + self.embedding_appearance.get_out_dim()
-            )
+            in_dim = self.direction_encoding.get_out_dim() + self.embedding_appearance.get_out_dim()
+            if not self.config.specular_exclude_geo_features:
+                in_dim += self.config.geo_feat_dim
         else:
             # point, view_direction, normal, feature, embedding
             in_dim = (
@@ -589,6 +618,12 @@ class SDFField(Field):
           (0 = fully specular / reflection-dir, 1 = fully diffuse / view-dir).
         - n·v (`use_n_dot_v`) explicitly encodes angle of incidence for Fresnel/foreshortening-
           like behavior.
+        - Exclude geo features (`specular_exclude_geo_features`) forces the specular MLP to be
+          purely view-dependent, with all spatial color going through diffuse.
+        - Roughness gating (`use_roughness_gated_specular`) multiplies specular by (1 - roughness)
+          so rough surfaces contribute less specular.
+        - Learned specular scale (`learned_specular_scale`) replaces the fixed 0.5 multiplier
+          with a per-point learned value.
 
         All effects are realized through a learned MLP; this is not a full analytic microfacet
         BRDF and there is no explicit environment lighting.
@@ -602,17 +637,19 @@ class SDFField(Field):
 
         Returns:
             If `use_diffuse_color` is False: RGB colors, shape (..., 3).
-            If `use_diffuse_color` is True: tuple (rgb, diffuse, specular, tint),
-                each with shape (..., 3).
+            If `use_diffuse_color` is True: tuple of (rgb, diffuse, specular) plus optional
+                tint, roughness, specular_scale depending on config.
         """
 
-        # diffuse color, specular tint, and roughness
+        # diffuse color, specular tint, roughness, and specular scale
         if self.config.use_diffuse_color:
             raw_rgb_diffuse = self.diffuse_color_pred(geo_features.view(-1, self.config.geo_feat_dim))
         if self.config.use_specular_tint:
             tint = self.sigmoid(self.specular_tint_pred(geo_features.view(-1, self.config.geo_feat_dim)))
         if self.config.enable_pred_roughness:
             roughness = self.sigmoid(self.roughness_pred(geo_features.view(-1, self.config.geo_feat_dim)))
+        if self.config.learned_specular_scale:
+            specular_scale = self.sigmoid(self.specular_scale_pred(geo_features.view(-1, self.config.geo_feat_dim)))
 
         normals = F.normalize(gradients, p=2, dim=-1)
 
@@ -658,9 +695,10 @@ class SDFField(Field):
         if self.config.use_diffuse_color:
             h = [
                 d,
-                geo_features.view(-1, self.config.geo_feat_dim),
                 embedded_appearance.view(-1, self.config.appearance_embedding_dim),
             ]
+            if not self.config.specular_exclude_geo_features:
+                h.insert(1, geo_features.view(-1, self.config.geo_feat_dim))
         else:
             h = [
                 points,
@@ -710,10 +748,18 @@ class SDFField(Field):
             # Initialize linear diffuse color around 0.25, so that the combined
             # linear color is initialized around 0.5.
             diffuse_linear = self.sigmoid(raw_rgb_diffuse - math.log(3.0))
+
+            # Determine specular scale: learned, tinted, or fixed 0.5
             if self.config.use_specular_tint:
                 specular_linear = tint * rgb
+            elif self.config.learned_specular_scale:
+                specular_linear = specular_scale * rgb
             else:
                 specular_linear = 0.5 * rgb
+
+            # Optionally gate specular by roughness: rough surfaces get less specular
+            if self.config.use_roughness_gated_specular:
+                specular_linear = specular_linear * (1.0 - roughness)
 
             # Combine specular and diffuse components and tone map to sRGB.
             rgb = linear_to_srgb(specular_linear + diffuse_linear).clamp(0, 1)
@@ -730,6 +776,8 @@ class SDFField(Field):
                 components.append(linear_to_srgb(tint).clamp(0, 1))
             if self.config.enable_pred_roughness:
                 components.append(roughness)
+            if self.config.learned_specular_scale:
+                components.append(specular_scale)
             return tuple(components)
         return rgb
 
@@ -795,6 +843,10 @@ class SDFField(Field):
             if self.config.enable_pred_roughness:
                 roughness = components[idx]
                 outputs["roughness"] = roughness.view(*ray_samples.frustums.directions.shape[:-1], -1)
+                idx += 1
+            if self.config.learned_specular_scale:
+                specular_scale = components[idx]
+                outputs["specular_scale"] = specular_scale.view(*ray_samples.frustums.directions.shape[:-1], -1)
 
         density = self.laplace_density(sdf)
 
