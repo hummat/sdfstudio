@@ -636,6 +636,7 @@ def write_textured_mesh_fast(
     vertex_normals: Tensor,
     texture_uvs: Tensor,
     texture_image: np.ndarray,
+    orm_image: np.ndarray | None,
     output_dir: Path,
     mesh_name: str = "mesh",
     *,
@@ -649,6 +650,10 @@ def write_textured_mesh_fast(
         vertex_normals: Vertex normals (V, 3)
         texture_uvs: Per-face UV coordinates (F, 3, 2)
         texture_image: Texture image (H, W, 3) as numpy array [0, 1]
+        orm_image: Optional ORM texture image (H, W, 3) as numpy array [0, 1].
+
+            Convention for glTF metal-rough workflows:
+            - Occlusion (R), Roughness (G), Metallic (B)
         output_dir: Output directory
         mesh_name: Base name for output files
         flip_v: Whether to flip V when exporting OBJ/GLB.
@@ -733,10 +738,34 @@ def write_textured_mesh_fast(
     # Also export GLB for convenience
     texture_uint8 = (np.clip(texture_image, 0, 1) * 255).astype(np.uint8)
     texture_pil = PIL.Image.fromarray(texture_uint8)
-    material = trimesh.visual.material.SimpleMaterial(  # type: ignore
-        image=texture_pil,
-        diffuse=[255, 255, 255, 255],
-    )
+    material = None
+    pbr_material_cls = getattr(trimesh.visual.material, "PBRMaterial", None)  # type: ignore[attr-defined]
+    if pbr_material_cls is not None:
+        try:
+            material = pbr_material_cls()  # type: ignore[call-arg]
+            # Best-effort attribute wiring; trimesh versions differ in API surface.
+            if hasattr(material, "baseColorTexture"):
+                setattr(material, "baseColorTexture", texture_pil)
+            if hasattr(material, "baseColorFactor"):
+                setattr(material, "baseColorFactor", [1.0, 1.0, 1.0, 1.0])
+            if orm_image is not None:
+                orm_uint8 = (np.clip(orm_image, 0, 1) * 255).astype(np.uint8)
+                orm_pil = PIL.Image.fromarray(orm_uint8)
+                if hasattr(material, "metallicRoughnessTexture"):
+                    setattr(material, "metallicRoughnessTexture", orm_pil)
+                # Dielectric default factors (texture dominates if present).
+                if hasattr(material, "metallicFactor"):
+                    setattr(material, "metallicFactor", 0.0)
+                if hasattr(material, "roughnessFactor"):
+                    setattr(material, "roughnessFactor", 1.0)
+        except Exception:  # pylint: disable=broad-exception-caught
+            material = None
+
+    if material is None:
+        material = trimesh.visual.material.SimpleMaterial(  # type: ignore
+            image=texture_pil,
+            diffuse=[255, 255, 255, 255],
+        )
     visuals = trimesh.visual.TextureVisuals(  # type: ignore
         uv=expanded_uvs,
         material=material,
@@ -822,31 +851,67 @@ def export_textured_mesh_v2(
     # Step 3.5: Seam dilation to avoid seam bleeding / raster gaps without querying outside triangles.
     textures = pad_textures_nearest(textures, valid_mask, pad_px=pad_px)
 
-    # Step 4: Save all texture maps
+    # Step 4: Save all texture maps (canonical names for DCC tools)
     import mediapy as media  # type: ignore
 
-    saved_textures = []
-    for name, tex in textures.items():
-        img = tex.cpu().numpy()
+    saved_textures: list[Path] = []
 
-        # Normals are in [-1, 1], convert to [0, 1] for image saving
-        if name == "normal":
-            img = img * 0.5 + 0.5
+    # Prefer diffuse (view-independent) as basecolor when available; otherwise fall back to rgb.
+    basecolor = textures["diffuse"] if "diffuse" in textures else textures["rgb"]
+    basecolor_img = basecolor.cpu().numpy().clip(0.0, 1.0)
+    media.write_image(str(output_dir / "basecolor.png"), basecolor_img)
+    # Keep `texture.png` as the canonical filename used by OBJ/MTL wiring.
+    media.write_image(str(output_dir / "texture.png"), basecolor_img)
+    saved_textures.extend([output_dir / "basecolor.png", output_dir / "texture.png"])
 
-        # Use "texture.png" for RGB to maintain compatibility with mesh.mtl
-        filename = "texture.png" if name == "rgb" else f"{name}.png"
-        filepath = output_dir / filename
-        media.write_image(str(filepath), img)
-        saved_textures.append(filepath)
+    # Save raw model rgb if we used diffuse as basecolor (useful for debugging view-dependent bake-in).
+    if "diffuse" in textures:
+        rgb_img = textures["rgb"].cpu().numpy().clip(0.0, 1.0)
+        media.write_image(str(output_dir / "rgb.png"), rgb_img)
+        saved_textures.append(output_dir / "rgb.png")
+
+    # PBR-proxy maps
+    if "roughness" in textures:
+        roughness_img = textures["roughness"].cpu().numpy().clip(0.0, 1.0)
+        media.write_image(str(output_dir / "roughness.png"), roughness_img)
+        saved_textures.append(output_dir / "roughness.png")
+    if "specular" in textures:
+        specular_img = textures["specular"].cpu().numpy().clip(0.0, 1.0)
+        media.write_image(str(output_dir / "specular.png"), specular_img)
+        saved_textures.append(output_dir / "specular.png")
+    if "tint" in textures:
+        tint_img = textures["tint"].cpu().numpy().clip(0.0, 1.0)
+        media.write_image(str(output_dir / "tint.png"), tint_img)
+        saved_textures.append(output_dir / "tint.png")
+
+    # Note: model "normal" output is not guaranteed to be tangent-space; export as object/world-style proxy.
+    if "normal" in textures:
+        normal_img = textures["normal"].cpu().numpy()
+        normal_img = (normal_img * 0.5 + 0.5).clip(0.0, 1.0)
+        media.write_image(str(output_dir / "normal_object.png"), normal_img)
+        saved_textures.append(output_dir / "normal_object.png")
+
+    # ORM texture for glTF metal-rough workflows (Occlusion=R, Roughness=G, Metallic=B).
+    orm_img = None
+    if "roughness" in textures:
+        roughness = textures["roughness"].detach().cpu().numpy()
+        if roughness.ndim == 3 and roughness.shape[-1] == 1:
+            roughness = roughness[..., 0]
+        roughness = np.clip(roughness, 0.0, 1.0)
+        occlusion = np.ones_like(roughness, dtype=np.float32)
+        metallic = np.zeros_like(roughness, dtype=np.float32)
+        orm_img = np.stack([occlusion, roughness, metallic], axis=-1)
+        media.write_image(str(output_dir / "orm.png"), orm_img)
+        saved_textures.append(output_dir / "orm.png")
 
     # Write mesh (uses texture.png for the main material)
-    texture_image = textures["rgb"].cpu().numpy()
     write_textured_mesh_fast(
         vertices,
         faces_uv_order,
         vertex_normals,
         texture_uvs,
-        texture_image,
+        basecolor_img,
+        orm_img,
         output_dir,
         mesh_name="mesh",
         flip_v=True,
@@ -1437,6 +1502,7 @@ def export_textured_mesh_multiview(
     import mediapy as media  # type: ignore
 
     texture_np = texture.detach().cpu().numpy().clip(0.0, 1.0)
+    media.write_image(str(output_dir / "basecolor.png"), texture_np)
     media.write_image(str(output_dir / "texture.png"), texture_np)
 
     write_textured_mesh_fast(
@@ -1445,6 +1511,7 @@ def export_textured_mesh_multiview(
         normals_for_export,
         texture_uvs.to(device),
         texture_np,
+        None,
         output_dir,
         mesh_name="mesh",
         flip_v=flip_v_for_export,
