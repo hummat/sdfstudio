@@ -75,6 +75,12 @@ class TextureMesh:
     - v2 cpu/gpu and legacy exporters query the model with a single camera index; if unset, defaults to 0.
     - v2 open3d multiview exporter renders multiple synthetic cameras; if unset, preserves per-view indices.
     """
+    normal_map_convention: Literal["opengl", "directx"] = "opengl"
+    """Tangent-space normal map convention for v2 cpu/gpu exports.
+
+    - "opengl": +Y (glTF default, Blender-friendly)
+    - "directx": -Y (flip green channel)
+    """
 
     def main(self) -> None:
         """Export textured mesh"""
@@ -110,6 +116,7 @@ class TextureMesh:
                 use_gpu_rasterization=(self.method == "gpu"),
                 pad_px=self.pad_px,
                 camera_index=0 if self.appearance_idx is None else self.appearance_idx,
+                normal_map_convention=self.normal_map_convention,
             )
         elif self.method == "open3d":
             CONSOLE.print("[green]Using v2 multiview texture export (open3d)")

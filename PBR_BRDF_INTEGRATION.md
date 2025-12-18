@@ -91,7 +91,7 @@ SDFField already has Ref-NeRF-style factorization. Enable it:
 | `use_specular_tint` | Learned RGB specular tint (metals) |
 | `use_reflections` | Reflection-direction encoding for specular |
 | `use_n_dot_v` | Explicit incidence angle to color MLP |
-| `enable_pred_roughness` | Roughness ∈ [0,1] mixing view/reflection dirs |
+| `enable_pred_roughness` | Roughness proxy ∈ [0,1] mixing view/reflection dirs |
 | `roughness_blend_space` | Where roughness mixes view vs reflection (“encoding” vs “direction”) |
 | `use_roughness_in_color_mlp` | Append roughness scalar to the color MLP input (requires `enable_pred_roughness`) |
 | `use_fresnel_term` | Append a Schlick-style Fresnel scalar to the color MLP input |
@@ -99,6 +99,8 @@ SDFField already has Ref-NeRF-style factorization. Enable it:
 Notes:
 - In `SDFField`, ray `directions` are camera→point; view vector is point→camera = `-directions`. `use_n_dot_v` and `use_fresnel_term` use `n·v` with that sign convention.
 - `roughness` is only emitted in field outputs when `use_diffuse_color=True` (because the “diffuse/specular/roughness” tuple outputs only exist in that mode).
+- If Stage 1 exports are later used as initialization for Stage 2.5 fitting: `diffuse/specular/tint/rgb` are already
+  sRGB-ish (via `linear_to_srgb` in the field). Linearize them back before any physically-based fitting/optimization.
 
 ### Current status
 
@@ -181,6 +183,11 @@ To prevent the structured renderer from underfitting early and harming geometry:
   - ramp `w_brdf ↑` and (optionally) `w_radiance ↓`.
 - [ ] Keep a small “residual” branch (view-dependent) early; regularize/anneal it down.
 
+Note:
+- Annealing `w_radiance` all the way to 0 can be risky if the BRDF+lighting model is too constrained to explain
+  real data (interreflections, cast shadows, exposure drift, etc.). A common compromise is to keep a small non-zero
+  radiance term throughout training as a “catch-all” residual.
+
 ### 1.5E) What “success” looks like
 
 - Diffuse/basecolor becomes less contaminated by highlights/shadows on average.
@@ -196,9 +203,10 @@ The v2 exporter already writes a viewer-friendly `mesh.glb` with a metal–rough
 ### Current status (what exists today)
 
 - `sdfstudio/exporter/texture_utils_v2.py`:
-  - writes `basecolor.png` and also `texture.png` (OBJ/MTL compatibility)
+  - writes `basecolor.png` (sRGB-ish) and also `texture.png` (OBJ/MTL compatibility)
+  - writes optional linear basecolor artifacts for downstream fitting/refinement (see “Expected outputs”)
   - writes `normal.png` (tangent-space normal map) when model normals are available, and wires it as glTF `normalTexture`
-  - writes `roughness.png` and packs `orm.png` (Occlusion=R, Roughness=G, Metallic=B) when roughness exists
+  - writes `roughness.png` (roughness proxy) and packs `orm.png` (AO=R, Roughness=G, Metallic=B) when roughness exists
   - exports `mesh.obj`/`mesh.mtl` and `mesh.glb`
   - best-effort wires glTF PBR fields via `trimesh.visual.material.PBRMaterial` when available
 - Not yet fully covered:
@@ -228,6 +236,7 @@ sdf-texture-mesh \
 Expected outputs (v2 cpu/gpu):
 - `mesh.glb`, `mesh.obj`, `mesh.mtl`
 - `basecolor.png` (and `texture.png` alias for OBJ wiring)
+- `basecolor_linear.npy` (linearized from basecolor; useful as a starting point for fitting; still clipped if the field clipped)
 - `normal.png` (tangent-space normal map; used by GLB when available)
 - `roughness.png`, `orm.png` (if roughness is available)
 - `rgb.png`, `specular.png`, `tint.png` (if available)
@@ -249,7 +258,8 @@ Expected outputs (v2 cpu/gpu):
 - Current implementation uses trimesh for GLB export; this is convenient but not always stable across trimesh versions.
 - A dedicated writer (e.g., via `pygltflib`) is still attractive if we want deterministic output and full control over normal maps, samplers, and color-space metadata.
 - Tangent-space normal baking needs correct tangent frame from xatlas UVs
-  - Many viewers can compute tangents if missing, but quality varies; ideally compute tangents (MikkTSpace) during export.
+  - Many viewers can compute tangents if missing, but results can differ subtly; for reproducibility, compute tangents
+    explicitly (ideally MikkTSpace to match Blender).
 
 ---
 
@@ -284,6 +294,8 @@ TODOs:
   - [ ] aggregate samples per texel for fitting
 - [ ] Outlier hooks (minimum viable):
   - [ ] downweight grazing angles
+    - Practical default: weight by something like `w = clamp(n·v, 0.1, 1.0)` (or a smooth falloff) rather than
+      `max(n·v, 0)`; grazing views tend to be noisy/unreliable and can otherwise dominate.
   - [ ] mask saturated pixels (simple threshold)
   - [ ] record UV coverage stats to drive regularization defaults
 
@@ -369,6 +381,7 @@ Alternative to inverse rendering: use a learned single-image SVBRDF predictor on
 **Candidates:**
 - **Material Palette** (CVPR 2024) — diffusion-based, extracts PBR from single image
 - **MatFusion** (SIGGRAPH Asia 2023) — generative diffusion for SVBRDF
+- **DualMat** (2025) — coherent dual-path diffusion for PBR material estimation
 
 ### Integration approach
 
@@ -499,3 +512,4 @@ These are “go-to” references to build working knowledge and to consult durin
 - Hasselgren et al. (SIGGRAPH Asia 2022) — Monte Carlo variant (“nvdiffrecmc”)
 - Lopes et al. (CVPR 2024) — **Material Palette: Extraction of Materials from a Single Image**
 - Sartor & Peers (SIGGRAPH Asia 2023) — **MatFusion: a Generative Diffusion Model for SVBRDF Capture**
+- **DualMat: PBR Material Estimation via Coherent Dual-Path Diffusion** (arXiv 2025): https://arxiv.org/abs/2508.05060

@@ -26,7 +26,7 @@ from __future__ import annotations
 import importlib.util
 import math
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 import torch
@@ -843,6 +843,11 @@ def write_textured_mesh_fast(
                 orm_pil = PIL.Image.fromarray(orm_uint8)
                 if hasattr(material, "metallicRoughnessTexture"):
                     material.metallicRoughnessTexture = orm_pil
+                # Standard ORM packing is often represented as a single image used for both
+                # occlusionTexture (R) and metallicRoughnessTexture (G/B). If AO is not
+                # available, exporters typically set occlusion=1 everywhere.
+                if hasattr(material, "occlusionTexture"):
+                    material.occlusionTexture = orm_pil
                 # Dielectric default factors (texture dominates if present).
                 if hasattr(material, "metallicFactor"):
                     material.metallicFactor = 0.0
@@ -880,6 +885,7 @@ def export_textured_mesh_v2(
     use_gpu_rasterization: bool = True,
     pad_px: int = 32,
     camera_index: int = 0,
+    normal_map_convention: Literal["opengl", "directx"] = "opengl",
 ) -> None:
     """Export textured mesh using improved pipeline.
 
@@ -956,6 +962,11 @@ def export_textured_mesh_v2(
 
     saved_textures: list[Path] = []
 
+    def srgb_to_linear(x: np.ndarray) -> np.ndarray:
+        x = np.clip(x, 0.0, 1.0).astype(np.float32)
+        a = 0.055
+        return np.where(x <= 0.04045, x / 12.92, ((x + a) / (1.0 + a)) ** 2.4)
+
     # Prefer diffuse (view-independent) as basecolor when available; otherwise fall back to rgb.
     basecolor = textures["diffuse"] if "diffuse" in textures else textures["rgb"]
     basecolor_img = basecolor.cpu().numpy().clip(0.0, 1.0)
@@ -963,6 +974,10 @@ def export_textured_mesh_v2(
     # Keep `texture.png` as the canonical filename used by OBJ/MTL wiring.
     media.write_image(str(output_dir / "texture.png"), basecolor_img)
     saved_textures.extend([output_dir / "basecolor.png", output_dir / "texture.png"])
+    # Optional linearized basecolor for downstream fitting/refinement.
+    basecolor_linear = srgb_to_linear(basecolor_img)
+    np.save(output_dir / "basecolor_linear.npy", basecolor_linear)
+    saved_textures.append(output_dir / "basecolor_linear.npy")
 
     # Save raw model rgb if we used diffuse as basecolor (useful for debugging view-dependent bake-in).
     if "diffuse" in textures:
@@ -1022,6 +1037,9 @@ def export_textured_mesh_v2(
             torch.tensor([0.5, 0.5, 1.0], device=device).to(normal_tangent),
         )
         normal_tangent_img = normal_tangent.detach().cpu().numpy()
+        if normal_map_convention == "directx":
+            # Flip green channel for -Y convention.
+            normal_tangent_img[..., 1] = 1.0 - normal_tangent_img[..., 1]
         media.write_image(str(output_dir / "normal.png"), normal_tangent_img)
         saved_textures.append(output_dir / "normal.png")
 
