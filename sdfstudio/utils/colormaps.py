@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +19,8 @@
 from typing import Optional
 
 import torch
-from torch import Tensor as TensorType
 from matplotlib import cm
+from torch import Tensor as TensorType
 
 from sdfstudio.utils import colors
 

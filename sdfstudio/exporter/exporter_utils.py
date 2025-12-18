@@ -22,13 +22,12 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Optional, Union
 
 import numpy as np
 import open3d as o3d
 import pymeshlab
 import torch
-from torch import Tensor as TensorType
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -37,9 +36,9 @@ from rich.progress import (
     TextColumn,
     TimeRemainingColumn,
 )
+from torch import Tensor as TensorType
 
 from sdfstudio.cameras.cameras import Cameras
-from sdfstudio.configs.base_config import Config  # pylint: disable=unused-import
 from sdfstudio.pipelines.base_pipeline import Pipeline
 from sdfstudio.utils.rich_utils import ItersPerSecColumn
 
@@ -72,7 +71,7 @@ def get_mesh_from_pymeshlab_mesh(mesh: pymeshlab.Mesh) -> Mesh:
     )
 
 
-def get_mesh_from_filename(filename: str, target_num_faces: Optional[int | float] = None) -> Mesh:
+def get_mesh_from_filename(filename: str, target_num_faces: Union[int, float, None] = None) -> Mesh:
     ms = pymeshlab.MeshSet()
     ms.load_new_mesh(filename)
     if target_num_faces is not None:
@@ -111,8 +110,8 @@ def generate_point_cloud(
     depth_output_name: str = "depth",
     normal_output_name: Optional[str] = None,
     use_bounding_box: bool = True,
-    bounding_box_min: Tuple[float, float, float] = (-1.0, -1.0, -1.0),
-    bounding_box_max: Tuple[float, float, float] = (1.0, 1.0, 1.0),
+    bounding_box_min: tuple[float, float, float] = (-1.0, -1.0, -1.0),
+    bounding_box_max: tuple[float, float, float] = (1.0, 1.0, 1.0),
     std_ratio: float = 10.0,
 ) -> o3d.geometry.PointCloud:
     """Generate a point cloud from a nerf.
@@ -252,7 +251,7 @@ def render_trajectory(
     depth_output_name: str,
     rendered_resolution_scaling_factor: float = 1.0,
     disable_distortion: bool = False,
-) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
     """Helper function to create a video of a trajectory.
 
     Args:

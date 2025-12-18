@@ -1,5 +1,7 @@
 """Helper that add tags to notebooks based on cell comments."""
 
+from __future__ import annotations
+
 import sys
 from glob import glob
 

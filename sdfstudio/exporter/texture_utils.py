@@ -22,14 +22,14 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import mediapy as media
 import numpy as np
 import torch
-from torch import Tensor as TensorType
 import xatlas
 from rich.console import Console
+from torch import Tensor as TensorType
 from typing_extensions import Literal
 
 from sdfstudio.cameras.rays import RayBundle
@@ -213,7 +213,7 @@ def unwrap_mesh_with_xatlas(
     vertex_normals: TensorType,
     num_pixels_per_side=1024,
     num_faces_per_barycentric_chunk=10,
-) -> Tuple[
+) -> tuple[
     TensorType,
     TensorType,
     TensorType,
@@ -336,6 +336,7 @@ def export_textured_mesh(
     unwrap_method: Literal["xatlas", "custom"] = "xatlas",
     raylen_method: Literal["edge", "none"] = "edge",
     num_pixels_per_side=1024,
+    camera_index: int = 0,
 ):
     """Textures a mesh using the radiance field from the Pipeline.
     The mesh is written to an OBJ file in the output directory,
@@ -350,6 +351,7 @@ def export_textured_mesh(
         unwrap_method: The method to use for unwrapping the mesh.
         offset_method: The method to use for computing the ray length to render.
         num_pixels_per_side: The number of pixels per side of the texture image.
+        camera_index: Camera index used for appearance embeddings, if the model uses them.
     """
 
     # pylint: disable=too-many-statements
@@ -387,7 +389,12 @@ def export_textured_mesh(
 
     origins = origins - 0.5 * raylen * directions
     pixel_area = torch.ones_like(origins[..., 0:1])
-    camera_indices = torch.zeros_like(origins[..., 0:1])
+    camera_indices = torch.full(
+        origins[..., 0:1].shape,
+        int(camera_index),
+        device=device,
+        dtype=torch.long,
+    )
     nears = torch.zeros_like(origins[..., 0:1])
     fars = torch.ones_like(origins[..., 0:1]) * raylen
     directions_norm = torch.ones_like(origins[..., 0:1])  # for surface model
@@ -411,34 +418,52 @@ def export_textured_mesh(
     # Historically this legacy exporter wrote `material_0.png` + `material_0.mtl`.
     # The v2 exporters standardize on `texture.png` + `mesh.mtl`. Keeping the legacy
     # outputs around causes confusing duplicates when users iterate on exports.
-    for legacy_name in ("material_0.png", "material_0.mtl"):
+    for legacy_name in (
+        "material_0.png",
+        "material_0.mtl",
+        # Older PBR-proxy names used by this exporter.
+        "diffuse_0.png",
+        "specular_0.png",
+        "tint_0.png",
+        "roughness_0.png",
+        "normal_0.png",
+    ):
         legacy_path = output_dir / legacy_name
         if legacy_path.exists():
             legacy_path.unlink()
 
-    texture_image = outputs["rgb"].cpu().numpy()
-    media.write_image(str(output_dir / "texture.png"), texture_image)
+    # Canonical naming for downstream DCC tools (Blender/glTF):
+    # - `texture.png` remains for backward compatibility with existing MTL/OBJ wiring.
+    # - `basecolor.png` is the PBR-typical name.
+    #
+    # If the model provides a Ref-NeRF-style diffuse head, prefer it as basecolor.
+    basecolor_key = "diffuse" if "diffuse" in outputs else "rgb"
+    basecolor_image = outputs[basecolor_key].cpu().numpy()
+    if basecolor_key != "rgb":
+        rgb_image = outputs["rgb"].cpu().numpy()
+        media.write_image(str(output_dir / "rgb.png"), rgb_image)
 
-    if "diffuse" in outputs:
-        diffuse_image = outputs["diffuse"].cpu().numpy()
-        media.write_image(str(output_dir / "diffuse_0.png"), diffuse_image)
+    media.write_image(str(output_dir / "basecolor.png"), basecolor_image)
+    texture_image = basecolor_image
+    media.write_image(str(output_dir / "texture.png"), texture_image)
 
     if "specular" in outputs:
         specular_image = outputs["specular"].cpu().numpy()
-        media.write_image(str(output_dir / "specular_0.png"), specular_image)
+        media.write_image(str(output_dir / "specular.png"), specular_image)
 
     if "tint" in outputs:
         tint_image = outputs["tint"].cpu().numpy()
-        media.write_image(str(output_dir / "tint_0.png"), tint_image)
+        media.write_image(str(output_dir / "tint.png"), tint_image)
 
     if "roughness" in outputs:
         roughness_image = outputs["roughness"].cpu().numpy()
-        media.write_image(str(output_dir / "roughness_0.png"), roughness_image)
+        media.write_image(str(output_dir / "roughness.png"), roughness_image)
 
     # save the normal image
     normal_image = outputs["normal"].cpu().numpy()
     normal_image = (normal_image + 1.0) / 2.0
-    media.write_image(str(output_dir / "normal_0.png"), normal_image)
+    # Note: this is not guaranteed to be tangent-space; export as object/world-style proxy.
+    media.write_image(str(output_dir / "normal_object.png"), normal_image)
 
     # save direction image
     # direction_image = -directions.cpu().numpy()

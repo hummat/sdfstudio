@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +20,7 @@ import math
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Tuple, Type
+from typing import Optional
 
 import numpy as np
 import torch
@@ -54,7 +56,7 @@ class NuScenesDataParserConfig(DataParserConfig):
     To create these masks use scripts/datasets/process_nuscenes_masks.py.
     """
 
-    _target: Type = field(default_factory=lambda: NuScenes)
+    _target: type = field(default_factory=lambda: NuScenes)
     """target class to instantiate"""
     data: Path = Path("scene-0103")  # TODO: rename to scene but keep checkpoint saving name?
     """Name of the scene."""
@@ -62,7 +64,7 @@ class NuScenesDataParserConfig(DataParserConfig):
     """Path to NuScenes dataset."""
     version: Literal["v1.0-mini", "v1.0-trainval"] = "v1.0-mini"
     """Dataset version."""
-    cameras: Tuple[
+    cameras: tuple[
         Literal["FRONT", "FRONT_LEFT", "FRONT_RIGHT", "BACK", "BACK_LEFT", "BACK_RIGHT"],
         ...,
     ] = ("FRONT",)

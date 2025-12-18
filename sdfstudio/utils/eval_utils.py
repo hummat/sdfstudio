@@ -22,7 +22,7 @@ import os
 import pickle
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 import yaml
@@ -81,7 +81,7 @@ def eval_setup(
     config_path: Path,
     eval_num_rays_per_chunk: Optional[int] = None,
     test_mode: Literal["test", "val", "inference"] = "test",
-) -> Tuple[cfg.Config, Pipeline, Path]:
+) -> tuple[cfg.Config, Pipeline, Path]:
     """Shared setup for loading a saved pipeline for evaluation.
 
     Args:

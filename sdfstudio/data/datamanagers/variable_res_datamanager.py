@@ -19,13 +19,12 @@ Data loader for variable resolution datasets, where batching raw image tensors i
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
 
 from sdfstudio.data.datamanagers.base_datamanager import VanillaDataManagerConfig
 from sdfstudio.data.utils.nerfstudio_collate import nerfstudio_collate
 
 
-def variable_res_collate(batch: List[Dict]) -> Dict:
+def variable_res_collate(batch: list[dict]) -> dict:
     """Default collate function for the cached dataloader.
     Args:
         batch: Batch of samples from the dataset.

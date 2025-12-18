@@ -20,11 +20,11 @@ from __future__ import annotations
 
 import functools
 from dataclasses import dataclass, field
-from typing import Type, Union
+from typing import Union
 
 import torch
 import tyro
-from torch import nn, Tensor
+from torch import Tensor, nn
 from typing_extensions import Literal, assert_never
 
 from sdfstudio.cameras.lie_groups import exp_map_SE3, exp_map_SO3xR3
@@ -38,7 +38,7 @@ from sdfstudio.utils import poses as pose_utils
 class CameraOptimizerConfig(cfg.InstantiateConfig):
     """Configuration of optimization for camera poses."""
 
-    _target: Type = field(default_factory=lambda: CameraOptimizer)
+    _target: type = field(default_factory=lambda: CameraOptimizer)
 
     mode: Literal["off", "SO3xR3", "SE3"] = "off"
     """Pose optimization strategy to use. If enabled, we recommend SO3xR3."""

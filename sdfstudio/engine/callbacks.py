@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +21,7 @@ Callback code used for training iterations
 from dataclasses import InitVar, dataclass
 from enum import Enum, auto
 from inspect import signature
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Optional
 
 from sdfstudio.configs.base_config import TrainerConfig
 
@@ -65,12 +67,12 @@ class TrainingCallback:
 
     def __init__(
         self,
-        where_to_run: List[TrainingCallbackLocation],
+        where_to_run: list[TrainingCallbackLocation],
         func: Callable,
         update_every_num_iters: Optional[int] = None,
-        iters: Optional[Tuple[int, ...]] = None,
-        args: Optional[List] = None,
-        kwargs: Optional[Dict] = None,
+        iters: Optional[tuple[int, ...]] = None,
+        args: Optional[list] = None,
+        kwargs: Optional[dict] = None,
     ):
         assert "step" in signature(func).parameters.keys(), (
             f"'step: int' must be an argument in the callback function 'func': {func.__name__}"

@@ -38,9 +38,9 @@ from sdfstudio.fields.nerfacto_field import TCNNNerfactoField
 from sdfstudio.fields.sdf_field import SDFFieldConfig
 from sdfstudio.fields.vanilla_nerf_field import NeRFField
 from sdfstudio.model_components.losses import (
+    LOSSES,
     S3IM,
     L1Loss,
-    LOSSES,
     MSELoss,
     MultiViewLoss,
     ScaleAndShiftInvariantLoss,
@@ -221,7 +221,7 @@ class SurfaceModel(Model):
         # renderers
         background_color = (
             get_color(self.config.background_color)
-            if self.config.background_color in set(["white", "black"])
+            if self.config.background_color in {"white", "black"}
             else self.config.background_color
         )
         self.renderer_rgb = RGBRenderer(background_color=background_color)
@@ -319,7 +319,7 @@ class SurfaceModel(Model):
         field_outputs = samples_and_field_outputs["field_outputs"]
         ray_samples = samples_and_field_outputs["ray_samples"]
         weights = samples_and_field_outputs["weights"]
-        outputs = dict()
+        outputs = {}
 
         rgb = self.renderer_rgb(rgb=field_outputs[FieldHeadNames.RGB], weights=weights)
         if "diffuse" in field_outputs:
@@ -328,6 +328,8 @@ class SurfaceModel(Model):
             outputs["specular"] = self.renderer_rgb(rgb=field_outputs["specular"], weights=weights)
         if "tint" in field_outputs:
             outputs["tint"] = self.renderer_rgb(rgb=field_outputs["tint"], weights=weights)
+        if "roughness" in field_outputs:
+            outputs["roughness"] = self.renderer_normal(semantics=field_outputs["roughness"], weights=weights)
         depth = self.renderer_depth(weights=weights, ray_samples=ray_samples)
         # the rendered depth is point-to-point distance and we should convert to depth
         depth = depth / ray_bundle.directions_norm
@@ -518,9 +520,7 @@ class SurfaceModel(Model):
                         field_outputs[FieldHeadNames.NORMAL],
                         viewdirs,
                     )
-                    loss_dict["orientation_loss"] = (
-                        rendered_orientation_loss.mean() * self.config.orientation_loss_mult
-                    )
+                    loss_dict["orientation_loss"] = rendered_orientation_loss.mean() * self.config.orientation_loss_mult
 
         return loss_dict
 

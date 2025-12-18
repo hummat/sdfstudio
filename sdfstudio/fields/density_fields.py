@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Optional
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +54,7 @@ class HashMLPDensityField(Field):
         aabb,
         num_layers: int = 2,
         hidden_dim: int = 64,
-        spatial_distortion: SpatialDistortion | None = None,
+        spatial_distortion: Optional[SpatialDistortion] = None,
         use_linear=False,
         num_levels=8,
         max_res=1024,
@@ -114,5 +118,5 @@ class HashMLPDensityField(Field):
         density = trunc_exp(density_before_activation)
         return density, None
 
-    def get_outputs(self, ray_samples: RaySamples, density_embedding: TensorType | None = None):
+    def get_outputs(self, ray_samples: RaySamples, density_embedding: Optional[TensorType] = None):
         return {}

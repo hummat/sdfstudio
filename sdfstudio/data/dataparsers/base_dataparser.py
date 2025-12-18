@@ -19,7 +19,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Optional
 
 import torch
 from torch import Tensor as TensorType
@@ -34,13 +34,13 @@ from sdfstudio.data.scene_box import SceneBox
 class Semantics:
     """Dataclass for semantic labels."""
 
-    filenames: List[Path]
+    filenames: list[Path]
     """filenames to load semantic data"""
-    classes: List[str]
+    classes: list[str]
     """class labels for data"""
     colors: torch.Tensor
     """color mapping for classes"""
-    mask_classes: List[str] = field(default_factory=lambda: [])
+    mask_classes: list[str] = field(default_factory=lambda: [])
     """classes to mask out from training for all modalities"""
 
 
@@ -49,7 +49,7 @@ class DataparserOutputs:
     """Dataparser outputs for the which will be used by the DataManager
     for creating RayBundle and RayGT objects."""
 
-    image_filenames: List[Path]
+    image_filenames: list[Path]
     """Filenames for the images."""
     cameras: Cameras
     """Camera object storing collection of camera information in dataset."""
@@ -57,20 +57,20 @@ class DataparserOutputs:
     """Color of dataset background."""
     scene_box: SceneBox = field(default_factory=SceneBox)
     """Scene box of dataset. Used to bound the scene or provide the scene scale depending on model."""
-    mask_filenames: Optional[List[Path]] = None
+    mask_filenames: Optional[list[Path]] = None
     """Filenames for any masks that are required"""
     depths: Optional[torch.Tensor] = None
     """Monocular depth."""
     normals: Optional[torch.Tensor] = None
     """Monocular normal."""
-    additional_inputs: Dict[str, Any] = to_immutable_dict({})
+    additional_inputs: dict[str, Any] = to_immutable_dict({})
     """Dictionary of additional dataset information (e.g. semantics/point clouds/masks).
     {input_name:
     ... {"func": function to process additional dataparser outputs,
     ... "kwargs": dictionary of data to pass into "func"}
     }
     """
-    metadata: Dict[str, Any] = to_immutable_dict({})
+    metadata: dict[str, Any] = to_immutable_dict({})
     """Dictionary of any metadata that be required for the given experiment.
     Will be processed by the InputDataset to create any additional tensors that may be required.
     """
@@ -84,7 +84,7 @@ class DataparserOutputs:
 class DataParserConfig(cfg.InstantiateConfig):
     """Basic dataset config"""
 
-    _target: Type = field(default_factory=lambda: DataParser)
+    _target: type = field(default_factory=lambda: DataParser)
     """_target: target class to instantiate"""
     data: Path = Path()
     """Directory specifying location of data."""

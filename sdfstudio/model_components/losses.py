@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -129,7 +131,7 @@ def blur_stepfun(x, y, r):
     return x_r, y_r
 
 
-@torch.amp.autocast('cuda', enabled=False)
+@torch.amp.autocast("cuda", enabled=False)
 def interlevel_loss_zip(weights_list, ray_samples_list):
     """Calculates the proposal loss in the Zip-NeRF paper."""
     c = ray_samples_to_sdist(ray_samples_list[-1]).detach()
@@ -424,7 +426,7 @@ class SSIM(nn.Module):
     """Layer to compute the SSIM loss between a pair of images"""
 
     def __init__(self, patch_size):
-        super(SSIM, self).__init__()
+        super().__init__()
         self.mu_x_pool = nn.AvgPool2d(patch_size, 1)
         self.mu_y_pool = nn.AvgPool2d(patch_size, 1)
         self.sig_x_pool = nn.AvgPool2d(patch_size, 1)
@@ -458,7 +460,7 @@ class NCC(nn.Module):
     """Layer to compute the normalization cross correlation (NCC) of patches"""
 
     def __init__(self, patch_size: int = 11, min_patch_variance: float = 0.01):
-        super(NCC, self).__init__()
+        super().__init__()
         self.patch_size = patch_size
         self.min_patch_variance = min_patch_variance
 
@@ -494,7 +496,7 @@ class MultiViewLoss(nn.Module):
     """compute multi-view consistency loss"""
 
     def __init__(self, patch_size: int = 11, topk: int = 4, min_patch_variance: float = 0.01):
-        super(MultiViewLoss, self).__init__()
+        super().__init__()
         self.patch_size = patch_size
         self.topk = topk
         self.min_patch_variance = min_patch_variance
@@ -630,7 +632,7 @@ class SensorDepthLoss(nn.Module):
     """Sensor Depth loss"""
 
     def __init__(self, truncation: float):
-        super(SensorDepthLoss, self).__init__()
+        super().__init__()
         self.truncation = truncation  #  0.05 * 0.3 5cm scaled
 
     def forward(self, batch, outputs):
@@ -678,7 +680,7 @@ class SensorDepthLoss(nn.Module):
 
 
 r"""Implements Stochastic Structural SIMilarity(S3IM) algorithm.
-It is proposed in the ICCV2023 paper  
+It is proposed in the ICCV2023 paper
 `S3IM: Stochastic Structural SIMilarity and Its Unreasonable Effectiveness for Neural Fields`.
 
 Arguments:
@@ -691,7 +693,7 @@ Arguments:
 
 class S3IM(torch.nn.Module):
     def __init__(self, s3im_kernel_size=4, s3im_stride=4, s3im_repeat_time=10, s3im_patch_height=64, size_average=True):
-        super(S3IM, self).__init__()
+        super().__init__()
         self.s3im_kernel_size = s3im_kernel_size
         self.s3im_stride = s3im_stride
         self.s3im_repeat_time = s3im_repeat_time

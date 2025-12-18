@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +17,7 @@
 """Utility functions to allow easy re-use of common operations across dataloaders"""
 
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import Union
 
 import numpy as np
 import torch
@@ -36,13 +38,13 @@ def get_image_mask_tensor_from_path(filepath: Path, scale_factor: float = 1.0) -
 
 
 def get_semantics_and_mask_tensors_from_path(
-    filepath: Path, mask_indices: Union[List, torch.Tensor], scale_factor: float = 1.0
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    filepath: Path, mask_indices: Union[list, torch.Tensor], scale_factor: float = 1.0
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Utility function to read segmentation from the given filepath
     If no mask is required - use mask_indices = []
     """
-    if isinstance(mask_indices, List):
+    if isinstance(mask_indices, list):
         mask_indices = torch.tensor(mask_indices, dtype="int64").view(1, 1, -1)
     pil_image = Image.open(filepath)
     if scale_factor != 1.0:

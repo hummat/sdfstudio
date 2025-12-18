@@ -22,7 +22,7 @@ import enum
 from abc import abstractmethod
 from pathlib import Path
 from time import time
-from typing import Any
+from typing import Any, Optional, Union
 
 import torch
 import wandb
@@ -35,7 +35,12 @@ from sdfstudio.utils.decorators import check_main_thread, decorate_all
 from sdfstudio.utils.printing import human_format
 
 CONSOLE = Console(width=120)
-to8b = lambda x: (255 * torch.clamp(x, min=0, max=1)).to(torch.uint8)
+
+
+def to8b(x):
+    return (255 * torch.clamp(x, min=0, max=1)).to(torch.uint8)
+
+
 EVENT_WRITERS = []
 EVENT_STORAGE = []
 GLOBAL_BUFFER = {}
@@ -65,7 +70,7 @@ class EventType(enum.Enum):
 
 
 @check_main_thread
-def put_image(name: str | EventName, image: Tensor, step: int):
+def put_image(name: Union[str, EventName], image: Tensor, step: int):
     """Setter function to place images into the queue to be written out
 
     Args:
@@ -86,7 +91,7 @@ def put_image(name: str | EventName, image: Tensor, step: int):
 
 
 @check_main_thread
-def put_scalar(name: str | EventName, scalar: Any, step: int):
+def put_scalar(name: Union[str, EventName], scalar: Any, step: int):
     """Setter function to place scalars into the queue to be written out
 
     Args:
@@ -101,7 +106,7 @@ def put_scalar(name: str | EventName, scalar: Any, step: int):
 
 
 @check_main_thread
-def put_dict(name: str | EventName, scalar_dict: dict[str, Any], step: int):
+def put_dict(name: Union[str, EventName], scalar_dict: dict[str, Any], step: int):
     """Setter function to place a dictionary of scalars into the queue to be written out
 
     Args:
@@ -113,7 +118,7 @@ def put_dict(name: str | EventName, scalar_dict: dict[str, Any], step: int):
 
 
 @check_main_thread
-def put_config(name: str | EventName, config_dict: dict[str, Any], step: int):
+def put_config(name: Union[str, EventName], config_dict: dict[str, Any], step: int):
     """Setter function to place a dictionary of scalars into the queue to be written out
 
     Args:
@@ -133,7 +138,7 @@ def put_config(name: str | EventName, config_dict: dict[str, Any], step: int):
 
 @check_main_thread
 def put_time(
-    name: str | EventName,
+    name: Union[str, EventName],
     duration: float,
     step: int,
     avg_over_steps: bool = True,
@@ -190,7 +195,7 @@ def write_out_storage():
 def setup_local_writer(
     config: cfg.LoggingConfig,
     max_iter: int,
-    banner_messages: list[str] | None = None,
+    banner_messages: Optional[list[str]] = None,
 ) -> None:
     """Initialization of all event writers specified in config
 
@@ -252,7 +257,7 @@ class Writer:
         raise NotImplementedError
 
     @abstractmethod
-    def write_scalar(self, name: str, scalar: float | torch.Tensor, step: int) -> None:
+    def write_scalar(self, name: str, scalar: Union[float, torch.Tensor], step: int) -> None:
         """Required method to write a single scalar value to the logger
 
         Args:
@@ -316,7 +321,7 @@ class WandbWriter(Writer):
         image = torch.permute(image, (2, 0, 1))
         wandb.log({name: wandb.Image(image)}, step=step)
 
-    def write_scalar(self, name: str, scalar: float | torch.Tensor, step: int) -> None:
+    def write_scalar(self, name: str, scalar: Union[float, torch.Tensor], step: int) -> None:
         wandb.log({name: scalar}, step=step)
 
     def write_config(self, name: str, config_dict: dict[str, Any], step: int):
@@ -341,7 +346,7 @@ class TensorboardWriter(Writer):
         image = to8b(image)
         self.tb_writer.add_image(name, image, step, dataformats="HWC")
 
-    def write_scalar(self, name: str, scalar: float | torch.Tensor, step: int) -> None:
+    def write_scalar(self, name: str, scalar: Union[float, torch.Tensor], step: int) -> None:
         self.tb_writer.add_scalar(name, scalar, step)
 
     def write_config(self, name: str, config_dict: dict[str, Any], step: int):  # pylint: disable=unused-argument
@@ -392,7 +397,7 @@ class LocalWriter:
         banner_messages: list of messages to always display at bottom of screen
     """
 
-    def __init__(self, config: cfg.LocalWriterConfig, banner_messages: list[str] | None = None):
+    def __init__(self, config: cfg.LocalWriterConfig, banner_messages: Optional[list[str]] = None):
         self.config = config
         self.stats_to_track = [name.value for name in config.stats_to_track]
         self.keys = set()

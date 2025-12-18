@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,12 +18,12 @@
 Decorator definitions
 """
 
-from typing import Callable, List
+from typing import Callable
 
 from sdfstudio.utils import comms
 
 
-def decorate_all(decorators: List[Callable]) -> Callable:
+def decorate_all(decorators: list[Callable]) -> Callable:
     """A decorator to decorate all member functions of a class
 
     Args:

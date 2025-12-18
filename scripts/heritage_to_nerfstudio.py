@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """Convert ETH3D to NerfStudio data format"""
 
-import json
+from __future__ import annotations
+
 import os
 from enum import Enum
 from pathlib import Path
@@ -107,7 +108,7 @@ def colmap_to_json(
     points_path = scene_path / sfm / "points3D.bin"
     config_path = scene_path / "config.yaml"
 
-    with open(config_path, "r") as yamlfile:
+    with open(config_path) as yamlfile:
         scene_config = yaml.load(yamlfile, Loader=yaml.FullLoader)
 
     radius = scene_config["radius"]
@@ -129,7 +130,7 @@ def colmap_to_json(
 
     points_ori = []
     min_track_length = scene_config["min_track_length"]
-    for id, p in pts3d.items():
+    for _id, p in pts3d.items():
         if p.point2D_idxs.shape[0] > min_track_length:
             points_ori.append(p.xyz)
     points_ori = np.array(points_ori)
@@ -209,7 +210,6 @@ def colmap_to_json(
     cys = []
     image_filenames = []
     mask_filenames = []
-    masks = []
 
     data = scene_path
 
@@ -236,7 +236,7 @@ def colmap_to_json(
         valid_3d_mask = img.point3D_ids != -1
         point3d_ids = img.point3D_ids[valid_3d_mask]
         img_p3d = pts3d_array[point3d_ids]
-        img_err = error_array[point3d_ids]
+        error_array[point3d_ids]
 
         # img_p3d = img_p3d[img_err[:, 0] < torch.median(img_err)]
         save_points(f"W/{_id}_nof.ply", img_p3d.cpu().numpy()[:, :3])
@@ -290,7 +290,7 @@ def colmap_to_json(
         mask = depth_mask & mask
 
         rgb_img = rgb_img * mask[..., None]
-        image = np.concatenate((rgb_img, rgb_img_masked_semantic, semantic_image, rgb_img_masked), axis=1)
+        np.concatenate((rgb_img, rgb_img_masked_semantic, semantic_image, rgb_img_masked), axis=1)
 
         # cv2.imshow("ssdf", image)
         # cv2.waitKey(0)

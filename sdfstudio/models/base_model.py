@@ -21,7 +21,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Optional
 
 import torch
 from torch import nn
@@ -41,13 +41,13 @@ from sdfstudio.utils.rich_utils import get_progress
 class ModelConfig(InstantiateConfig):
     """Configuration for model instantiation"""
 
-    _target: Type = field(default_factory=lambda: Model)
+    _target: type = field(default_factory=lambda: Model)
     """target class to instantiate"""
     enable_collider: bool = True
     """Whether to create a scene collider to filter rays."""
-    collider_params: Optional[Dict[str, float]] = to_immutable_dict({"near_plane": 2.0, "far_plane": 6.0})
+    collider_params: Optional[dict[str, float]] = to_immutable_dict({"near_plane": 2.0, "far_plane": 6.0})
     """parameters to instantiate scene collider with"""
-    loss_coefficients: Dict[str, float] = to_immutable_dict({"rgb_loss_coarse": 1.0, "rgb_loss_fine": 1.0})
+    loss_coefficients: dict[str, float] = to_immutable_dict({"rgb_loss_coarse": 1.0, "rgb_loss_fine": 1.0})
     """parameters to instantiate density field with"""
     eval_num_rays_per_chunk: int = 4096
     """specifies number of rays per chunk during eval"""
@@ -96,7 +96,7 @@ class Model(nn.Module):
     def get_training_callbacks(  # pylint:disable=no-self-use
         self,
         training_callback_attributes: TrainingCallbackAttributes,  # pylint: disable=unused-argument
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         """Returns a list of callbacks that run functions at the specified training iterations."""
         return []
 
@@ -112,7 +112,7 @@ class Model(nn.Module):
             )
 
     @abstractmethod
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         """Obtain the parameter groups for the optimizers
 
         Returns:
@@ -120,7 +120,7 @@ class Model(nn.Module):
         """
 
     @abstractmethod
-    def get_outputs(self, ray_bundle: RayBundle) -> Dict[str, torch.Tensor]:
+    def get_outputs(self, ray_bundle: RayBundle) -> dict[str, torch.Tensor]:
         """Takes in a Ray Bundle and returns a dictionary of outputs.
 
         Args:
@@ -131,7 +131,7 @@ class Model(nn.Module):
             Outputs of model. (ie. rendered colors)
         """
 
-    def forward(self, ray_bundle: RayBundle) -> Dict[str, torch.Tensor]:
+    def forward(self, ray_bundle: RayBundle) -> dict[str, torch.Tensor]:
         """Run forward starting with a ray bundle. This outputs different things depending on the configuration
         of the model and whether or not the batch is provided (whether or not we are training basically)
 
@@ -144,7 +144,7 @@ class Model(nn.Module):
 
         return self.get_outputs(ray_bundle)
 
-    def get_metrics_dict(self, outputs, batch) -> Dict[str, torch.Tensor]:
+    def get_metrics_dict(self, outputs, batch) -> dict[str, torch.Tensor]:
         """Compute and returns metrics.
 
         Args:
@@ -156,7 +156,7 @@ class Model(nn.Module):
         return {}
 
     @abstractmethod
-    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict[str, torch.Tensor]:
+    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> dict[str, torch.Tensor]:
         """Computes and returns the losses dict.
 
         Args:
@@ -168,7 +168,7 @@ class Model(nn.Module):
     @torch.no_grad()
     def get_outputs_for_camera_ray_bundle(
         self, camera_ray_bundle: RayBundle, progress: bool = False
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """Takes in camera parameters and computes the output of the model.
 
         Args:
@@ -196,8 +196,8 @@ class Model(nn.Module):
 
     @abstractmethod
     def get_image_metrics_and_images(
-        self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
-    ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
+        self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
+    ) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
         """Writes the test image outputs.
         TODO: This shouldn't return a loss
 
@@ -211,7 +211,7 @@ class Model(nn.Module):
             A dictionary of metrics.
         """
 
-    def load_model(self, loaded_state: Dict[str, Any]) -> None:
+    def load_model(self, loaded_state: dict[str, Any]) -> None:
         """Load the checkpoint from the given path
 
         Args:

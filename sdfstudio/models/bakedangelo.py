@@ -19,31 +19,24 @@ Implementation of Neuralangelo model.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Type
 
-import numpy as np
 import torch
-from torch.nn import Parameter
 
-from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.engine.callbacks import (
     TrainingCallback,
     TrainingCallbackAttributes,
     TrainingCallbackLocation,
 )
 from sdfstudio.field_components.field_heads import FieldHeadNames
-from sdfstudio.fields.density_fields import HashMLPDensityField
-from sdfstudio.model_components.losses import distortion_loss, interlevel_loss
-from sdfstudio.model_components.ray_samplers import ProposalNetworkSampler
+from sdfstudio.model_components.losses import distortion_loss
 from sdfstudio.models.bakedsdf import BakedSDFFactoModel, BakedSDFModelConfig
-from sdfstudio.utils import colormaps
 
 
 @dataclass
 class BakedAngeloModelConfig(BakedSDFModelConfig):
     """Neuralangelo Model Config"""
 
-    _target: Type = field(default_factory=lambda: BakedAngeloModel)
+    _target: type = field(default_factory=lambda: BakedAngeloModel)
     # TODO move to base model config since it can be used in all models
     enable_progressive_hash_encoding: bool = True
     """whether to use progressive hash encoding"""
@@ -77,13 +70,12 @@ class BakedAngeloModel(BakedSDFFactoModel):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         callbacks = super().get_training_callbacks(training_callback_attributes)
 
         # read the hash encoding parameters from field
         level_init = self.config.level_init
         # schedule the delta in numerical gradients computation
-        num_levels = self.field.num_levels
         max_res = self.field.max_res
         base_res = self.field.base_res
         growth_factor = self.field.growth_factor
@@ -91,7 +83,7 @@ class BakedAngeloModel(BakedSDFFactoModel):
         steps_per_level = self.config.steps_per_level
 
         init_delta = 1.0 / base_res
-        end_delta = 1.0 / max_res
+        1.0 / max_res
 
         # compute the delta based on level
         if self.config.enable_numerical_gradients_schedule:
@@ -155,7 +147,7 @@ class BakedAngeloModel(BakedSDFFactoModel):
 
         return callbacks
 
-    def get_metrics_dict(self, outputs, batch) -> Dict:
+    def get_metrics_dict(self, outputs, batch) -> dict:
         metrics_dict = super().get_metrics_dict(outputs, batch)
 
         if self.training:
@@ -172,7 +164,7 @@ class BakedAngeloModel(BakedSDFFactoModel):
 
         return metrics_dict
 
-    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict:
+    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> dict:
         loss_dict = super().get_loss_dict(outputs, batch, metrics_dict)
 
         # curvature loss

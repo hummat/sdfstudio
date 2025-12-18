@@ -19,16 +19,15 @@ Implementation of VolSDF.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Type
 
 import torch
 
+from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.engine.callbacks import (
     TrainingCallback,
     TrainingCallbackAttributes,
     TrainingCallbackLocation,
 )
-from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.field_components.field_heads import FieldHeadNames
 from sdfstudio.model_components.ray_samplers import UniSurfSampler
 from sdfstudio.models.base_surface_model import SurfaceModel, SurfaceModelConfig
@@ -38,7 +37,7 @@ from sdfstudio.models.base_surface_model import SurfaceModel, SurfaceModelConfig
 class UniSurfModelConfig(SurfaceModelConfig):
     """UniSurf Model Config"""
 
-    _target: Type = field(default_factory=lambda: UniSurfModel)
+    _target: type = field(default_factory=lambda: UniSurfModel)
     eikonal_loss_mult: float = 0.0
     """overwirte eikonal loss because it's not need for unisurf"""
     smooth_loss_multi: float = 0.005
@@ -78,7 +77,7 @@ class UniSurfModel(SurfaceModel):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         callbacks = []
         callbacks.append(
             TrainingCallback(
@@ -89,7 +88,7 @@ class UniSurfModel(SurfaceModel):
         )
         return callbacks
 
-    def sample_and_forward_field(self, ray_bundle: RayBundle) -> Dict:
+    def sample_and_forward_field(self, ray_bundle: RayBundle) -> dict:
         ray_samples, surface_points = self.sampler(
             ray_bundle,
             occupancy_fn=self.field.get_occupancy,
@@ -111,7 +110,7 @@ class UniSurfModel(SurfaceModel):
         }
         return samples_and_field_outputs
 
-    def get_metrics_dict(self, outputs, batch) -> Dict:
+    def get_metrics_dict(self, outputs, batch) -> dict:
         metrics_dict = super().get_metrics_dict(outputs, batch)
         if self.training:
             # training statics
@@ -119,7 +118,7 @@ class UniSurfModel(SurfaceModel):
 
         return metrics_dict
 
-    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict:
+    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> dict:
         loss_dict = super().get_loss_dict(outputs, batch, metrics_dict)
 
         # TODO move to base model as other model could also use it?

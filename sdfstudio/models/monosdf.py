@@ -19,7 +19,6 @@ Implementation of MonoSDF.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Type
 
 from sdfstudio.models.volsdf import VolSDFModel, VolSDFModelConfig
 
@@ -28,7 +27,7 @@ from sdfstudio.models.volsdf import VolSDFModel, VolSDFModelConfig
 class MonoSDFModelConfig(VolSDFModelConfig):
     """Nerfacto Model Config"""
 
-    _target: Type = field(default_factory=lambda: MonoSDFModel)
+    _target: type = field(default_factory=lambda: MonoSDFModel)
     mono_normal_loss_mult: float = 0.1
     """Monocular normal consistency loss multiplier."""
     mono_depth_loss_mult: float = 0.05

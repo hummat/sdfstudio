@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,21 +19,21 @@ Special activation functions.
 """
 
 import torch
-from torch.autograd import Function
 from torch.amp import custom_bwd, custom_fwd
+from torch.autograd import Function
 
 
 class _TruncExp(Function):  # pylint: disable=abstract-method
     # Implementation from torch-ngp:
     # https://github.com/ashawkey/torch-ngp/blob/93b08a0d4ec1cc6e69d85df7f0acdfb99603b628/activation.py
     @staticmethod
-    @custom_fwd(cast_inputs=torch.float32, device_type='cuda')
+    @custom_fwd(cast_inputs=torch.float32, device_type="cuda")
     def forward(ctx, x):  # pylint: disable=arguments-differ
         ctx.save_for_backward(x)
         return torch.exp(x)
 
     @staticmethod
-    @custom_bwd(device_type='cuda')
+    @custom_bwd(device_type="cuda")
     def backward(ctx, g):  # pylint: disable=arguments-differ
         x = ctx.saved_tensors[0]
         return g * torch.exp(x.clamp(-15, 15))

@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Type
 
 import numpy as np
 import torch
@@ -44,7 +43,7 @@ CONSOLE = Console(width=120)
 class Record3DDataParserConfig(DataParserConfig):
     """Record3D dataset config"""
 
-    _target: Type = field(default_factory=lambda: Record3D)
+    _target: type = field(default_factory=lambda: Record3D)
     """target class to instantiate"""
     data: Path = Path("data/record3d/bear")
     """Location of data"""

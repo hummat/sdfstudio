@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +21,8 @@ The field module baseclass.
 from abc import abstractmethod
 from typing import Optional
 
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 
 
 class FieldComponent(nn.Module):

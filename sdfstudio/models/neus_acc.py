@@ -19,7 +19,6 @@ Implementation of VolSDF.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Type
 
 import nerfacc
 import torch
@@ -39,7 +38,7 @@ from sdfstudio.models.neus import NeuSModel, NeuSModelConfig
 class NeuSAccModelConfig(NeuSModelConfig):
     """UniSurf Model Config"""
 
-    _target: Type = field(default_factory=lambda: NeuSAccModel)
+    _target: type = field(default_factory=lambda: NeuSAccModel)
     sky_loss_mult: float = 0.01
     """Sky segmentation normal consistency loss multiplier."""
 
@@ -62,11 +61,13 @@ class NeuSAccModel(NeuSModel):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         callbacks = super().get_training_callbacks(training_callback_attributes)
 
         # add sampler call backs
-        sdf_fn = lambda x: self.field.forward_geonetwork(x)[:, 0].contiguous()
+        def sdf_fn(x):
+            return self.field.forward_geonetwork(x)[:, 0].contiguous()
+
         inv_s = self.field.deviation_network.get_variance
         callbacks.append(
             TrainingCallback(

@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import argparse
 import json
 import os
 from pathlib import Path
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np

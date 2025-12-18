@@ -22,7 +22,7 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Optional
 
 import yaml
 from rich.console import Console
@@ -45,7 +45,7 @@ class PrintableConfig:  # pylint: disable=too-few-public-methods
     def __str__(self):
         lines = [self.__class__.__name__ + ":"]
         for key, val in vars(self).items():
-            if isinstance(val, Tuple):
+            if isinstance(val, tuple):
                 flattened_val = "["
                 for item in val:
                     flattened_val += str(item) + "\n"
@@ -60,7 +60,7 @@ class PrintableConfig:  # pylint: disable=too-few-public-methods
 class InstantiateConfig(PrintableConfig):  # pylint: disable=too-few-public-methods
     """Config class for instantiating an the class specified in the _target attribute."""
 
-    _target: Type
+    _target: type
 
     def setup(self, **kwargs) -> Any:
         """Returns the instantiated object using the config."""
@@ -88,11 +88,11 @@ class MachineConfig(PrintableConfig):
 class LocalWriterConfig(InstantiateConfig):
     """Local Writer config"""
 
-    _target: Type = writer.LocalWriter
+    _target: type = writer.LocalWriter
     """target class to instantiate"""
     enable: bool = False
     """if True enables local logging, else disables"""
-    stats_to_track: Tuple[writer.EventName, ...] = (
+    stats_to_track: tuple[writer.EventName, ...] = (
         writer.EventName.ITER_TRAIN_TIME,
         writer.EventName.TRAIN_RAYS_PER_SEC,
         writer.EventName.CURR_TEST_PSNR,
@@ -103,7 +103,7 @@ class LocalWriterConfig(InstantiateConfig):
     max_log_size: int = 10
     """maximum number of rows to print before wrapping. if 0, will print everything."""
 
-    def setup(self, banner_messages: Optional[List[str]] = None, **kwargs) -> Any:
+    def setup(self, banner_messages: Optional[list[str]] = None, **kwargs) -> Any:
         """Instantiate local writer
 
         Args:
@@ -220,7 +220,7 @@ class Config(PrintableConfig):
     """Trainer configuration"""
     pipeline: VanillaPipelineConfig = field(default_factory=VanillaPipelineConfig)
     """Pipeline configuration"""
-    optimizers: Dict[str, Any] = to_immutable_dict(
+    optimizers: dict[str, Any] = to_immutable_dict(
         {
             "fields": {
                 "optimizer": OptimizerConfig(),

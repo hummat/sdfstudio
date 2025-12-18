@@ -19,9 +19,8 @@ Implementation of VolSDF.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Type, Tuple, Dict
-import numpy as np
 
+import numpy as np
 import torch
 from torch.nn import Parameter
 
@@ -32,10 +31,10 @@ from sdfstudio.engine.callbacks import (
     TrainingCallbackLocation,
 )
 from sdfstudio.field_components.field_heads import FieldHeadNames
-from sdfstudio.models.neus import NeuSModel, NeuSModelConfig
 from sdfstudio.fields.density_fields import HashMLPDensityField
-from sdfstudio.model_components.losses import distortion_loss, interlevel_loss, interlevel_loss_zip
+from sdfstudio.model_components.losses import distortion_loss, interlevel_loss_zip
 from sdfstudio.model_components.ray_samplers import ProposalNetworkSampler
+from sdfstudio.models.neus import NeuSModel, NeuSModelConfig
 from sdfstudio.utils import colormaps
 
 
@@ -43,8 +42,8 @@ from sdfstudio.utils import colormaps
 class NeuSFactoModelConfig(NeuSModelConfig):
     """UniSurf Model Config"""
 
-    _target: Type = field(default_factory=lambda: NeuSFactoModel)
-    num_proposal_samples_per_ray: Tuple[int, ...] = (256, 96)
+    _target: type = field(default_factory=lambda: NeuSFactoModel)
+    num_proposal_samples_per_ray: tuple[int, ...] = (256, 96)
     """Number of samples per ray for the proposal network."""
     num_neus_samples_per_ray: int = 48
     """Number of samples per ray for the nerf network."""
@@ -56,7 +55,7 @@ class NeuSFactoModelConfig(NeuSModelConfig):
     """Number of proposal network iterations."""
     use_same_proposal_network: bool = False
     """Use the same proposal network. Otherwise use different ones."""
-    proposal_net_args_list: List[Dict] = field(
+    proposal_net_args_list: list[dict] = field(
         default_factory=lambda: [
             {"hidden_dim": 16, "log2_hashmap_size": 17, "num_levels": 5, "max_res": 64},
             {
@@ -144,7 +143,8 @@ class NeuSFactoModel(NeuSModel):
             self.density_fns.extend([network.density_fn for network in self.proposal_networks])
 
         # update proposal network every iterations
-        update_schedule = lambda step: -1
+        def update_schedule(step):
+            return -1
 
         self.proposal_sampler = ProposalNetworkSampler(
             num_nerf_samples_per_ray=self.config.num_neus_samples_per_ray,
@@ -155,14 +155,14 @@ class NeuSFactoModel(NeuSModel):
             update_sched=update_schedule,
         )
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         param_groups = super().get_param_groups()
         param_groups["proposal_networks"] = list(self.proposal_networks.parameters())
         return param_groups
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         callbacks = super().get_training_callbacks(training_callback_attributes)
 
         if self.config.use_proposal_weight_anneal:
@@ -172,7 +172,10 @@ class NeuSFactoModel(NeuSModel):
             def set_anneal(step):
                 # https://arxiv.org/pdf/2111.12077.pdf eq. 18
                 train_frac = np.clip(step / N, 0, 1)
-                bias = lambda x, b: (b * x) / ((b - 1) * x + 1)
+
+                def bias(x, b):
+                    return (b * x) / ((b - 1) * x + 1)
+
                 anneal = bias(train_frac, self.config.proposal_weights_anneal_slope)
                 self.proposal_sampler.set_anneal(anneal)
 
@@ -215,7 +218,6 @@ class NeuSFactoModel(NeuSModel):
         # read the hash encoding parameters from field
         level_init = self.config.level_init
         # schedule the delta in numerical gradients computation
-        num_levels = self.field.num_levels
         max_res = self.field.max_res
         base_res = self.field.base_res
         growth_factor = self.field.growth_factor
@@ -223,7 +225,7 @@ class NeuSFactoModel(NeuSModel):
         steps_per_level = self.config.steps_per_level
 
         init_delta = 1.0 / base_res
-        end_delta = 1.0 / max_res
+        1.0 / max_res
 
         # compute the delta based on level
         if self.config.enable_numerical_gradients_schedule:
@@ -343,7 +345,7 @@ class NeuSFactoModel(NeuSModel):
 
         return loss_dict
 
-    def get_metrics_dict(self, outputs, batch) -> Dict:
+    def get_metrics_dict(self, outputs, batch) -> dict:
         metrics_dict = super().get_metrics_dict(outputs, batch)
 
         if self.training:
@@ -362,8 +364,8 @@ class NeuSFactoModel(NeuSModel):
         return metrics_dict
 
     def get_image_metrics_and_images(
-        self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
-    ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
+        self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
+    ) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
         metrics_dict, images_dict = super().get_image_metrics_and_images(outputs, batch)
         for i in range(self.config.num_proposal_iterations):
             key = f"prop_depth_{i}"

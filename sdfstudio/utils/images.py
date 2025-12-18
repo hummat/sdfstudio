@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +19,6 @@ Defines an image that can be batched with the default sdfstudio collate fn, even
 aren't of the same height and width.
 """
 
-from typing import List
-
 import torch
 
 
@@ -36,10 +36,10 @@ class BasicImages:
     TensorDataclass alternative that supports arbitrary batches.
     """
 
-    def __init__(self, images: List):
-        assert isinstance(images, List)
+    def __init__(self, images: list):
+        assert isinstance(images, list)
         assert not images or isinstance(images[0], torch.Tensor), (
-            f"Input should be a list of tensors, not {type(images[0]) if isinstance(images, List) else type(images)}"
+            f"Input should be a list of tensors, not {type(images[0]) if isinstance(images, list) else type(images)}"
         )
         self.images = images
 

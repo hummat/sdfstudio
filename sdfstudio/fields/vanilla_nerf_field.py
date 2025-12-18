@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +16,11 @@
 
 """Classic NeRF field"""
 
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import torch
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 
 from sdfstudio.cameras.rays import RaySamples
 from sdfstudio.field_components.encodings import Encoding, Identity
@@ -55,8 +58,8 @@ class NeRFField(Field):
         base_mlp_layer_width: int = 256,
         head_mlp_num_layers: int = 2,
         head_mlp_layer_width: int = 128,
-        skip_connections: Tuple[int] = (4,),
-        field_heads: Tuple[FieldHead] = (RGBFieldHead(),),
+        skip_connections: tuple[int] = (4,),
+        field_heads: tuple[FieldHead] = (RGBFieldHead(),),
         use_integrated_encoding: bool = False,
         spatial_distortion: Optional[SpatialDistortion] = None,
     ) -> None:
@@ -103,7 +106,7 @@ class NeRFField(Field):
 
     def get_outputs(
         self, ray_samples: RaySamples, density_embedding: Optional[TensorType] = None
-    ) -> Dict[FieldHeadNames, TensorType]:
+    ) -> dict[FieldHeadNames, TensorType]:
         outputs = {}
         for field_head in self.field_heads:
             encoded_dir = self.direction_encoding(ray_samples.frustums.directions)

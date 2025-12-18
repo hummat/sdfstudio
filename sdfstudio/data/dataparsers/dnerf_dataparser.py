@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Type
 
 import imageio
 import numpy as np
@@ -39,7 +38,7 @@ from sdfstudio.utils.io import load_from_json
 class DNeRFDataParserConfig(DataParserConfig):
     """D-NeRF dataset parser config"""
 
-    _target: Type = field(default_factory=lambda: DNeRF)
+    _target: type = field(default_factory=lambda: DNeRF)
     """target class to instantiate"""
     data: Path = Path("data/dnerf/lego")
     """Directory specifying location of data."""

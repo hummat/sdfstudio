@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +23,7 @@ import concurrent.futures
 import multiprocessing
 import random
 from abc import abstractmethod
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional, Union
 
 import torch
 from rich.progress import Console, track
@@ -169,7 +171,7 @@ class EvalDataloader(DataLoader):
         return self
 
     @abstractmethod
-    def __next__(self) -> Tuple[RayBundle, Dict]:
+    def __next__(self) -> tuple[RayBundle, dict]:
         """Returns the next batch of data"""
 
     def get_camera(self, image_idx: int = 0) -> Cameras:
@@ -180,7 +182,7 @@ class EvalDataloader(DataLoader):
         """
         return self.cameras[image_idx]
 
-    def get_data_from_image_idx(self, image_idx: int) -> Tuple[RayBundle, Dict]:
+    def get_data_from_image_idx(self, image_idx: int) -> tuple[RayBundle, dict]:
         """Returns the data for a specific image index.
 
         Args:
@@ -204,7 +206,7 @@ class FixedIndicesEvalDataloader(EvalDataloader):
     def __init__(
         self,
         input_dataset: InputDataset,
-        image_indices: Optional[Tuple[int]] = None,
+        image_indices: Optional[tuple[int]] = None,
         device: Union[torch.device, str] = "cpu",
         **kwargs,
     ):

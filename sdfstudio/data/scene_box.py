@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +19,7 @@ Dataset input structures.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 
 import torch
 from torch import Tensor as TensorType
@@ -75,7 +77,7 @@ class SceneBox:
         normalized_positions = (positions - aabb[0]) / aabb_lengths
         return normalized_positions
 
-    def to_json(self) -> Dict:
+    def to_json(self) -> dict:
         """Returns a json object from the Python object."""
         return {
             "type": "aabb",
@@ -84,7 +86,7 @@ class SceneBox:
         }
 
     @staticmethod
-    def from_json(json_: Dict) -> "SceneBox":
+    def from_json(json_: dict) -> SceneBox:
         """Returns the an instance of SceneBox from a json dictionary.
 
         Args:
@@ -95,7 +97,7 @@ class SceneBox:
         return SceneBox(aabb=aabb)
 
     @staticmethod
-    def from_camera_poses(poses: TensorType, scale_factor: float) -> "SceneBox":
+    def from_camera_poses(poses: TensorType, scale_factor: float) -> SceneBox:
         """Returns the instance of SceneBox that fully envelopes a set of poses
 
         Args:

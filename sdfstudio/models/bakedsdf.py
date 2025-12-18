@@ -19,7 +19,6 @@ Implementation of BakedSDF.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Type
 
 import numpy as np
 import torch
@@ -43,8 +42,8 @@ from sdfstudio.utils import colormaps
 class BakedSDFModelConfig(VolSDFModelConfig):
     """BakedSDF Model Config"""
 
-    _target: Type = field(default_factory=lambda: BakedSDFFactoModel)
-    num_proposal_samples_per_ray: Tuple[int, ...] = (256, 96)
+    _target: type = field(default_factory=lambda: BakedSDFFactoModel)
+    num_proposal_samples_per_ray: tuple[int, ...] = (256, 96)
     """Number of samples per ray for the proposal network."""
     num_neus_samples_per_ray: int = 48
     """Number of samples per ray for the nerf network."""
@@ -56,7 +55,7 @@ class BakedSDFModelConfig(VolSDFModelConfig):
     """Number of proposal network iterations."""
     use_same_proposal_network: bool = False
     """Use the same proposal network. Otherwise use different ones."""
-    proposal_net_args_list: List[Dict] = field(
+    proposal_net_args_list: list[dict] = field(
         default_factory=lambda: [
             {"hidden_dim": 16, "log2_hashmap_size": 17, "num_levels": 5, "max_res": 64},
             {
@@ -138,7 +137,8 @@ class BakedSDFFactoModel(VolSDFModel):
             self.density_fns.extend([network.density_fn for network in self.proposal_networks])
 
         # update proposal network every iterations
-        update_schedule = lambda step: -1
+        def update_schedule(step):
+            return -1
 
         self.proposal_sampler = ProposalNetworkSampler(
             num_nerf_samples_per_ray=self.config.num_neus_samples_per_ray,
@@ -149,7 +149,7 @@ class BakedSDFFactoModel(VolSDFModel):
             update_sched=update_schedule,
         )
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         param_groups = {}
         if self.config.use_anneal_beta:
             # don't optimize beta in laplace density if use annealing beta
@@ -174,7 +174,7 @@ class BakedSDFFactoModel(VolSDFModel):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         callbacks = super().get_training_callbacks(training_callback_attributes)
 
         if self.config.use_proposal_weight_anneal:
@@ -184,7 +184,10 @@ class BakedSDFFactoModel(VolSDFModel):
             def set_anneal(step):
                 # https://arxiv.org/pdf/2111.12077.pdf eq. 18
                 train_frac = np.clip(step / N, 0, 1)
-                bias = lambda x, b: (b * x) / ((b - 1) * x + 1)
+
+                def bias(x, b):
+                    return (b * x) / ((b - 1) * x + 1)
+
                 anneal = bias(train_frac, self.config.proposal_weights_anneal_slope)
                 self.proposal_sampler.set_anneal(anneal)
 
@@ -310,8 +313,8 @@ class BakedSDFFactoModel(VolSDFModel):
         return loss_dict
 
     def get_image_metrics_and_images(
-        self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
-    ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
+        self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
+    ) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
         metrics_dict, images_dict = super().get_image_metrics_and_images(outputs, batch)
         if self.training and self.config.distortion_loss_mult > 0.0:
             metrics_dict["distortion"] = distortion_loss(
@@ -328,7 +331,7 @@ class BakedSDFFactoModel(VolSDFModel):
 
         return metrics_dict, images_dict
 
-    def get_metrics_dict(self, outputs, batch) -> Dict:
+    def get_metrics_dict(self, outputs, batch) -> dict:
         metric_dict = super().get_metrics_dict(outputs, batch)
         metric_dict["eikonal_loss_mult"] = self.config.eikonal_loss_mult
         return metric_dict

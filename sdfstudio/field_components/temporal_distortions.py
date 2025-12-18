@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,10 +17,11 @@
 """Space distortions which occur as a function of time."""
 
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 import torch
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 
 from sdfstudio.field_components.encodings import Encoding, NeRFEncoding
 from sdfstudio.field_components.mlp import MLP
@@ -43,7 +46,7 @@ class TemporalDistortionKind(Enum):
 
     DNERF = "dnerf"
 
-    def to_temporal_distortion(self, config: Dict[str, Any]) -> TemporalDistortion:
+    def to_temporal_distortion(self, config: dict[str, Any]) -> TemporalDistortion:
         """Converts this kind to a temporal distortion"""
         if self == TemporalDistortionKind.DNERF:
             return DNeRFDistortion(**config)
@@ -78,7 +81,7 @@ class DNeRFDistortion(TemporalDistortion):
         ),
         mlp_num_layers: int = 4,
         mlp_layer_width: int = 256,
-        skip_connections: Tuple[int] = (4,),
+        skip_connections: tuple[int] = (4,),
     ) -> None:
         super().__init__()
         self.position_encoding = position_encoding

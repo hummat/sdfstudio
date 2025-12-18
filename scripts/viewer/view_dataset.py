@@ -3,6 +3,8 @@
 view_dataset.py
 """
 
+from __future__ import annotations
+
 from rich.console import Console
 
 CONSOLE = Console(width=120)

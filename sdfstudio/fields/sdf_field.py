@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +20,7 @@ Field for compound nerf model, adds scene contraction and image embeddings to in
 
 import math
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, Optional
 
 import numpy as np
 import torch
@@ -53,7 +55,7 @@ class LaplaceDensity(nn.Module):  # alpha * Laplace(loc=0, scale=beta).cdf(-sdf)
         self.register_parameter("beta_min", nn.Parameter(beta_min * torch.ones(1), requires_grad=False))
         self.register_parameter("beta", nn.Parameter(init_val * torch.ones(1), requires_grad=True))
 
-    def forward(self, sdf: TensorType, beta: TensorType | None = None) -> TensorType:
+    def forward(self, sdf: TensorType, beta: Optional[TensorType] = None) -> TensorType:
         """convert sdf value to density value with beta, if beta is missing, then use learable beta"""
 
         if beta is None:
@@ -76,7 +78,7 @@ class SigmoidDensity(nn.Module):  # alpha * Laplace(loc=0, scale=beta).cdf(-sdf)
         self.register_parameter("beta_min", nn.Parameter(beta_min * torch.ones(1), requires_grad=False))
         self.register_parameter("beta", nn.Parameter(init_val * torch.ones(1), requires_grad=True))
 
-    def forward(self, sdf: TensorType, beta: TensorType | None = None) -> TensorType:
+    def forward(self, sdf: TensorType, beta: Optional[TensorType] = None) -> TensorType:
         """convert sdf value to density value with beta, if beta is missing, then use learable beta"""
 
         if beta is None:
@@ -101,7 +103,7 @@ class SingleVarianceNetwork(nn.Module):
     """
 
     def __init__(self, init_val):
-        super(SingleVarianceNetwork, self).__init__()
+        super().__init__()
         self.register_parameter("variance", nn.Parameter(init_val * torch.ones(1), requires_grad=True))
 
     def forward(self, x):
@@ -189,6 +191,19 @@ class SDFFieldConfig(FieldConfig):
     With `use_reflections=True`, roughness=0 (specular) relies purely on reflection directions and
     roughness=1 (diffuse) uses only view directions, giving an interpretable roughness map and a
     simple roughness-dependent bias on specular sharpness (no full microfacet BRDF)."""
+    roughness_blend_space: Literal["encoding", "direction"] = "encoding"
+    """Where to mix view/reflection signals when `enable_pred_roughness=True` and `use_reflections=True`.
+
+    - "encoding": encode view and reflection directions separately, then blend encoded features (default).
+    - "direction": blend the raw directions first, then encode once (encoding is non-linear, so this differs).
+    """
+    use_roughness_in_color_mlp: bool = False
+    """Append the predicted roughness (scalar) as an extra input to the view-dependent color MLP.
+
+    Requires `enable_pred_roughness=True`.
+    """
+    use_fresnel_term: bool = False
+    """Append a Schlick-style Fresnel term (scalar) as an extra input to the view-dependent color MLP."""
     rgb_padding: float = 0.001
     """Padding added to the RGB outputs"""
     off_axis: bool = False
@@ -226,10 +241,12 @@ class SDFField(Field):
         aabb,
         num_images: int,
         use_average_appearance_embedding: bool = False,
-        spatial_distortion: SpatialDistortion | None = None,
+        spatial_distortion: Optional[SpatialDistortion] = None,
     ) -> None:
         super().__init__()
         self.config = config
+        if self.config.use_roughness_in_color_mlp and not self.config.enable_pred_roughness:
+            raise ValueError("`use_roughness_in_color_mlp=True` requires `enable_pred_roughness=True`.")
 
         # TODO do we need aabb here?
         self.aabb = Parameter(aabb, requires_grad=False)
@@ -374,6 +391,10 @@ class SDFField(Field):
             )
         if self.config.use_n_dot_v:
             in_dim += 1
+        if self.config.use_roughness_in_color_mlp:
+            in_dim += 1
+        if self.config.use_fresnel_term:
+            in_dim += 1
 
         dims = [in_dim] + dims + [3]
         self.num_layers_color = len(dims)
@@ -499,7 +520,7 @@ class SDFField(Field):
         density = self.laplace_density(sdf)
         return density, geo_feature
 
-    @torch.amp.autocast('cuda', enabled=False)
+    @torch.amp.autocast("cuda", enabled=False)
     def get_alpha(self, ray_samples: RaySamples, sdf=None, gradients=None):
         """compute alpha from sdf as in NeuS"""
         if sdf is None or gradients is None:
@@ -595,22 +616,29 @@ class SDFField(Field):
 
         normals = F.normalize(gradients, p=2, dim=-1)
 
-        # encode view and (optionally) reflection directions
-        d_view = self.direction_encoding(directions)
+        # Encode view and (optionally) reflection directions, with optional roughness-controlled blending.
         if self.config.use_reflections:
             # https://github.com/google-research/multinerf/blob/5d4c82831a9b94a87efada2eee6a993d530c4226/internal/ref_utils.py#L22
             refdirs = 2.0 * torch.sum(normals * -directions, axis=-1, keepdims=True) * normals + directions
-            d_ref = self.direction_encoding(refdirs)
 
-            if self.config.enable_pred_roughness:
-                # roughness in [0, 1]: 0=specular (reflection dir), 1=diffuse (view dir)
-                # directly usable for PBR roughness map export
-                d = d_view * roughness + d_ref * (1.0 - roughness)
+            if self.config.roughness_blend_space == "direction":
+                if self.config.enable_pred_roughness:
+                    # roughness in [0, 1]: 0=specular (reflection dir), 1=diffuse (view dir)
+                    mix_dirs = directions * roughness + refdirs * (1.0 - roughness)
+                else:
+                    mix_dirs = 0.5 * (directions + refdirs)
+                d = self.direction_encoding(mix_dirs)
             else:
-                # if roughness is not predicted, fall back to a simple average
-                d = 0.5 * (d_view + d_ref)
+                d_view = self.direction_encoding(directions)
+                d_ref = self.direction_encoding(refdirs)
+                if self.config.enable_pred_roughness:
+                    # roughness in [0, 1]: 0=specular (reflection dir), 1=diffuse (view dir)
+                    d = d_view * roughness + d_ref * (1.0 - roughness)
+                else:
+                    # if roughness is not predicted, fall back to a simple average
+                    d = 0.5 * (d_view + d_ref)
         else:
-            d = d_view
+            d = self.direction_encoding(directions)
 
         # appearance
         if self.training:
@@ -643,8 +671,20 @@ class SDFField(Field):
             ]
 
         if self.config.use_n_dot_v:
-            n_dot_v = torch.sum(normals * directions, dim=-1, keepdims=True)
+            # `directions` points from camera -> point (ray direction). View vector is point -> camera = -directions.
+            n_dot_v = torch.sum(normals * (-directions), dim=-1, keepdims=True)
             h.append(n_dot_v)
+        if self.config.use_roughness_in_color_mlp:
+            h.append(roughness)
+        if self.config.use_fresnel_term:
+            # Schlick Fresnel uses cos(theta) between normal and view vector (point -> camera).
+            n_dot_v_f = torch.sum(normals * (-directions), dim=-1, keepdims=True).clamp(0.0, 1.0)
+            if self.config.use_specular_tint:
+                f0 = tint.mean(dim=-1, keepdims=True).clamp(0.0, 1.0)
+            else:
+                f0 = torch.full_like(n_dot_v_f, 0.04)
+            fresnel = f0 + (1.0 - f0) * (1.0 - n_dot_v_f).pow(5.0)
+            h.append(fresnel)
 
         h = torch.cat(h, dim=-1)
 
@@ -659,7 +699,7 @@ class SDFField(Field):
         rgb = self.sigmoid(h)
 
         # Adapted from https://github.com/google-research/multinerf/blob/main/internal/image.py#L48
-        def linear_to_srgb(linear: TensorType, eps: float | None = None) -> TensorType:
+        def linear_to_srgb(linear: TensorType, eps: Optional[float] = None) -> TensorType:
             if eps is None:
                 eps = torch.finfo(linear.dtype).eps
             srgb0 = (323 / 25) * linear

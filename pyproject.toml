@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sdfstudio"
-version = "0.5.1"
+version = "0.6.1"
 description = "All-in-one repository for state-of-the-art neural surface reconstruction"
 readme = "README.md"
 license = { text = "Apache 2.0" }
@@ -162,11 +162,16 @@ select = [
 ignore = [
     "E501",  # line too long
     "B008",  # do not perform function calls in argument defaults
+    "UP007", # keep Optional/Union (py39 compatibility); don't rewrite to PEP604 `X | None`
+    "UP045", # keep Optional[...] (py39 compatibility); don't rewrite to `T | None`
     "W191",  # indentation contains tabs
 ]
 
 [tool.ruff.lint.isort]
 known-first-party = ["sdfstudio"]
+
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true
 
 # pyright
 [tool.pyright]
@@ -180,5 +185,5 @@ reportMissingTypeStubs = false
 reportPrivateImportUsage = false
 reportUndefinedVariable = false
 
-pythonVersion = "3.10"
+pythonVersion = "3.9"
 pythonPlatform = "Linux"

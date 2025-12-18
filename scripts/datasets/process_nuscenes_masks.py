@@ -1,13 +1,13 @@
+from __future__ import annotations
+
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
 
 import cv2
 import numpy as np
 import tyro
 from nuscenes.nuscenes import NuScenes as NuScenesDatabase
-from nuscenes.utils.data_classes import Box
 from nuscenes.utils.geometry_utils import BoxVisibility, view_points
 from tqdm import tqdm
 from typing_extensions import Literal
@@ -25,7 +25,7 @@ class ProcessNuScenesMasks:
     """Which version of the dataset to process."""
     velocity_thresh: float = 0.75
     """Minimum speed for object to be considered dynamic."""
-    cameras: Tuple[
+    cameras: tuple[
         Literal["FRONT", "FRONT_LEFT", "FRONT_RIGHT", "BACK", "BACK_LEFT", "BACK_RIGHT"],
         ...,
     ] = (
@@ -51,7 +51,7 @@ class ProcessNuScenesMasks:
             (self.output_dir / "masks" / camera).mkdir(parents=True, exist_ok=True)
 
         # get samples for scene
-        samples = [samp for samp in nusc.sample]
+        samples = list(nusc.sample)
 
         # sort by timestamp (only to make chronological viz easier)
         samples.sort(key=lambda x: (x["scene_token"], x["timestamp"]))

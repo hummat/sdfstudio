@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,10 +18,11 @@
 Multi Layer Perceptron
 """
 
-from typing import Optional, Set, Tuple
+from typing import Optional
 
 import torch
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 
 from sdfstudio.field_components.base_field_component import FieldComponent
 
@@ -42,7 +45,7 @@ class MLP(FieldComponent):
         num_layers: int,
         layer_width: int,
         out_dim: Optional[int] = None,
-        skip_connections: Optional[Tuple[int]] = None,
+        skip_connections: Optional[tuple[int]] = None,
         activation: Optional[nn.Module] = nn.ReLU(),
         out_activation: Optional[nn.Module] = None,
     ) -> None:
@@ -53,7 +56,7 @@ class MLP(FieldComponent):
         self.num_layers = num_layers
         self.layer_width = layer_width
         self.skip_connections = skip_connections
-        self._skip_connections: Set[int] = set(skip_connections) if skip_connections else set()
+        self._skip_connections: set[int] = set(skip_connections) if skip_connections else set()
         self.activation = activation
         self.out_activation = out_activation
         self.net = None

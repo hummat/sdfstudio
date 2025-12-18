@@ -18,7 +18,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from pathlib import Path, PurePath
-from typing import Optional, Type
+from typing import Optional
 
 import numpy as np
 import torch
@@ -44,7 +44,7 @@ MAX_AUTO_RESOLUTION = 1600
 class NerfstudioDataParserConfig(DataParserConfig):
     """Nerfstudio dataset config"""
 
-    _target: Type = field(default_factory=lambda: Nerfstudio)
+    _target: type = field(default_factory=lambda: Nerfstudio)
     """target class to instantiate"""
     data: Path = Path("data/sdfstudio/poster")
     """Directory specifying location of data."""
@@ -147,7 +147,7 @@ class Nerfstudio(DataParser):
         if num_skipped_image_filenames >= 0:
             CONSOLE.log(f"Skipping {num_skipped_image_filenames} files in dataset split {split}.")
         assert len(image_filenames) != 0, """
-        No image files found. 
+        No image files found.
         You should check the file_paths in the transforms.json file to make sure they are correct.
         """
         assert len(mask_filenames) == 0 or (len(mask_filenames) == len(image_filenames)), """

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 the Regents of the University of California, Nerfstudio Team and contributors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +18,7 @@
 
 import json
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 import open3d as o3d
@@ -27,7 +29,7 @@ from sdfstudio.utils import io
 
 
 def record3d_to_json(
-    images_paths: List[Path],
+    images_paths: list[Path],
     metadata_path: Path,
     output_dir: Path,
     indices: np.ndarray,

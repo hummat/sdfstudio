@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +39,10 @@ def get_tree(node_class: Callable) -> Callable:
     or the current node if it does.
     """
     assert isinstance(node_class(), Node)
-    tree = lambda: node_class(tree)
+
+    def tree():
+        return node_class(tree)
+
     return tree()
 
 

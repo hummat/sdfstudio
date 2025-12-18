@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +18,6 @@
 
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 from rich.console import Console
 
@@ -27,7 +28,7 @@ from sdfstudio.utils.scripts import run_command
 CONSOLE = Console(width=120)
 
 
-def get_insta360_filenames(data: Path) -> Tuple[Path, Path]:
+def get_insta360_filenames(data: Path) -> tuple[Path, Path]:
     """Returns the filenames of the Insta360 videos from a single video file.
 
     Example input name: VID_20220212_070353_00_003.insv
@@ -58,7 +59,7 @@ def convert_insta360_to_images(
     num_frames_target: int,
     crop_percentage: float = 0.7,
     verbose: bool = False,
-) -> Tuple[List[str], int]:
+) -> tuple[list[str], int]:
     """Converts a video into a sequence of images.
 
     Args:
@@ -128,7 +129,7 @@ def convert_insta360_single_file_to_images(
     num_frames_target: int,
     crop_percentage: float = 0.7,
     verbose: bool = False,
-) -> Tuple[List[str], int]:
+) -> tuple[list[str], int]:
     """Converts a video into a sequence of images.
 
     Args:

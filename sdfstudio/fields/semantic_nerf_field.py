@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +18,7 @@
 Semantic NeRF field implementation.
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import torch
 from torch import nn
@@ -57,7 +59,7 @@ class SemanticNerfField(Field):
         base_mlp_layer_width: int = 256,
         head_mlp_num_layers: int = 2,
         head_mlp_layer_width: int = 128,
-        skip_connections: Tuple[int] = (4,),
+        skip_connections: tuple[int] = (4,),
     ) -> None:
         super().__init__()
         self.num_semantic_classes = num_semantic_classes
@@ -98,7 +100,7 @@ class SemanticNerfField(Field):
 
     def get_outputs(
         self, ray_samples: RaySamples, density_embedding: Optional[TensorType] = None
-    ) -> Dict[FieldHeadNames, TensorType]:
+    ) -> dict[FieldHeadNames, TensorType]:
         encoded_dir = self.direction_encoding(ray_samples.frustums.directions)
         mlp_out = self.mlp_head(torch.cat([encoded_dir, density_embedding], dim=-1))  # type: ignore
         outputs = {}

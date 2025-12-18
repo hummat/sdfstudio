@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,13 +22,13 @@ import base64
 import math
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import cv2
 import torch
 import torchvision
-from torch.nn.functional import normalize
 from torch import Tensor as TensorType
+from torch.nn.functional import normalize
 
 import sdfstudio.utils.poses as pose_utils
 from sdfstudio.cameras import camera_utils
@@ -101,7 +103,7 @@ class Cameras(TensorDataclass):
             Union[
                 TensorType,
                 int,
-                List[CameraType],
+                list[CameraType],
                 CameraType,
             ]
         ] = CameraType.PERSPECTIVE,
@@ -166,7 +168,7 @@ class Cameras(TensorDataclass):
 
     def _init_get_camera_type(
         self,
-        camera_type: Union[TensorType, TensorType, int, List[CameraType], CameraType],
+        camera_type: Union[TensorType, TensorType, int, list[CameraType], CameraType],
     ) -> TensorType:
         """
         Parses the __init__() argument camera_type
@@ -182,7 +184,7 @@ class Cameras(TensorDataclass):
         """
         if isinstance(camera_type, CameraType):
             camera_type = torch.tensor([camera_type.value], device=self.device)
-        elif isinstance(camera_type, List) and isinstance(camera_type[0], CameraType):
+        elif isinstance(camera_type, list) and isinstance(camera_type[0], CameraType):
             camera_type = torch.tensor([[c.value] for c in camera_type], device=self.device)
         elif isinstance(camera_type, int):
             camera_type = torch.tensor([camera_type], device=self.device)
@@ -272,7 +274,7 @@ class Cameras(TensorDataclass):
         w_jagged = not torch.all(self.width == self.width.view(-1)[0])
         return h_jagged or w_jagged
 
-    def get_image_coords(self, pixel_offset: float = 0.5, index: Optional[Tuple] = None) -> TensorType:
+    def get_image_coords(self, pixel_offset: float = 0.5, index: Optional[tuple] = None) -> TensorType:
         """This gets the image coordinates of one of the cameras in this object.
 
         If no index is specified, it will return the maximum possible sized height / width image coordinate map,
@@ -711,7 +713,7 @@ class Cameras(TensorDataclass):
         camera_idx: int,
         image: Optional[TensorType] = None,
         max_size: Optional[int] = None,
-    ) -> Dict:
+    ) -> dict:
         """Convert a camera to a json dictionary.
 
         Args:
@@ -765,7 +767,7 @@ class Cameras(TensorDataclass):
             scaling_factor: Scaling factor to apply to the output resolution.
         """
         if isinstance(scaling_factor, (float, int)):
-            scaling_factor = torch.tensor([scaling_factor]).to(self.device).broadcast_to((self.cx.shape))
+            scaling_factor = torch.tensor([scaling_factor]).to(self.device).broadcast_to(self.cx.shape)
         elif isinstance(scaling_factor, torch.Tensor) and scaling_factor.shape == self.shape:
             scaling_factor = scaling_factor.unsqueeze(-1)
         elif isinstance(scaling_factor, torch.Tensor) and scaling_factor.shape == (

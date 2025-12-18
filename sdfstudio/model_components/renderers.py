@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +34,8 @@ from typing import Optional, Union
 
 import nerfacc
 import torch
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 from typing_extensions import Literal
 
 from sdfstudio.cameras.rays import RaySamples

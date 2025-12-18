@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from glob import glob
 from pathlib import Path
-from typing import Dict, Literal, Optional, Type
+from typing import Literal, Optional
 
 import cv2
 import numpy as np
@@ -47,7 +47,7 @@ CONSOLE = Console()
 
 def get_src_from_pairs(
     ref_idx, all_imgs, pairs_srcs, neighbors_num=None, neighbors_shuffle=False
-) -> Dict[str, TensorType]:
+) -> dict[str, TensorType]:
     # src_idx[0] is ref img
     src_idx = pairs_srcs[ref_idx]
     # randomly sample neighbors
@@ -125,7 +125,7 @@ def get_depths_and_normals(image_idx: int, depths, normals):
 class MonoSDFDataParserConfig(DataParserConfig):
     """Scene dataset parser config"""
 
-    _target: Type = field(default_factory=lambda: MonoSDFScene)
+    _target: type = field(default_factory=lambda: MonoSDFScene)
     """target class to instantiate"""
     data: Path = Path("data/DTU/scan65")
     """Directory specifying location of data."""
@@ -314,9 +314,12 @@ class MonoSDFScene(DataParser):
 
         pairs_path = self.config.data / "pairs.txt"
         if pairs_path.exists() and split == "train" and self.config.load_pairs:
-            with open(pairs_path, "r") as f:
+            with open(pairs_path) as f:
                 pairs = f.readlines()
-            split_ext = lambda x: x.split(".")[0]
+
+            def split_ext(x):
+                return x.split(".")[0]
+
             pairs_srcs = []
             for sources_line in pairs:
                 sources_array = [int(split_ext(img_name)) for img_name in sources_line.split(" ")]

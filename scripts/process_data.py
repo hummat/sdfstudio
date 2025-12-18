@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 the Regents of the University of California, Nerfstudio Team and contributors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,11 +21,10 @@ import sys
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Union
+from typing import Annotated, Optional, Union
 
 import numpy as np
 import tyro
-from typing_extensions import Annotated
 
 from sdfstudio.process_data import (
     metashape_utils,

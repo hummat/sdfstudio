@@ -19,7 +19,7 @@ Some utility code for configs.
 from __future__ import annotations
 
 from dataclasses import field
-from typing import Any, Dict
+from typing import Any
 
 from rich.console import Console
 
@@ -28,7 +28,7 @@ CONSOLE = Console()
 
 
 # cannot use mutable types directly within dataclass; abstracting default factory calls
-def to_immutable_dict(d: Dict[str, Any]):
+def to_immutable_dict(d: dict[str, Any]):
     """Method to convert mutable dict to default factory dict
 
     Args:

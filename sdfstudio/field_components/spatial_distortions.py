@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +20,8 @@ from typing import Optional, Union
 
 import torch
 from functorch import jacrev, vmap
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 
 from sdfstudio.utils.math import Gaussians
 
@@ -72,9 +75,11 @@ class SceneContraction(SpatialDistortion):
         if isinstance(positions, Gaussians):
             means = contract(positions.mean.clone())
 
-            contract = lambda x: (2 - (1 / torch.linalg.norm(x, ord=self.order, dim=-1, keepdim=True))) * (
-                x / torch.linalg.norm(x, ord=self.order, dim=-1, keepdim=True)
-            )
+            def contract(x):
+                return (2 - (1 / torch.linalg.norm(x, ord=self.order, dim=-1, keepdim=True))) * (
+                    x / torch.linalg.norm(x, ord=self.order, dim=-1, keepdim=True)
+                )
+
             jc_means = vmap(jacrev(contract))(positions.mean.view(-1, positions.mean.shape[-1]))
             jc_means = jc_means.view(list(positions.mean.shape) + [positions.mean.shape[-1]])
 

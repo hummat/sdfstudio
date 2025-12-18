@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 the Regents of the University of California, Nerfstudio Team and contributors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +21,6 @@ import math
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List
 
 import numpy as np
 
@@ -47,7 +48,7 @@ def rodrigues_vec_to_rotation_mat(rodrigues_vec: np.ndarray) -> np.ndarray:
 
 
 def get_reconstruction(reconstruction_file: Path):
-    with open(reconstruction_file, "r", encoding="utf-8") as f:
+    with open(reconstruction_file, encoding="utf-8") as f:
         reconstructions = json.loads(f.read())
         return reconstructions[0]
 
@@ -59,12 +60,12 @@ def reconstruction_to_ply(reconstruction: dict, output_ply: Path):
     for pid in points:
         point = points[pid]
         p, c = point["coordinates"], point["color"]
-        coords.append("{} {} {} {} {} {}".format(p[0], p[1], p[2], int(c[0]), int(c[1]), int(c[2])))
+        coords.append(f"{p[0]} {p[1]} {p[2]} {int(c[0])} {int(c[1])} {int(c[2])}")
 
     header = [
         "ply",
         "format ascii 1.0",
-        "element vertex {}".format(len(coords)),
+        f"element vertex {len(coords)}",
         "property float x",
         "property float y",
         "property float z",
@@ -79,13 +80,13 @@ def reconstruction_to_ply(reconstruction: dict, output_ply: Path):
 
 
 def cameras2nerfds(
-    image_filename_map: Dict[str, Path],
+    image_filename_map: dict[str, Path],
     cameras_file: Path,
     shots_file: Path,
     reconstruction_file: Path,
     output_dir: Path,
     verbose: bool = False,
-) -> List[str]:
+) -> list[str]:
     """Convert ODM cameras into a sdfstudio dataset.
 
     Args:
@@ -100,7 +101,7 @@ def cameras2nerfds(
         Summary of the conversion.
     """
 
-    with open(cameras_file, "r", encoding="utf-8") as f:
+    with open(cameras_file, encoding="utf-8") as f:
         cameras = json.loads(f.read())
 
     camera_ids = list(cameras.keys())
@@ -154,7 +155,7 @@ def cameras2nerfds(
             name, ext = os.path.splitext(filename)
             shots_dict[name] = m
     else:
-        with open(shots_file, "r", encoding="utf-8") as f:
+        with open(shots_file, encoding="utf-8") as f:
             shots = json.loads(f.read())
 
         shots = shots["features"]

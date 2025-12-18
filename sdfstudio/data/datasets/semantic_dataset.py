@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +17,6 @@
 """
 Semantic dataset.
 """
-
-from typing import Dict
 
 import torch
 
@@ -40,7 +40,7 @@ class SemanticDataset(InputDataset):
             [self.semantics.classes.index(mask_class) for mask_class in self.semantics.mask_classes]
         ).view(1, 1, -1)
 
-    def get_metadata(self, data: Dict) -> Dict:
+    def get_metadata(self, data: dict) -> dict:
         # handle mask
         filepath = self.semantics.filenames[data["image_idx"]]
         semantic_label, mask = get_semantics_and_mask_tensors_from_path(

@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Optional, Union
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,16 +42,16 @@ class Sampler(nn.Module):
 
     def __init__(
         self,
-        num_samples: int | None = None,
+        num_samples: Optional[int] = None,
     ) -> None:
         super().__init__()
         self.num_samples = num_samples
 
     @abstractmethod
-    def generate_ray_samples(self) -> RaySamples | tuple:
+    def generate_ray_samples(self) -> Union[RaySamples, tuple]:
         """Generate Ray Samples"""
 
-    def forward(self, *args, **kwargs) -> RaySamples | tuple:
+    def forward(self, *args, **kwargs) -> Union[RaySamples, tuple]:
         """Generate ray samples"""
         return self.generate_ray_samples(*args, **kwargs)
 
@@ -67,7 +71,7 @@ class SpacedSampler(Sampler):
         self,
         spacing_fn: Callable,
         spacing_fn_inv: Callable,
-        num_samples: int | None = None,
+        num_samples: Optional[int] = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -79,8 +83,8 @@ class SpacedSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: RayBundle | None = None,
-        num_samples: int | None = None,
+        ray_bundle: Optional[RayBundle] = None,
+        num_samples: Optional[int] = None,
     ) -> RaySamples:
         """Generates position samples accoring to spacing function.
 
@@ -113,7 +117,10 @@ class SpacedSampler(Sampler):
             bins = bin_lower + (bin_upper - bin_lower) * t_rand
 
         s_near, s_far = (self.spacing_fn(x) for x in (ray_bundle.nears.clone(), ray_bundle.fars.clone()))
-        spacing_to_euclidean_fn = lambda x: self.spacing_fn_inv(x * s_far + (1 - x) * s_near)
+
+        def spacing_to_euclidean_fn(x):
+            return self.spacing_fn_inv(x * s_far + (1 - x) * s_near)
+
         euclidean_bins = spacing_to_euclidean_fn(bins)  # [num_rays, num_samples+1]
 
         ray_samples = ray_bundle.get_ray_samples(
@@ -138,7 +145,7 @@ class UniformSampler(SpacedSampler):
 
     def __init__(
         self,
-        num_samples: int | None = None,
+        num_samples: Optional[int] = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -162,7 +169,7 @@ class LinearDisparitySampler(SpacedSampler):
 
     def __init__(
         self,
-        num_samples: int | None = None,
+        num_samples: Optional[int] = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -185,7 +192,7 @@ class SqrtSampler(SpacedSampler):
 
     def __init__(
         self,
-        num_samples: int | None = None,
+        num_samples: Optional[int] = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -208,7 +215,7 @@ class LogSampler(SpacedSampler):
 
     def __init__(
         self,
-        num_samples: int | None = None,
+        num_samples: Optional[int] = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -234,7 +241,7 @@ class UniformLinDispPiecewiseSampler(SpacedSampler):
 
     def __init__(
         self,
-        num_samples: int | None = None,
+        num_samples: Optional[int] = None,
         train_stratified=True,
         single_jitter=False,
     ) -> None:
@@ -260,7 +267,7 @@ class PDFSampler(Sampler):
 
     def __init__(
         self,
-        num_samples: int | None = None,
+        num_samples: Optional[int] = None,
         train_stratified: bool = True,
         single_jitter: bool = False,
         include_original: bool = True,
@@ -274,10 +281,10 @@ class PDFSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: RayBundle | None = None,
-        ray_samples: RaySamples | None = None,
+        ray_bundle: Optional[RayBundle] = None,
+        ray_samples: Optional[RaySamples] = None,
         weights: TensorType = None,
-        num_samples: int | None = None,
+        num_samples: Optional[int] = None,
         eps: float = 1e-5,
     ) -> RaySamples:
         """Generates position samples given a distribution.
@@ -382,9 +389,9 @@ class VolumetricSampler(Sampler):
 
     def __init__(
         self,
-        occupancy_grid: OccupancyGrid | None = None,
-        density_fn: Callable[[TensorType], TensorType] | None = None,
-        scene_aabb: TensorType | None = None,
+        occupancy_grid: Optional[OccupancyGrid] = None,
+        density_fn: Optional[Callable[[TensorType], TensorType]] = None,
+        scene_aabb: Optional[TensorType] = None,
     ) -> None:
         super().__init__()
         self.scene_aabb = scene_aabb
@@ -394,7 +401,7 @@ class VolumetricSampler(Sampler):
             self.scene_aabb = self.scene_aabb.to("cuda").flatten()
         print(self.scene_aabb)
 
-    def get_sigma_fn(self, origins, directions) -> Callable | None:
+    def get_sigma_fn(self, origins, directions) -> Optional[Callable]:
         """Returns a function that returns the density of a point.
         Args:
             origins: Origins of rays
@@ -427,7 +434,7 @@ class VolumetricSampler(Sampler):
         ray_bundle: RayBundle,
         render_step_size: float,
         near_plane: float = 0.0,
-        far_plane: float | None = None,
+        far_plane: Optional[float] = None,
         cone_angle: float = 0.0,
         alpha_thre: float = 1e-2,
     ) -> tuple[RaySamples, TensorType]:
@@ -535,8 +542,8 @@ class ProposalNetworkSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: RayBundle | None = None,
-        density_fns: list[Callable] | None = None,
+        ray_bundle: Optional[RayBundle] = None,
+        density_fns: Optional[list[Callable]] = None,
     ) -> tuple[RaySamples, list, list]:
         assert ray_bundle is not None
         assert density_fns is not None
@@ -611,11 +618,11 @@ class ErrorBoundedSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: RayBundle | None = None,
-        density_fn: Callable | None = None,
-        sdf_fn: Callable | None = None,
+        ray_bundle: Optional[RayBundle] = None,
+        density_fn: Optional[Callable] = None,
+        sdf_fn: Optional[Callable] = None,
         return_eikonal_points: bool = True,
-    ) -> tuple[RaySamples, torch.Tensor] | RaySamples:
+    ) -> Union[tuple[RaySamples, torch.Tensor], RaySamples]:
         assert ray_bundle is not None
         assert density_fn is not None
         assert sdf_fn is not None
@@ -730,7 +737,7 @@ class ErrorBoundedSampler(Sampler):
         curr_error = self.get_error_bound(beta0, density_fn, sdf, d_star, ray_samples)
         beta[curr_error <= self.eps] = beta0
         beta_min, beta_max = beta0.repeat(ray_samples.shape[0]), beta
-        for j in range(self.beta_iters):
+        for _j in range(self.beta_iters):
             beta_mid = (beta_min + beta_max) / 2.0
             curr_error = self.get_error_bound(beta_mid.unsqueeze(-1), density_fn, sdf, d_star, ray_samples)
             beta_max[curr_error <= self.eps] = beta_mid[curr_error <= self.eps]
@@ -859,10 +866,10 @@ class NeuSSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: RayBundle | None = None,
-        sdf_fn: Callable | None = None,
-        ray_samples: RaySamples | None = None,
-    ) -> tuple[RaySamples, torch.Tensor] | RaySamples:
+        ray_bundle: Optional[RayBundle] = None,
+        sdf_fn: Optional[Callable] = None,
+        ray_samples: Optional[RaySamples] = None,
+    ) -> Union[tuple[RaySamples, torch.Tensor], RaySamples]:
         assert ray_bundle is not None
         assert sdf_fn is not None
 
@@ -1009,11 +1016,11 @@ class UniSurfSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: RayBundle | None = None,
-        occupancy_fn: RayBundle | None = None,
-        sdf_fn: Callable | None = None,
+        ray_bundle: Optional[RayBundle] = None,
+        occupancy_fn: Optional[RayBundle] = None,
+        sdf_fn: Optional[Callable] = None,
         return_surface_points: bool = False,
-    ) -> tuple[RaySamples, torch.Tensor] | RaySamples:
+    ) -> Union[tuple[RaySamples, torch.Tensor], RaySamples]:
         assert ray_bundle is not None
         assert sdf_fn is not None
 
@@ -1155,8 +1162,8 @@ class UniSurfSampler(Sampler):
 
     def secant_method(
         self,
-        ray_bundle: RayBundle | None = None,
-        sdf_fn: Callable | None = None,
+        ray_bundle: Optional[RayBundle] = None,
+        sdf_fn: Optional[Callable] = None,
     ):
         """run secant method to refine surface points"""
         raise NotImplementedError
@@ -1276,9 +1283,9 @@ class NeuralReconWSampler(Sampler):
 
     def generate_ray_samples(
         self,
-        ray_bundle: RayBundle | None = None,
-        sdf_fn: Callable | None = None,
-    ) -> tuple[RaySamples, torch.Tensor] | RaySamples:
+        ray_bundle: Optional[RayBundle] = None,
+        sdf_fn: Optional[Callable] = None,
+    ) -> Union[tuple[RaySamples, torch.Tensor], RaySamples]:
         assert ray_bundle is not None
         assert sdf_fn is not None
 
@@ -1492,10 +1499,10 @@ class NeuSAccSampler(Sampler):
     @torch.no_grad()
     def generate_ray_samples(
         self,
-        ray_bundle: RayBundle | None = None,
-        sdf_fn: Callable | None = None,
-        alpha_fn: Callable | None = None,
-    ) -> tuple[RaySamples, torch.Tensor] | RaySamples:
+        ray_bundle: Optional[RayBundle] = None,
+        sdf_fn: Optional[Callable] = None,
+        alpha_fn: Optional[Callable] = None,
+    ) -> Union[tuple[RaySamples, torch.Tensor], RaySamples]:
         assert ray_bundle is not None
         assert sdf_fn is not None
 

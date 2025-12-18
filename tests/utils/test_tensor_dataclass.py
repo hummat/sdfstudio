@@ -3,7 +3,6 @@ Test tensor dataclass
 """
 
 from dataclasses import dataclass
-from typing import Dict
 
 import pytest
 import torch
@@ -25,7 +24,7 @@ class DummyTensorDataclass(TensorDataclass):
     a: torch.Tensor
     b: torch.Tensor
     c: DummyNestedClass = None
-    d: Dict = None
+    d: dict = None
 
 
 def test_init():
@@ -37,9 +36,9 @@ def test_init():
 
         dummy_vals: torch.Tensor = None
 
-    dummy = Dummy(dummy_vals=torch.ones(1))
+    Dummy(dummy_vals=torch.ones(1))
     with pytest.raises(ValueError):
-        dummy = Dummy()
+        Dummy()
 
 
 def test_broadcasting():

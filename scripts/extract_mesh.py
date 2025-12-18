@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Tuple
+from typing import Literal
 
 import torch
 import tyro
@@ -42,9 +42,9 @@ class ExtractMesh:
     # extract the mesh using occupancy field (unisurf) or SDF, default sdf
     is_occupancy: bool = False
     """Minimum of the bounding box."""
-    bounding_box_min: Tuple[float, float, float] = (-1.0, -1.0, -1.0)
+    bounding_box_min: tuple[float, float, float] = (-1.0, -1.0, -1.0)
     """Maximum of the bounding box."""
-    bounding_box_max: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+    bounding_box_max: tuple[float, float, float] = (1.0, 1.0, 1.0)
     """marching cube threshold"""
     marching_cube_threshold: float = 0.0
     """create visibility mask"""

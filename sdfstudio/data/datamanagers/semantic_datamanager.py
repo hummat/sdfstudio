@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +19,6 @@ Semantic datamanager.
 """
 
 from dataclasses import dataclass, field
-from typing import Type
 
 from sdfstudio.data.datamanagers.base_datamanager import (
     VanillaDataManager,
@@ -30,7 +31,7 @@ from sdfstudio.data.datasets.semantic_dataset import SemanticDataset
 class SemanticDataManagerConfig(VanillaDataManagerConfig):
     """A semantic datamanager - required to use with .setup()"""
 
-    _target: Type = field(default_factory=lambda: SemanticDataManager)
+    _target: type = field(default_factory=lambda: SemanticDataManager)
 
 
 class SemanticDataManager(VanillaDataManager):  # pylint: disable=abstract-method

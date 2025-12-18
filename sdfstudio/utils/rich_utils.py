@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +40,7 @@ class ItersPerSecColumn(ProgressColumn):
         super().__init__()
         self.suffix = suffix
 
-    def render(self, task: "Task") -> Text:
+    def render(self, task: Task) -> Text:
         """Show data transfer speed."""
         speed = task.finished_speed or task.speed
         if speed is None:

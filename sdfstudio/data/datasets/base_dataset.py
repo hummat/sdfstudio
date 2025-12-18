@@ -19,15 +19,14 @@ Dataset.
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict
 
 import numpy as np
 import numpy.typing as npt
 import torch
 from PIL import Image
-from rich.progress import Console, track
-from torch.utils.data import Dataset
+from rich.progress import track
 from torch import Tensor as TensorType
+from torch.utils.data import Dataset
 
 from sdfstudio.data.dataparsers.base_dataparser import DataparserOutputs
 from sdfstudio.data.utils.data_utils import get_image_mask_tensor_from_path
@@ -92,7 +91,7 @@ class InputDataset(Dataset):
             image = image[:, :, :3]
         return image
 
-    def get_data(self, image_idx: int) -> Dict:
+    def get_data(self, image_idx: int) -> dict:
         """Returns the ImageDataset data as a dictionary.
 
         Args:
@@ -119,7 +118,7 @@ class InputDataset(Dataset):
         return data
 
     # pylint: disable=no-self-use
-    def get_metadata(self, data: Dict) -> Dict:
+    def get_metadata(self, data: dict) -> dict:
         """Method that can be used to process any additional metadata that may be part of the model inputs.
 
         Args:
@@ -128,7 +127,7 @@ class InputDataset(Dataset):
         del data
         return {}
 
-    def __getitem__(self, image_idx: int) -> Dict:
+    def __getitem__(self, image_idx: int) -> dict:
         data = self.get_data(image_idx)
         return data
 
@@ -167,7 +166,7 @@ class GeneralizedDataset(InputDataset):
 
         self.all_hw_same = all_hw_same
 
-    def get_data(self, image_idx: int) -> Dict:
+    def get_data(self, image_idx: int) -> dict:
         """Returns the ImageDataset data as a dictionary.
 
         Args:

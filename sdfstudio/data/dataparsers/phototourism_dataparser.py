@@ -19,7 +19,6 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Type
 
 import numpy as np
 import torch
@@ -43,7 +42,7 @@ CONSOLE = Console(width=120)
 class PhototourismDataParserConfig(DataParserConfig):
     """Phototourism dataset parser config"""
 
-    _target: Type = field(default_factory=lambda: Phototourism)
+    _target: type = field(default_factory=lambda: Phototourism)
     """target class to instantiate"""
     data: Path = Path("data/phototourism/brandenburg-gate")
     """Directory specifying location of data."""

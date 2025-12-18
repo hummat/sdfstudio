@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 The Nerfstudio Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,14 +17,13 @@
 """Server bridge to faciliate interactions between python backend and javascript front end"""
 
 import sys
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import tornado.gen
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
 import tyro
-from . import umsgpack
 import zmq
 import zmq.eventloop.ioloop
 from pyngrok import ngrok
@@ -30,6 +31,8 @@ from zmq.eventloop.zmqstream import ZMQStream
 
 from sdfstudio.viewer.server.state.node import find_node, get_tree, walk
 from sdfstudio.viewer.server.state.state_node import StateNode
+
+from . import umsgpack
 
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):  # pylint: disable=abstract-method
@@ -66,7 +69,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):  # pylint: disable=a
             find_node(self.bridge.state_tree, path).data = m["data"]
             command = {"type": "write", "path": m["path"], "data": m["data"]}
             packed_data = umsgpack.packb(command)
-            frames = ["write".encode("utf-8"), m["path"].encode("utf-8"), packed_data]
+            frames = [b"write", m["path"].encode("utf-8"), packed_data]
             self.bridge.forward_to_websockets(frames, websocket_to_skip=self)
         elif type_ == "read":
             # reads and returns the data
@@ -123,7 +126,7 @@ class ZMQWebSocketBridge:
         """Create a tornado application for the websocket server."""
         return tornado.web.Application([(r"/", WebSocketHandler, {"bridge": self})])
 
-    def handle_zmq(self, frames: List[bytes]):
+    def handle_zmq(self, frames: list[bytes]):
         """Switch function that places commands in tree based on websocket command
 
         Args:
@@ -152,7 +155,7 @@ class ZMQWebSocketBridge:
 
     def forward_to_websockets(
         self,
-        frames: Tuple[str, str, bytes],
+        frames: tuple[str, str, bytes],
         websocket_to_skip: Optional[WebSocketHandler] = None,
     ):
         """Forward a zmq message to all websockets.

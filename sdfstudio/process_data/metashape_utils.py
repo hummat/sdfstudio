@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 the Regents of the University of California, Nerfstudio Team and contributors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +19,7 @@
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import numpy as np
 import open3d as o3d
@@ -34,12 +36,12 @@ def _find_param(calib_xml: ET.Element, param_name: str):
 
 
 def metashape_to_json(
-    image_filename_map: Dict[str, Path],
+    image_filename_map: dict[str, Path],
     xml_filename: Path,
     output_dir: Path,
     ply_filename: Optional[Path] = None,  # type: ignore
     verbose: bool = False,
-) -> List[str]:
+) -> list[str]:
     """Convert Metashape data into a sdfstudio dataset.
 
     Args:

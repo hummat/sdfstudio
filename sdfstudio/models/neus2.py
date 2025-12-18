@@ -18,11 +18,9 @@ analytic second-order (double backward through tcnn) instead of finite differenc
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Type
 
 import torch
 
-from sdfstudio.field_components.field_heads import FieldHeadNames
 from sdfstudio.models.neuralangelo import NeuralangeloModel, NeuralangeloModelConfig
 from sdfstudio.models.neus import NeuSModel
 
@@ -36,7 +34,7 @@ class NeuS2ModelConfig(NeuralangeloModelConfig):
     numerical gradients.
     """
 
-    _target: Type = field(default_factory=lambda: NeuS2Model)
+    _target: type = field(default_factory=lambda: NeuS2Model)
 
     # Defaults for a NeuS2-style run:
     # - analytic gradients only (no numerical-gradients schedule)
@@ -51,7 +49,7 @@ class NeuS2Model(NeuralangeloModel):
 
     config: NeuS2ModelConfig
 
-    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict:
+    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> dict:
         # Bypass Neuralangelo's finite-difference curvature; start from plain NeuS losses.
         loss_dict = NeuSModel.get_loss_dict(self, outputs, batch, metrics_dict)
 
@@ -86,9 +84,7 @@ class NeuS2Model(NeuralangeloModel):
 
             curvature = lap.sum(dim=-1, keepdim=True)
             loss_dict["curvature_loss"] = (
-                curvature.abs().mean()
-                * self.config.curvature_loss_multi
-                * self.curvature_loss_multi_factor
+                curvature.abs().mean() * self.config.curvature_loss_multi * self.curvature_loss_multi_factor
             )
 
         return loss_dict

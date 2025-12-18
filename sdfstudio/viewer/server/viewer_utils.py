@@ -23,7 +23,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 import cv2
 import numpy as np
@@ -43,7 +43,6 @@ from sdfstudio.utils.writer import GLOBAL_BUFFER, EventName, TimeWriter
 from sdfstudio.viewer.server.subprocess import run_viewer_bridge_server_as_subprocess
 from sdfstudio.viewer.server.utils import get_intrinsics_matrix_and_camera_to_world_h
 from sdfstudio.viewer.server.visualizer import Viewer
-
 
 CONSOLE = Console(width=120)
 
@@ -115,7 +114,7 @@ class RenderThread(threading.Thread):
         camera_ray_bundle: input rays to pass through the graph to render out
     """
 
-    def __init__(self, state: "ViewerState", graph: Model, camera_ray_bundle: RayBundle):
+    def __init__(self, state: ViewerState, graph: Model, camera_ray_bundle: RayBundle):
         threading.Thread.__init__(self)
         self.state = state
         self.graph = graph
@@ -429,7 +428,7 @@ class ViewerState:
 
         return camera_object
 
-    def _apply_colormap(self, outputs: Dict[str, Any], colors: torch.Tensor = None, eps=1e-6):
+    def _apply_colormap(self, outputs: dict[str, Any], colors: torch.Tensor = None, eps=1e-6):
         """Determines which colormap to use based on set colormap type
 
         Args:
@@ -480,7 +479,7 @@ class ViewerState:
 
         raise NotImplementedError
 
-    def _send_output_to_viewer(self, outputs: Dict[str, Any], colors: torch.Tensor = None, eps=1e-6):
+    def _send_output_to_viewer(self, outputs: dict[str, Any], colors: torch.Tensor = None, eps=1e-6):
         """Chooses the correct output and sends it to the viewer
 
         Args:
@@ -554,7 +553,7 @@ class ViewerState:
             self.vis["renderingState/train_eta"].write("Paused")
             self.vis["renderingState/vis_train_ratio"].write("100% spent on viewer")
 
-    def _calculate_image_res(self, camera_object, is_training: bool) -> Optional[Tuple[int, int]]:
+    def _calculate_image_res(self, camera_object, is_training: bool) -> Optional[tuple[int, int]]:
         """Calculate the maximum image height that can be rendered in the time budget
 
         Args:

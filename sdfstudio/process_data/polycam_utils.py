@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Copyright 2022 the Regents of the University of California, Nerfstudio Team and contributors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +19,7 @@
 import json
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 
@@ -28,14 +30,14 @@ from sdfstudio.utils.rich_utils import CONSOLE
 
 
 def polycam_to_json(
-    image_filenames: List[Path],
-    depth_filenames: List[Path],
+    image_filenames: list[Path],
+    depth_filenames: list[Path],
     glb_filename: Optional[Path],
     cameras_dir: Path,
     output_dir: Path,
     min_blur_score: float = 0.0,
     crop_border_pixels: int = 0,
-) -> List[str]:
+) -> list[str]:
     """Convert Polycam data into a sdfstudio dataset.
 
     Args:
@@ -148,7 +150,7 @@ def process_images(
     max_dataset_size: int = 600,
     num_downscales: int = 3,
     verbose: bool = True,
-) -> Tuple[List[str], List[Path]]:
+) -> tuple[list[str], list[Path]]:
     """
     Process RGB images only
 
@@ -208,7 +210,7 @@ def process_depth_maps(
     max_dataset_size: int = 600,
     num_downscales: int = 3,
     verbose: bool = True,
-) -> Tuple[List[str], List[Path]]:
+) -> tuple[list[str], list[Path]]:
     """
     Process Depth maps from polycam only
 
