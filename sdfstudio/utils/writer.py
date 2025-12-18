@@ -22,7 +22,7 @@ import enum
 from abc import abstractmethod
 from pathlib import Path
 from time import time
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import torch
 import wandb
@@ -30,9 +30,11 @@ from rich.console import Console
 from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
 
-from sdfstudio.configs import base_config as cfg
 from sdfstudio.utils.decorators import check_main_thread, decorate_all
 from sdfstudio.utils.printing import human_format
+
+if TYPE_CHECKING:
+    from sdfstudio.configs.base_config import Config, LocalWriterConfig, LoggingConfig
 
 CONSOLE = Console(width=120)
 
@@ -193,7 +195,7 @@ def write_out_storage():
 
 
 def setup_local_writer(
-    config: cfg.LoggingConfig,
+    config: LoggingConfig,
     max_iter: int,
     banner_messages: Optional[list[str]] = None,
 ) -> None:
@@ -218,7 +220,7 @@ def setup_local_writer(
 
 
 @check_main_thread
-def setup_event_writer(config: cfg.Config, log_dir: Path) -> None:
+def setup_event_writer(config: Config, log_dir: Path) -> None:
     """Initialization of all event writers specified in config
 
     Args:
@@ -397,7 +399,7 @@ class LocalWriter:
         banner_messages: list of messages to always display at bottom of screen
     """
 
-    def __init__(self, config: cfg.LocalWriterConfig, banner_messages: Optional[list[str]] = None):
+    def __init__(self, config: LocalWriterConfig, banner_messages: Optional[list[str]] = None):
         self.config = config
         self.stats_to_track = [name.value for name in config.stats_to_track]
         self.keys = set()

@@ -19,17 +19,19 @@ Profiler base class and functionality
 from __future__ import annotations
 
 import time
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from rich.console import Console
 
-from sdfstudio.configs import base_config as cfg
 from sdfstudio.utils import comms
 from sdfstudio.utils.decorators import (
     check_main_thread,
     check_profiler_enabled,
     decorate_all,
 )
+
+if TYPE_CHECKING:
+    from sdfstudio.configs.base_config import LoggingConfig
 
 CONSOLE = Console(width=120)
 
@@ -50,13 +52,13 @@ def time_function(func: Callable) -> Callable:
     return wrapper
 
 
-def flush_profiler(config: cfg.LoggingConfig):
+def flush_profiler(config: LoggingConfig):
     """Method that checks if profiler is enabled before flushing"""
     if config.enable_profiler and PROFILER:
         PROFILER[0].print_profile()
 
 
-def setup_profiler(config: cfg.LoggingConfig):
+def setup_profiler(config: LoggingConfig):
     """Initialization of profilers"""
     if comms.is_main_process():
         PROFILER.append(Profiler(config))
@@ -66,7 +68,7 @@ def setup_profiler(config: cfg.LoggingConfig):
 class Profiler:
     """Profiler class"""
 
-    def __init__(self, config: cfg.LoggingConfig):
+    def __init__(self, config: LoggingConfig):
         self.config = config
         self.profiler_dict = {}
 

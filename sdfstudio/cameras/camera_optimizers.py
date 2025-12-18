@@ -28,14 +28,14 @@ from torch import Tensor, nn
 from typing_extensions import Literal, assert_never
 
 from sdfstudio.cameras.lie_groups import exp_map_SE3, exp_map_SO3xR3
-from sdfstudio.configs import base_config as cfg
+from sdfstudio.configs.base_types import InstantiateConfig
 from sdfstudio.engine.optimizers import AdamWOptimizerConfig
 from sdfstudio.engine.schedulers import SchedulerConfig
 from sdfstudio.utils import poses as pose_utils
 
 
 @dataclass
-class CameraOptimizerConfig(cfg.InstantiateConfig):
+class CameraOptimizerConfig(InstantiateConfig):
     """Configuration of optimization for camera poses."""
 
     _target: type = field(default_factory=lambda: CameraOptimizer)

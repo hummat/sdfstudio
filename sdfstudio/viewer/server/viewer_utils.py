@@ -23,7 +23,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import cv2
 import numpy as np
@@ -32,7 +32,6 @@ from rich.console import Console
 
 from sdfstudio.cameras.cameras import Cameras
 from sdfstudio.cameras.rays import RayBundle
-from sdfstudio.configs import base_config as cfg
 from sdfstudio.data.datasets.base_dataset import InputDataset
 from sdfstudio.models.base_model import Model
 from sdfstudio.utils import colormaps, profiler, writer
@@ -43,6 +42,9 @@ from sdfstudio.utils.writer import GLOBAL_BUFFER, EventName, TimeWriter
 from sdfstudio.viewer.server.subprocess import run_viewer_bridge_server_as_subprocess
 from sdfstudio.viewer.server.utils import get_intrinsics_matrix_and_camera_to_world_h
 from sdfstudio.viewer.server.visualizer import Viewer
+
+if TYPE_CHECKING:
+    from sdfstudio.configs.base_config import ViewerConfig
 
 CONSOLE = Console(width=120)
 
@@ -55,7 +57,7 @@ def get_viewer_version() -> str:
 
 
 @check_main_thread
-def setup_viewer(config: cfg.ViewerConfig, log_filename: Path):
+def setup_viewer(config: ViewerConfig, log_filename: Path):
     """Sets up the viewer if enabled
 
     Args:
@@ -211,7 +213,7 @@ class ViewerState:
         config: viewer setup configuration
     """
 
-    def __init__(self, config: cfg.ViewerConfig, log_filename: Path):
+    def __init__(self, config: ViewerConfig, log_filename: Path):
         self.config = config
         self.vis = None
         self.viewer_url = None

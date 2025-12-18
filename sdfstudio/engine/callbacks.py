@@ -21,9 +21,10 @@ Callback code used for training iterations
 from dataclasses import InitVar, dataclass
 from enum import Enum, auto
 from inspect import signature
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
-from sdfstudio.configs.base_config import TrainerConfig
+if TYPE_CHECKING:
+    from sdfstudio.configs.base_config import TrainerConfig
 
 
 @dataclass
