@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import tyro
 from rich.console import Console
@@ -67,6 +67,8 @@ class TextureMesh:
     """Maximum elevation angle for --method open3d."""
     radius_mult: float = 2.0
     """Multiplier for mesh bounding sphere radius for --method open3d."""
+    eval_num_rays_per_chunk: Optional[int] = None
+    """Override `pipeline.model.eval_num_rays_per_chunk` used during texture queries."""
 
     def main(self) -> None:
         """Export textured mesh"""
@@ -77,7 +79,9 @@ class TextureMesh:
         mesh = get_mesh_from_filename(str(self.input_mesh_filename), target_num_faces=self.target_num_faces)
 
         # Load the pipeline
-        _, pipeline, _ = eval_setup(self.load_config, test_mode="inference")
+        _, pipeline, _ = eval_setup(
+            self.load_config, test_mode="inference", eval_num_rays_per_chunk=self.eval_num_rays_per_chunk
+        )
 
         if self.method == "legacy":
             CONSOLE.print("[yellow]Using legacy (v1) texture export")

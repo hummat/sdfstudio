@@ -57,6 +57,16 @@ OPEN3D_AVAILABLE = importlib.util.find_spec("open3d") is not None
 CONSOLE = Console(width=120)
 
 
+def _default_reproject_chunk_size(eval_num_rays_per_chunk: int) -> int:
+    """Heuristic chunk size for multiview reprojection.
+
+    Tied to `ModelConfig.eval_num_rays_per_chunk` so users can trade VRAM for speed
+    with a single knob.
+    """
+    # 64x provides good throughput while keeping peak memory bounded.
+    return int(max(50_000, min(1_000_000, 64 * eval_num_rays_per_chunk)))
+
+
 # =============================================================================
 # Path A: GPU Rasterization + Fast I/O + Multi-direction Averaging
 # =============================================================================
@@ -545,25 +555,22 @@ def query_nerf_textures(
     device = pipeline.device
     H, W = origins.shape[:2]
 
-    # Generate multiple directions per texel (pointing into surface / away from camera)
-    # We pass -normals so hemisphere points into the surface
-    directions = generate_hemisphere_directions(-normals, num_directions)  # (H, W, num_dirs, 3)
+    # Work only on valid texels to avoid allocating (H*W*num_dirs) buffers.
+    if valid_mask.dtype != torch.bool:
+        valid_mask = valid_mask.bool()
+    flat_surface_origins = origins[valid_mask].reshape(-1, 3)  # (N, 3)
+    flat_surface_normals = normals[valid_mask].reshape(-1, 3)  # (N, 3)
 
-    # Ensure directions are normalized
-    directions = torch.nn.functional.normalize(directions, dim=-1)
-
-    # Offset origins along ray direction (move back from surface along ray)
-    ray_origins = origins.unsqueeze(-2) - 0.5 * ray_length * directions  # (H, W, num_dirs, 3)
-
-    # Flatten valid pixels for batched inference
-    flat_origins = ray_origins[valid_mask]  # (N, num_dirs, 3)
-    flat_dirs = directions[valid_mask]  # (N, num_dirs, 3)
-
-    N = flat_origins.shape[0]
+    N = flat_surface_origins.shape[0]
     if N == 0:
         return {"rgb": torch.zeros(H, W, 3, device=device)}
 
     CONSOLE.print(f"Querying NeRF: {N} valid texels x {num_directions} directions")
+
+    # Generate multiple directions per texel (pointing into surface / away from camera).
+    # We pass -normals so hemisphere points into the surface.
+    directions = generate_hemisphere_directions(-flat_surface_normals, num_directions)  # (N, num_dirs, 3)
+    directions = torch.nn.functional.normalize(directions, dim=-1)
 
     # Storage for all outputs
     all_rgb = []
@@ -572,8 +579,8 @@ def query_nerf_textures(
     with torch.no_grad():
         for d in range(num_directions):
             CONSOLE.print(f"[cyan]Rendering direction {d + 1}/{num_directions}")
-            dir_origins = flat_origins[:, d, :]  # (N, 3)
-            dir_dirs = flat_dirs[:, d, :]  # (N, 3)
+            dir_dirs = directions[:, d, :]  # (N, 3)
+            dir_origins = flat_surface_origins - 0.5 * ray_length * dir_dirs  # (N, 3)
 
             # Reshape to (1, N) "image" - the model will chunk internally
             ray_bundle = RayBundle(
@@ -1185,7 +1192,7 @@ def project_views_to_texture_reproject(
     extrinsics: Tensor,
     *,
     depth_tolerance: float,
-    chunk_size: int = 200_000,
+    chunk_size: int,
 ) -> Tensor:
     """Project rendered view images back onto the UV texture by reprojection.
 
@@ -1401,6 +1408,7 @@ def export_textured_mesh_multiview(
             intrinsics,
             extrinsics,
             depth_tolerance=0.01 * radius,
+            chunk_size=_default_reproject_chunk_size(pipeline.model.config.eval_num_rays_per_chunk),
         )
         texture = pad_textures_nearest({"rgb": texture}, valid_mask, pad_px=pad_px)["rgb"]
         faces_for_export = faces_uv_order

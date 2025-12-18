@@ -76,19 +76,26 @@ def get_mesh_from_filename(filename: str, target_num_faces: Optional[int | float
     ms = pymeshlab.MeshSet()
     ms.load_new_mesh(filename)
     if target_num_faces is not None:
+        target_perc = 0.0
         if target_num_faces < 1:
+            target_perc = float(target_num_faces)
             target_num_faces = int(len(ms.current_mesh().face_matrix()) * target_num_faces)
         CONSOLE.print(f"Simplifying mesh with {len(ms.current_mesh().face_matrix())} faces... this may take a while.")
         ms.meshing_decimation_quadric_edge_collapse(
             targetfacenum=target_num_faces,
+            targetperc=target_perc,
             # targetperc=target_percentage,
             qualitythr=1.0,
             preserveboundary=True,
+            boundaryweight=1.0,
             preservenormal=True,
             preservetopology=True,
+            optimalplacement=True,
             planarquadric=True,
             planarweight=1e-20,
+            qualityweight=False,
             autoclean=True,
+            selected=False,
         )
         CONSOLE.print(f"[bold green]:white_check_mark: Simplified mesh to {len(ms.current_mesh().face_matrix())} faces")
     mesh = ms.current_mesh()
