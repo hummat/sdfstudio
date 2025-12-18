@@ -17,14 +17,15 @@ Base class for the graphs.
 """
 
 from abc import abstractmethod
-from typing import Dict, Optional, Tuple, Type
 from dataclasses import dataclass, field
+from typing import Optional
 
 import torch
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 
-from sdfstudio.configs.base_config import InstantiateConfig
 from sdfstudio.cameras.rays import Frustums, RaySamples
+from sdfstudio.configs.base_config import InstantiateConfig
 from sdfstudio.field_components.field_heads import FieldHeadNames
 
 
@@ -33,7 +34,7 @@ from sdfstudio.field_components.field_heads import FieldHeadNames
 class FieldConfig(InstantiateConfig):
     """Configuration for model instantiation"""
 
-    _target: Type = field(default_factory=lambda: Field)
+    _target: type = field(default_factory=lambda: Field)
     """target class to instantiate"""
 
 
@@ -65,7 +66,7 @@ class Field(nn.Module):
         return density
 
     @abstractmethod
-    def get_density(self, ray_samples: RaySamples) -> Tuple[TensorType, TensorType]:
+    def get_density(self, ray_samples: RaySamples) -> tuple[TensorType, TensorType]:
         """Computes and returns the densities. Returns a tensor of densities and a tensor of features.
 
         Args:
@@ -95,7 +96,7 @@ class Field(nn.Module):
     @abstractmethod
     def get_outputs(
         self, ray_samples: RaySamples, density_embedding: Optional[TensorType] = None
-    ) -> Dict[FieldHeadNames, TensorType]:
+    ) -> dict[FieldHeadNames, TensorType]:
         """Computes and returns the colors. Returns output field values.
 
         Args:

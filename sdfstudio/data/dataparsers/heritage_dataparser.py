@@ -19,7 +19,6 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Type
 
 import numpy as np
 import torch
@@ -38,7 +37,6 @@ from sdfstudio.data.scene_box import SceneBox
 from sdfstudio.data.utils.colmap_utils import (
     read_cameras_binary,
     read_images_binary,
-    read_points3D_binary,
 )
 from sdfstudio.model_components.ray_samplers import save_points
 from sdfstudio.utils.images import BasicImages
@@ -73,7 +71,7 @@ def get_masks(image_idx: int, masks, fg_masks, sparse_pts):
 class HeritageDataParserConfig(DataParserConfig):
     """Phototourism dataset parser config"""
 
-    _target: Type = field(default_factory=lambda: Heritage)
+    _target: type = field(default_factory=lambda: Heritage)
     """target class to instantiate"""
     data: Path = Path("data/phototourism/trevi-fountain")
     """Directory specifying location of data."""
@@ -110,7 +108,7 @@ class Heritage(DataParser):
     def _generate_dataparser_outputs(self, split="train"):
         config_path = self.data / "config.yaml"
 
-        with open(config_path, "r") as yamlfile:
+        with open(config_path) as yamlfile:
             scene_config = yaml.load(yamlfile, Loader=yaml.FullLoader)
 
         sfm_to_gt = np.array(scene_config["sfm2gt"])

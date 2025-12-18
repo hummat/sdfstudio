@@ -18,8 +18,6 @@ Put all the method implementations in one location.
 
 from __future__ import annotations
 
-from typing import Dict
-
 import tyro
 
 from sdfstudio.cameras.camera_optimizers import CameraOptimizerConfig
@@ -45,7 +43,7 @@ from sdfstudio.data.dataparsers.phototourism_dataparser import (
     PhototourismDataParserConfig,
 )
 from sdfstudio.data.dataparsers.sdfstudio_dataparser import SDFStudioDataParserConfig
-from sdfstudio.engine.optimizers import RAdamOptimizerConfig, AdamWOptimizerConfig
+from sdfstudio.engine.optimizers import AdamWOptimizerConfig, RAdamOptimizerConfig
 from sdfstudio.engine.schedulers import (
     ExponentialSchedulerConfig,
     MultiStepSchedulerConfig,
@@ -54,30 +52,29 @@ from sdfstudio.engine.schedulers import (
 )
 from sdfstudio.field_components.temporal_distortions import TemporalDistortionKind
 from sdfstudio.fields.sdf_field import SDFFieldConfig
+from sdfstudio.models.bakedangelo import BakedAngeloModelConfig
 from sdfstudio.models.bakedsdf import BakedSDFModelConfig
 from sdfstudio.models.dto import DtoOModelConfig
 from sdfstudio.models.mipnerf import MipNerfModel
+from sdfstudio.models.monosdf import MonoSDFModelConfig
 from sdfstudio.models.nerfacto import NerfactoModelConfig
 from sdfstudio.models.neuralangelo import NeuralangeloModelConfig
-from sdfstudio.models.bakedangelo import BakedAngeloModelConfig
 from sdfstudio.models.neuralreconW import NeuralReconWModelConfig
 from sdfstudio.models.neus import NeuSModelConfig
+from sdfstudio.models.neus2 import NeuS2ModelConfig
 from sdfstudio.models.neus_acc import NeuSAccModelConfig
 from sdfstudio.models.neus_facto import NeuSFactoModelConfig
-from sdfstudio.models.neus2 import NeuS2ModelConfig
 from sdfstudio.models.semantic_nerfw import SemanticNerfWModelConfig
 from sdfstudio.models.tensorf import TensoRFModelConfig
 from sdfstudio.models.unisurf import UniSurfModelConfig
 from sdfstudio.models.vanilla_nerf import NeRFModel, VanillaModelConfig
-from sdfstudio.models.monosdf import MonoSDFModelConfig
 from sdfstudio.models.volsdf import VolSDFModelConfig
 from sdfstudio.pipelines.base_pipeline import (
     FlexibleInputPipelineConfig,
     VanillaPipelineConfig,
 )
-from sdfstudio.pipelines.dynamic_batch import DynamicBatchPipelineConfig
 
-method_configs: Dict[str, Config] = {}
+method_configs: dict[str, Config] = {}
 descriptions = {
     "nerfacto": "Recommended real-time model tuned for real captures. This model will be continually updated.",
     "mipnerf": "High quality model for bounded scenes. (slow)",

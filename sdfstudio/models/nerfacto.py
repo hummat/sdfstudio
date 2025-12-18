@@ -174,15 +174,17 @@ class NerfactoModel(Model):
             self.density_fns.extend([network.density_fn for network in self.proposal_networks])
 
         # Samplers
-        update_schedule = lambda step: np.clip(
-            np.interp(
-                step,
-                [0, self.config.proposal_warmup],
-                [0, self.config.proposal_update_every],
-            ),
-            1,
-            self.config.proposal_update_every,
-        )
+        def update_schedule(step):
+            return np.clip(
+                np.interp(
+                    step,
+                    [0, self.config.proposal_warmup],
+                    [0, self.config.proposal_update_every],
+                ),
+                1,
+                self.config.proposal_update_every,
+            )
+
         self.proposal_sampler = ProposalNetworkSampler(
             num_nerf_samples_per_ray=self.config.num_nerf_samples_per_ray,
             num_proposal_samples_per_ray=self.config.num_proposal_samples_per_ray,
@@ -197,7 +199,7 @@ class NerfactoModel(Model):
         # renderers
         background_color = (
             get_color(self.config.background_color)
-            if self.config.background_color in set(["white", "black"])
+            if self.config.background_color in {"white", "black"}
             else self.config.background_color
         )
         self.renderer_rgb = RGBRenderer(background_color=background_color)
@@ -230,7 +232,10 @@ class NerfactoModel(Model):
             def set_anneal(step):
                 # https://arxiv.org/pdf/2111.12077.pdf eq. 18
                 train_frac = np.clip(step / N, 0, 1)
-                bias = lambda x, b: (b * x) / ((b - 1) * x + 1)
+
+                def bias(x, b):
+                    return (b * x) / ((b - 1) * x + 1)
+
                 anneal = bias(train_frac, self.config.proposal_weights_anneal_slope)
                 self.proposal_sampler.set_anneal(anneal)
 

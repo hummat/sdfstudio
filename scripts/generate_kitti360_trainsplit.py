@@ -4,8 +4,8 @@ generate kitti360 train split
 
 import os
 from pathlib import Path
-import numpy as np
 
+import numpy as np
 
 train_split = [
     # seq, start, end
@@ -45,7 +45,7 @@ for scene_id, (seq, first_frame, last_frame) in enumerate(train_split):
 
     # go through all frames of this window
     for frame in range(first_frame, last_frame + 1):
-        if not frame in list(poses[:, 0]):
+        if frame not in list(poses[:, 0]):
             continue
         frames.append(frame)
         pose_i = poses[poses[:, 0] == frame, 1:].reshape(3, 4)
@@ -122,4 +122,4 @@ for scene_id, (seq, first_frame, last_frame) in enumerate(train_split):
                 print(cmd)
                 os.system(cmd)
 
-print("Average distance %f" % np.mean(all_distances))
+print(f"Average distance {np.mean(all_distances):f}")

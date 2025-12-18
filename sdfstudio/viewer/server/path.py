@@ -14,8 +14,6 @@
 
 """Path class"""
 
-from typing import Tuple
-
 UNICODE = str
 
 
@@ -28,7 +26,7 @@ class Path:
 
     __slots__ = ["entries"]
 
-    def __init__(self, entries: Tuple = tuple()):
+    def __init__(self, entries: tuple = ()):
         self.entries = entries
 
     def append(self, other: str) -> "Path":
@@ -40,7 +38,7 @@ class Path:
         new_path = self.entries
         for element in other.split("/"):
             if len(element) == 0:
-                new_path = tuple()
+                new_path = ()
             else:
                 new_path = new_path + (element,)
         return Path(new_path)

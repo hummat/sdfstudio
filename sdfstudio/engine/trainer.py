@@ -83,7 +83,7 @@ class Trainer:
             CONSOLE.print("Mixed precision is disabled for CPU training.")
         self._start_step = 0
         # optimizers
-        self.grad_scaler = GradScaler('cuda', enabled=self.mixed_precision)
+        self.grad_scaler = GradScaler("cuda", enabled=self.mixed_precision)
 
         self.base_dir = config.get_base_dir()
         # directory to save checkpoints

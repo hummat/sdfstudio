@@ -15,7 +15,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Literal, Optional, Union
 
 from sdfstudio.process_data import colmap_utils, hloc_utils, process_data_utils
 from sdfstudio.process_data.base_converter_to_nerfstudio_dataset import (
@@ -89,7 +89,7 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
     """Number of samples per image to take from each equirectangular image.
        Used only when camera-type is equirectangular.
     """
-    crop_factor: Union[Tuple[float, float, float, float], Literal["auto"]] = (
+    crop_factor: Union[tuple[float, float, float, float], Literal["auto"]] = (
         0.0,
         0.0,
         0.0,
@@ -128,10 +128,10 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
     def _save_transforms(
         self,
         num_frames: int,
-        image_id_to_depth_path: Optional[Dict[int, Path]] = None,
+        image_id_to_depth_path: Optional[dict[int, Path]] = None,
         camera_mask_path: Optional[Path] = None,
-        image_rename_map: Optional[Dict[str, str]] = None,
-    ) -> List[str]:
+        image_rename_map: Optional[dict[str, str]] = None,
+    ) -> list[str]:
         """Save colmap transforms into the output folder
 
         Args:
@@ -165,7 +165,7 @@ class ColmapConverterToNerfstudioDataset(BaseConverterToNerfstudioDataset):
             CONSOLE.log("[bold yellow]Warning: Could not find existing COLMAP results. Not generating transforms.json")
         return summary_log
 
-    def _export_depth(self) -> Tuple[Optional[Dict[int, Path]], List[str]]:
+    def _export_depth(self) -> tuple[Optional[dict[int, Path]], list[str]]:
         """If SFM is used for creating depth image, this method will create the depth images from image in
         `self.image_dir`.
 

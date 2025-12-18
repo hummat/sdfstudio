@@ -18,7 +18,7 @@ Field for compound nerf model, adds scene contraction and image embeddings to in
 
 import math
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, Optional
 
 import numpy as np
 import torch
@@ -53,7 +53,7 @@ class LaplaceDensity(nn.Module):  # alpha * Laplace(loc=0, scale=beta).cdf(-sdf)
         self.register_parameter("beta_min", nn.Parameter(beta_min * torch.ones(1), requires_grad=False))
         self.register_parameter("beta", nn.Parameter(init_val * torch.ones(1), requires_grad=True))
 
-    def forward(self, sdf: TensorType, beta: TensorType | None = None) -> TensorType:
+    def forward(self, sdf: TensorType, beta: Optional[TensorType] = None) -> TensorType:
         """convert sdf value to density value with beta, if beta is missing, then use learable beta"""
 
         if beta is None:
@@ -76,7 +76,7 @@ class SigmoidDensity(nn.Module):  # alpha * Laplace(loc=0, scale=beta).cdf(-sdf)
         self.register_parameter("beta_min", nn.Parameter(beta_min * torch.ones(1), requires_grad=False))
         self.register_parameter("beta", nn.Parameter(init_val * torch.ones(1), requires_grad=True))
 
-    def forward(self, sdf: TensorType, beta: TensorType | None = None) -> TensorType:
+    def forward(self, sdf: TensorType, beta: Optional[TensorType] = None) -> TensorType:
         """convert sdf value to density value with beta, if beta is missing, then use learable beta"""
 
         if beta is None:
@@ -101,7 +101,7 @@ class SingleVarianceNetwork(nn.Module):
     """
 
     def __init__(self, init_val):
-        super(SingleVarianceNetwork, self).__init__()
+        super().__init__()
         self.register_parameter("variance", nn.Parameter(init_val * torch.ones(1), requires_grad=True))
 
     def forward(self, x):
@@ -226,7 +226,7 @@ class SDFField(Field):
         aabb,
         num_images: int,
         use_average_appearance_embedding: bool = False,
-        spatial_distortion: SpatialDistortion | None = None,
+        spatial_distortion: Optional[SpatialDistortion] = None,
     ) -> None:
         super().__init__()
         self.config = config
@@ -499,7 +499,7 @@ class SDFField(Field):
         density = self.laplace_density(sdf)
         return density, geo_feature
 
-    @torch.amp.autocast('cuda', enabled=False)
+    @torch.amp.autocast("cuda", enabled=False)
     def get_alpha(self, ray_samples: RaySamples, sdf=None, gradients=None):
         """compute alpha from sdf as in NeuS"""
         if sdf is None or gradients is None:
@@ -659,7 +659,7 @@ class SDFField(Field):
         rgb = self.sigmoid(h)
 
         # Adapted from https://github.com/google-research/multinerf/blob/main/internal/image.py#L48
-        def linear_to_srgb(linear: TensorType, eps: float | None = None) -> TensorType:
+        def linear_to_srgb(linear: TensorType, eps: Optional[float] = None) -> TensorType:
             if eps is None:
                 eps = torch.finfo(linear.dtype).eps
             srgb0 = (323 / 25) * linear

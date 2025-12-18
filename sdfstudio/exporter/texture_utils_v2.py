@@ -745,19 +745,19 @@ def write_textured_mesh_fast(
             material = pbr_material_cls()  # type: ignore[call-arg]
             # Best-effort attribute wiring; trimesh versions differ in API surface.
             if hasattr(material, "baseColorTexture"):
-                setattr(material, "baseColorTexture", texture_pil)
+                material.baseColorTexture = texture_pil
             if hasattr(material, "baseColorFactor"):
-                setattr(material, "baseColorFactor", [1.0, 1.0, 1.0, 1.0])
+                material.baseColorFactor = [1.0, 1.0, 1.0, 1.0]
             if orm_image is not None:
                 orm_uint8 = (np.clip(orm_image, 0, 1) * 255).astype(np.uint8)
                 orm_pil = PIL.Image.fromarray(orm_uint8)
                 if hasattr(material, "metallicRoughnessTexture"):
-                    setattr(material, "metallicRoughnessTexture", orm_pil)
+                    material.metallicRoughnessTexture = orm_pil
                 # Dielectric default factors (texture dominates if present).
                 if hasattr(material, "metallicFactor"):
-                    setattr(material, "metallicFactor", 0.0)
+                    material.metallicFactor = 0.0
                 if hasattr(material, "roughnessFactor"):
-                    setattr(material, "roughnessFactor", 1.0)
+                    material.roughnessFactor = 1.0
         except Exception:  # pylint: disable=broad-exception-caught
             material = None
 
@@ -1344,7 +1344,7 @@ def project_views_to_texture_reproject(
             in_bounds = (u >= 0.0) & (u <= (W_img - 1)) & (v >= 0.0) & (v <= (H_img - 1))
 
             # Facing term: prefer views where the surface normal points towards the camera.
-            view_dir = (t[None, :] - P)
+            view_dir = t[None, :] - P
             view_dir = view_dir / (view_dir.norm(dim=-1, keepdim=True) + 1e-8)
             cos = (N * view_dir).sum(dim=-1).clamp(min=0.0)  # (C,)
             facing = cos > 0.0
@@ -1455,8 +1455,8 @@ def export_textured_mesh_multiview(
 
     if OPEN3D_AVAILABLE:
         try:
-            texture, texture_uvs, vertices_for_export, faces_for_export, normals_for_export = project_views_to_texture_open3d(
-                mesh, rgbs, intrinsics, extrinsics, texture_size=texture_size
+            texture, texture_uvs, vertices_for_export, faces_for_export, normals_for_export = (
+                project_views_to_texture_open3d(mesh, rgbs, intrinsics, extrinsics, texture_size=texture_size)
             )
             # Open3D UVs are already in the same convention as typical OBJ importers.
             flip_v_for_export = False

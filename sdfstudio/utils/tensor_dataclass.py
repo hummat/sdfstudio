@@ -16,7 +16,7 @@
 
 import dataclasses
 from copy import deepcopy
-from typing import Callable, Dict, List, NoReturn, Optional, Tuple, TypeVar, Union
+from typing import Callable, NoReturn, Optional, TypeVar, Union
 
 import numpy as np
 import torch
@@ -62,7 +62,7 @@ class TensorDataclass:
     # Any field OR any key in a dictionary field with this name (field-name) and a corresponding
     # torch.Tensor will be assumed to have n dimensions after the batch dims. These n final dimensions
     # will remain the same shape when doing reshapes, broadcasting, etc on the tensordataclass
-    _field_custom_dimensions: Dict[str, int] = {}
+    _field_custom_dimensions: dict[str, int] = {}
 
     def __post_init__(self) -> None:
         """Finishes setting up the TensorDataclass
@@ -95,7 +95,7 @@ class TensorDataclass:
 
         self.__setattr__("_shape", batch_shape)
 
-    def _get_dict_batch_shapes(self, dict_: Dict) -> List:
+    def _get_dict_batch_shapes(self, dict_: dict) -> list:
         """Returns batch shapes of all tensors in a dictionary
 
         Args:
@@ -114,11 +114,11 @@ class TensorDataclass:
                     batch_shapes.append(v.shape[:-1])
             elif isinstance(v, TensorDataclass):
                 batch_shapes.append(v.shape)
-            elif isinstance(v, Dict):
+            elif isinstance(v, dict):
                 batch_shapes.extend(self._get_dict_batch_shapes(v))
         return batch_shapes
 
-    def _broadcast_dict_fields(self, dict_: Dict, batch_shape) -> Dict:
+    def _broadcast_dict_fields(self, dict_: dict, batch_shape) -> dict:
         """Broadcasts all tensors in a dictionary according to batch_shape
 
         Args:
@@ -143,7 +143,7 @@ class TensorDataclass:
                     new_dict[k] = v.broadcast_to((*batch_shape, v.shape[-1]))
             elif isinstance(v, TensorDataclass):
                 new_dict[k] = v.broadcast_to(batch_shape)
-            elif isinstance(v, Dict):
+            elif isinstance(v, dict):
                 new_dict[k] = self._broadcast_dict_fields(v, batch_shape)
         return new_dict
 
@@ -153,8 +153,12 @@ class TensorDataclass:
         if isinstance(indices, (int, slice, type(Ellipsis))):
             indices = (indices,)
         assert isinstance(indices, tuple)
-        tensor_fn = lambda x: x[indices + (slice(None),)]
-        dataclass_fn = lambda x: x[indices]
+
+        def tensor_fn(x):
+            return x[indices + (slice(None),)]
+
+        def dataclass_fn(x):
+            return x[indices]
 
         def custom_tensor_dims_fn(k, v):
             custom_dims = self._field_custom_dimensions[k]  # pylint: disable=unsubscriptable-object
@@ -179,7 +183,7 @@ class TensorDataclass:
         return True
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> tuple[int, ...]:
         """Returns the batch shape of the tensor dataclass."""
         return self._shape
 
@@ -195,7 +199,7 @@ class TensorDataclass:
         """Returns the number of dimensions of the tensor dataclass."""
         return len(self._shape)
 
-    def reshape(self: TensorDataclassT, shape: Tuple[int, ...]) -> TensorDataclassT:
+    def reshape(self: TensorDataclassT, shape: tuple[int, ...]) -> TensorDataclassT:
         """Returns a new TensorDataclass with the same data but with a new shape.
 
         This should deepcopy as well.
@@ -208,8 +212,12 @@ class TensorDataclass:
         """
         if isinstance(shape, int):
             shape = (shape,)
-        tensor_fn = lambda x: x.reshape((*shape, x.shape[-1]))
-        dataclass_fn = lambda x: x.reshape(shape)
+
+        def tensor_fn(x):
+            return x.reshape((*shape, x.shape[-1]))
+
+        def dataclass_fn(x):
+            return x.reshape(shape)
 
         def custom_tensor_dims_fn(k, v):
             custom_dims = self._field_custom_dimensions[k]  # pylint: disable=unsubscriptable-object
@@ -225,7 +233,7 @@ class TensorDataclass:
         """
         return self.reshape((-1,))
 
-    def broadcast_to(self: TensorDataclassT, shape: Union[torch.Size, Tuple[int, ...]]) -> TensorDataclassT:
+    def broadcast_to(self: TensorDataclassT, shape: Union[torch.Size, tuple[int, ...]]) -> TensorDataclassT:
         """Returns a new TensorDataclass broadcast to new shape.
 
         Changes to the original tensor dataclass should effect the returned tensor dataclass,
@@ -294,11 +302,11 @@ class TensorDataclass:
 
     def _apply_fn_to_dict(
         self,
-        dict_: Dict,
+        dict_: dict,
         fn: Callable,
         dataclass_fn: Optional[Callable] = None,
         custom_tensor_dims_fn: Optional[Callable] = None,
-    ) -> Dict:
+    ) -> dict:
         """A helper function for _apply_fn_to_fields, applying a function to all fields of dict_
 
         Args:
@@ -326,7 +334,7 @@ class TensorDataclass:
                     new_dict[f] = custom_tensor_dims_fn(f, v)
                 elif isinstance(v, (torch.Tensor, TensorDataclass)):
                     new_dict[f] = fn(v)
-                elif isinstance(v, Dict):
+                elif isinstance(v, dict):
                     new_dict[f] = self._apply_fn_to_dict(v, fn, dataclass_fn)
                 else:
                     new_dict[f] = deepcopy(v)

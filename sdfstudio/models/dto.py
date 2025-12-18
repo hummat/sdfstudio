@@ -19,13 +19,11 @@ Implementation of VolSDF.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Type
 
 import nerfacc
 import torch
 import torch.nn.functional as F
 from torch.nn import Parameter
-from torch import Tensor as TensorType
 
 from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.engine.callbacks import (
@@ -36,7 +34,7 @@ from sdfstudio.engine.callbacks import (
 from sdfstudio.field_components.field_heads import FieldHeadNames
 from sdfstudio.field_components.spatial_distortions import SceneContraction
 from sdfstudio.fields.sdf_field import SDFFieldConfig
-from sdfstudio.model_components.losses import L1Loss, S3IM
+from sdfstudio.model_components.losses import S3IM, L1Loss
 from sdfstudio.model_components.ray_samplers import (
     ErrorBoundedSampler,
     LinearDisparitySampler,
@@ -50,7 +48,6 @@ from sdfstudio.model_components.renderers import DepthRenderer, SemanticRenderer
 from sdfstudio.model_components.scene_colliders import SphereCollider
 from sdfstudio.models.nerfacto import NerfactoModel, NerfactoModelConfig
 from sdfstudio.utils import colormaps
-from sdfstudio.utils.colors import get_color
 from sdfstudio.utils.marching_cubes import get_surface_occupancy
 
 
@@ -58,7 +55,7 @@ from sdfstudio.utils.marching_cubes import get_surface_occupancy
 class DtoOModelConfig(NerfactoModelConfig):
     """UniSurf Model Config"""
 
-    _target: Type = field(default_factory=lambda: DtoOModel)
+    _target: type = field(default_factory=lambda: DtoOModel)
     smooth_loss_multi: float = 0.005
     """smoothness loss on surface points in unisurf"""
     sdf_field: SDFFieldConfig = field(default_factory=SDFFieldConfig)
@@ -163,7 +160,7 @@ class DtoOModel(NerfactoModel):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         if self.use_nerfacto:
             callbacks = super().get_training_callbacks(training_callback_attributes)
         else:
@@ -186,7 +183,7 @@ class DtoOModel(NerfactoModel):
 
         return callbacks
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         param_groups = super().get_param_groups()
         param_groups["occupancy_field"] = list(self.occupancy_field.parameters())
         return param_groups
@@ -219,8 +216,8 @@ class DtoOModel(NerfactoModel):
         # sample uniformly with currently nears and far
         voxel_samples = self.uniform_sampler(ray_bundle, num_samples=10)
 
-        nears = ray_bundle.nears.clone()
-        fars = ray_bundle.fars.clone()
+        ray_bundle.nears.clone()
+        ray_bundle.fars.clone()
 
         # bootstrap should needs longer if using only one gpus
         if self.training and self.step_counter > 5000 and self.step_counter % 5000 == 1:
@@ -321,7 +318,7 @@ class DtoOModel(NerfactoModel):
             outputs = super().get_outputs(ray_bundle)
 
             # weights and ray samples from nerfacto
-            base_weights = outputs["weights_list"][-1].detach()
+            outputs["weights_list"][-1].detach()
             base_ray_samples = outputs["ray_samples_list"][-1]
 
             # TODO maybe interative sampling to sample more points on the surface?
@@ -567,8 +564,8 @@ class DtoOModel(NerfactoModel):
         return loss_dict
 
     def get_image_metrics_and_images(
-        self, outputs: Dict[str, torch.Tensor], batch: Dict[str, torch.Tensor]
-    ) -> Tuple[Dict[str, float], Dict[str, torch.Tensor]]:
+        self, outputs: dict[str, torch.Tensor], batch: dict[str, torch.Tensor]
+    ) -> tuple[dict[str, float], dict[str, torch.Tensor]]:
         if self.use_nerfacto:
             metrics_dict, images_dict = super().get_image_metrics_and_images(outputs, batch)
         else:

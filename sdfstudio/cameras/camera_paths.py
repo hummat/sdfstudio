@@ -16,7 +16,7 @@
 Code for camera paths.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 import numpy as np
 import torch
@@ -56,7 +56,7 @@ def get_spiral_path(
     camera: Cameras,
     steps: int = 30,
     radius: Optional[float] = None,
-    radiuses: Optional[Tuple[float]] = None,
+    radiuses: Optional[tuple[float]] = None,
     rots: int = 2,
     zrate: float = 0.5,
 ) -> Cameras:
@@ -122,7 +122,7 @@ def get_spiral_path(
     )
 
 
-def get_path_from_json(camera_path: Dict[str, Any]) -> Cameras:
+def get_path_from_json(camera_path: dict[str, Any]) -> Cameras:
     """Takes a camera path dictionary and returns a trajectory as a Camera instance.
 
     Args:

@@ -17,8 +17,8 @@
 from typing import Optional
 
 import torch
-from torch import Tensor as TensorType
 from matplotlib import cm
+from torch import Tensor as TensorType
 
 from sdfstudio.utils import colors
 

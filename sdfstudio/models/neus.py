@@ -19,7 +19,6 @@ Implementation of NeuS.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Type
 
 from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.engine.callbacks import (
@@ -28,16 +27,16 @@ from sdfstudio.engine.callbacks import (
     TrainingCallbackLocation,
 )
 from sdfstudio.field_components.field_heads import FieldHeadNames
+from sdfstudio.model_components.losses import nerfstudio_distortion_loss
 from sdfstudio.model_components.ray_samplers import NeuSSampler
 from sdfstudio.models.base_surface_model import SurfaceModel, SurfaceModelConfig
-from sdfstudio.model_components.losses import nerfstudio_distortion_loss
 
 
 @dataclass
 class NeuSModelConfig(SurfaceModelConfig):
     """NeuS Model Config"""
 
-    _target: Type = field(default_factory=lambda: NeuSModel)
+    _target: type = field(default_factory=lambda: NeuSModel)
     num_samples: int = 64
     """Number of uniform samples"""
     num_samples_importance: int = 64
@@ -79,7 +78,7 @@ class NeuSModel(SurfaceModel):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         callbacks = super().get_training_callbacks(training_callback_attributes)
         # anneal for cos in NeuS
         if self.anneal_end > 0:
@@ -98,7 +97,7 @@ class NeuSModel(SurfaceModel):
 
         return callbacks
 
-    def sample_and_forward_field(self, ray_bundle: RayBundle) -> Dict:
+    def sample_and_forward_field(self, ray_bundle: RayBundle) -> dict:
         ray_samples = self.sampler(ray_bundle, sdf_fn=self.field.get_sdf)
         # save_points("a.ply", ray_samples.frustums.get_start_positions().reshape(-1, 3).detach().cpu().numpy())
         field_outputs = self.field(ray_samples, return_alphas=True)
@@ -115,7 +114,7 @@ class NeuSModel(SurfaceModel):
         }
         return samples_and_field_outputs
 
-    def get_metrics_dict(self, outputs, batch) -> Dict:
+    def get_metrics_dict(self, outputs, batch) -> dict:
         metrics_dict = super().get_metrics_dict(outputs, batch)
         if self.training:
             # training statics
@@ -130,7 +129,7 @@ class NeuSModel(SurfaceModel):
 
         return metrics_dict
 
-    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> Dict:
+    def get_loss_dict(self, outputs, batch, metrics_dict=None) -> dict:
         loss_dict = super().get_loss_dict(outputs, batch, metrics_dict)
 
         if self.training and self.config.distortion_loss_mult > 0.0:

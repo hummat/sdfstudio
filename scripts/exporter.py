@@ -7,14 +7,14 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Annotated, Union
 
 import numpy as np
 import open3d as o3d
 import torch
 import tyro
 from rich.console import Console
-from typing_extensions import Annotated, Literal
+from typing_extensions import Literal
 
 from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.exporter import texture_utils, tsdf_utils
@@ -54,9 +54,9 @@ class ExportPointCloud(Exporter):
     """Name of the RGB output."""
     use_bounding_box: bool = True
     """Only query points within the bounding box"""
-    bounding_box_min: Tuple[float, float, float] = (-1, -1, -1)
+    bounding_box_min: tuple[float, float, float] = (-1, -1, -1)
     """Minimum of the bounding box, used if use_bounding_box is True."""
-    bounding_box_max: Tuple[float, float, float] = (1, 1, 1)
+    bounding_box_max: tuple[float, float, float] = (1, 1, 1)
     """Minimum of the bounding box, used if use_bounding_box is True."""
     num_rays_per_batch: int = 32768
     """Number of rays to evaluate per batch. Decrease if you run out of memory."""
@@ -108,15 +108,15 @@ class ExportTSDFMesh(Exporter):
     """Name of the depth output."""
     rgb_output_name: str = "rgb"
     """Name of the RGB output."""
-    resolution: Union[int, List[int]] = field(default_factory=lambda: [128, 128, 128])
+    resolution: int | list[int] = field(default_factory=lambda: [128, 128, 128])
     """Resolution of the TSDF volume or [x, y, z] resolutions individually."""
     batch_size: int = 10
     """How many depth images to integrate per batch."""
     use_bounding_box: bool = True
     """Whether to use a bounding box for the TSDF volume."""
-    bounding_box_min: Tuple[float, float, float] = (-1, -1, -1)
+    bounding_box_min: tuple[float, float, float] = (-1, -1, -1)
     """Minimum of the bounding box, used if use_bounding_box is True."""
-    bounding_box_max: Tuple[float, float, float] = (1, 1, 1)
+    bounding_box_max: tuple[float, float, float] = (1, 1, 1)
     """Minimum of the bounding box, used if use_bounding_box is True."""
     texture_method: Literal["tsdf", "nerf"] = "nerf"
     """Method to texture the mesh with. Either 'tsdf' or 'nerf'."""
@@ -126,7 +126,7 @@ class ExportTSDFMesh(Exporter):
     """The method to use for unwrapping the mesh."""
     num_pixels_per_side: int = 2048
     """If using xatlas for unwrapping, the pixels per side of the texture image."""
-    target_num_faces: Optional[int] = 50000
+    target_num_faces: int | None = 50000
     """Target number of faces for the mesh to texture."""
 
     def main(self) -> None:
@@ -192,9 +192,9 @@ class ExportPoissonMesh(Exporter):
     """Whether to save the point cloud."""
     use_bounding_box: bool = True
     """Only query points within the bounding box"""
-    bounding_box_min: Tuple[float, float, float] = (-1, -1, -1)
+    bounding_box_min: tuple[float, float, float] = (-1, -1, -1)
     """Minimum of the bounding box, used if use_bounding_box is True."""
-    bounding_box_max: Tuple[float, float, float] = (1, 1, 1)
+    bounding_box_max: tuple[float, float, float] = (1, 1, 1)
     """Minimum of the bounding box, used if use_bounding_box is True."""
     num_rays_per_batch: int = 32768
     """Number of rays to evaluate per batch. Decrease if you run out of memory."""
@@ -206,7 +206,7 @@ class ExportPoissonMesh(Exporter):
     """The method to use for unwrapping the mesh."""
     num_pixels_per_side: int = 2048
     """If using xatlas for unwrapping, the pixels per side of the texture image."""
-    target_num_faces: Optional[int] = 50000
+    target_num_faces: int | None = 50000
     """Target number of faces for the mesh to texture."""
     std_ratio: float = 10.0
     """Threshold based on STD of the average distances across the point cloud to remove outliers."""

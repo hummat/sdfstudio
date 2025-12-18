@@ -16,11 +16,12 @@
 Field for compound nerf model, adds scene contraction and image embeddings to instant ngp
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import torch
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 from torch.nn.parameter import Parameter
 
 from sdfstudio.cameras.rays import RaySamples
@@ -335,8 +336,8 @@ class TorchNerfactoField(Field):
         head_mlp_num_layers: int = 2,
         head_mlp_layer_width: int = 32,
         appearance_embedding_dim: int = 40,
-        skip_connections: Tuple = (4,),
-        field_heads: Tuple[FieldHead] = (RGBFieldHead(),),
+        skip_connections: tuple = (4,),
+        field_heads: tuple[FieldHead] = (RGBFieldHead(),),
         spatial_distortion: SpatialDistortion = SceneContraction(),
     ) -> None:
         super().__init__()
@@ -382,7 +383,7 @@ class TorchNerfactoField(Field):
 
     def get_outputs(
         self, ray_samples: RaySamples, density_embedding: Optional[TensorType] = None
-    ) -> Dict[FieldHeadNames, TensorType]:
+    ) -> dict[FieldHeadNames, TensorType]:
         outputs_shape = ray_samples.frustums.directions.shape[:-1]
 
         if ray_samples.camera_indices is None:

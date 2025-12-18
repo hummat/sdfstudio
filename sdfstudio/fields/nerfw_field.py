@@ -14,7 +14,7 @@
 
 """Fields for nerf-w"""
 
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import torch
 from torch import nn
@@ -62,7 +62,7 @@ class VanillaNerfWField(Field):
         head_mlp_layer_width: int = 128,
         appearance_embedding_dim: int = 48,
         transient_embedding_dim: int = 16,
-        skip_connections: Tuple[int] = (4,),
+        skip_connections: tuple[int] = (4,),
     ) -> None:
         super().__init__()
         self.num_images = num_images
@@ -121,7 +121,7 @@ class VanillaNerfWField(Field):
         self,
         ray_samples: RaySamples,
         density_embedding: Optional[TensorType[..., "embedding_size"]] = None,
-    ) -> Dict[FieldHeadNames, TensorType]:
+    ) -> dict[FieldHeadNames, TensorType]:
         """Returns the outputs of the NeRF-W field.
 
         Args:

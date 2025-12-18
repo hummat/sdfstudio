@@ -16,7 +16,7 @@
 Miscellaneous helper code.
 """
 
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import torch
 
@@ -24,7 +24,7 @@ import torch
 def get_dict_to_torch(
     stuff: Any,
     device: Union[torch.device, str] = "cpu",
-    exclude: Optional[List[str]] = None,
+    exclude: Optional[list[str]] = None,
 ):
     """Set everything in the dict to the specified torch device.
 
@@ -116,7 +116,7 @@ class IterableWrapper:  # pylint: disable=too-few-public-methods
         return self
 
 
-def scale_dict(dictionary: Dict[Any, Any], coefficients: Dict[str, float]) -> Dict[Any, Any]:
+def scale_dict(dictionary: dict[Any, Any], coefficients: dict[str, float]) -> dict[Any, Any]:
     """Scale a dictionary in-place given a coefficients dictionary.
 
     Args:

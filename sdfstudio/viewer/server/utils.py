@@ -15,7 +15,7 @@
 """Generic utility functions"""
 
 import sys
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Optional
 
 import numpy as np
 import torch
@@ -23,10 +23,10 @@ import zmq
 
 
 def get_chunks(
-    lst: List[float],
+    lst: list[float],
     num_chunks: Optional[int] = None,
     size_of_chunk: Optional[int] = None,
-) -> List[List[float]]:
+) -> list[list[float]]:
     """Returns list of n elements, constaining a sublist.
 
     Args:
@@ -62,8 +62,8 @@ def three_js_perspective_camera_focal_length(fov: float, image_height: int):
 
 
 def get_intrinsics_matrix_and_camera_to_world_h(
-    camera_object: Dict[str, Any], image_height: int
-) -> Tuple[torch.Tensor, torch.Tensor]:
+    camera_object: dict[str, Any], image_height: int
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Returns the camera intrinsics matrix and the camera to world homogeneous matrix.
 
     Args:

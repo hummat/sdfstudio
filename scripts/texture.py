@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import tyro
 from rich.console import Console
@@ -67,9 +67,9 @@ class TextureMesh:
     """Maximum elevation angle for --method open3d."""
     radius_mult: float = 2.0
     """Multiplier for mesh bounding sphere radius for --method open3d."""
-    eval_num_rays_per_chunk: Optional[int] = None
+    eval_num_rays_per_chunk: int | None = None
     """Override `pipeline.model.eval_num_rays_per_chunk` used during texture queries."""
-    appearance_idx: Optional[int] = None
+    appearance_idx: int | None = None
     """Override camera indices for appearance embeddings.
 
     - v2 cpu/gpu and legacy exporters query the model with a single camera index; if unset, defaults to 0.

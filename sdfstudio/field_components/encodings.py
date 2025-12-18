@@ -22,7 +22,8 @@ from typing import Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 from typing_extensions import Literal
 
 from sdfstudio.field_components.base_field_component import FieldComponent

@@ -32,7 +32,8 @@ from typing import Optional, Union
 
 import nerfacc
 import torch
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 from typing_extensions import Literal
 
 from sdfstudio.cameras.rays import RaySamples

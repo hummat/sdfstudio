@@ -8,12 +8,11 @@ import tarfile
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union
+from typing import Annotated, Union
 
 import gdown
 import tyro
 from rich.console import Console
-from typing_extensions import Annotated
 
 from sdfstudio.configs.base_config import PrintableConfig
 
@@ -323,7 +322,6 @@ class Mipnerf360Download(DatasetDownload):
         """Download the friends dataset."""
 
         # https://drive.google.com/file/d/1sgKr0ZO7BQC0FYinAnRSxobIWNucAST5/view?usp=sharing
-        friends_file_id = "1sgKr0ZO7BQC0FYinAnRSxobIWNucAST5"
 
         # Download the files
         url = "https://data.nerf.studio/nerfstudio-data-mipnerf360.zip"

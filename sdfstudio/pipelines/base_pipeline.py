@@ -22,7 +22,7 @@ import typing
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from time import time
-from typing import Any, Dict, List, Optional, Type, Union, cast
+from typing import Any, cast
 
 import torch
 import torch.distributed as dist
@@ -41,7 +41,6 @@ from typing_extensions import Literal
 from sdfstudio.configs import base_config as cfg
 from sdfstudio.data.datamanagers.base_datamanager import (
     DataManager,
-    FlexibleDataManager,
     FlexibleDataManagerConfig,
     VanillaDataManager,
     VanillaDataManagerConfig,
@@ -52,7 +51,7 @@ from sdfstudio.utils import profiler
 from sdfstudio.utils.images import BasicImages
 
 
-def module_wrapper(ddp_or_model: Union[DDP, Model]) -> Model:
+def module_wrapper(ddp_or_model: DDP | Model) -> Model:
     """
     If DDP, then return the .module. Otherwise, return the model.
     """
@@ -159,10 +158,10 @@ class Pipeline(nn.Module):
 
     @abstractmethod
     @profiler.time_function
-    def get_average_eval_image_metrics(self, step: Optional[int] = None):
+    def get_average_eval_image_metrics(self, step: int | None = None):
         """Iterate over all the images in the eval dataset and get the average."""
 
-    def load_pipeline(self, loaded_state: Dict[str, Any]) -> None:
+    def load_pipeline(self, loaded_state: dict[str, Any]) -> None:
         """Load the checkpoint from the given path
 
         Args:
@@ -171,10 +170,10 @@ class Pipeline(nn.Module):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         """Returns the training callbacks from both the Dataloader and the Model."""
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         """Get the param groups for the pipeline.
 
         Returns:
@@ -186,7 +185,7 @@ class Pipeline(nn.Module):
 class VanillaPipelineConfig(cfg.InstantiateConfig):
     """Configuration for pipeline instantiation"""
 
-    _target: Type = field(default_factory=lambda: VanillaPipeline)
+    _target: type = field(default_factory=lambda: VanillaPipeline)
     """target class to instantiate"""
     datamanager: VanillaDataManagerConfig = field(default_factory=VanillaDataManagerConfig)
     """specifies the datamanager config"""
@@ -325,7 +324,7 @@ class VanillaPipeline(Pipeline):
         return metrics_dict, images_dict
 
     @profiler.time_function
-    def get_average_eval_image_metrics(self, step: Optional[int] = None):
+    def get_average_eval_image_metrics(self, step: int | None = None):
         """Iterate over all the images in the eval dataset and get the average.
 
         Returns:
@@ -347,11 +346,9 @@ class VanillaPipeline(Pipeline):
                 camera_ray_bundle,
                 batch,
             ) in self.datamanager.fixed_indices_eval_dataloader:
-                isbasicimages = False
                 if isinstance(
                     batch["image"], BasicImages
                 ):  # If this is a generalized dataset, we need to get image tensor
-                    isbasicimages = True
                     batch["image"] = batch["image"].images[0]
                     camera_ray_bundle = camera_ray_bundle.reshape((*batch["image"].shape[:-1],))
                 # time this the following line
@@ -416,11 +413,9 @@ class VanillaPipeline(Pipeline):
                 camera_ray_bundle,
                 batch,
             ) in self.datamanager.fixed_indices_train_dataloader:
-                isbasicimages = False
                 if isinstance(
                     batch["image"], BasicImages
                 ):  # If this is a generalized dataset, we need to get image tensor
-                    isbasicimages = True
                     batch["image"] = batch["image"].images[0]
                     camera_ray_bundle = camera_ray_bundle.reshape((*batch["image"].shape[:-1],))
                 # downsample by factor of 4 to speed up
@@ -443,7 +438,7 @@ class VanillaPipeline(Pipeline):
         self.train()
         return coarse_mask
 
-    def load_pipeline(self, loaded_state: Dict[str, Any]) -> None:
+    def load_pipeline(self, loaded_state: dict[str, Any]) -> None:
         """Load the checkpoint from the given path
 
         Args:
@@ -460,14 +455,14 @@ class VanillaPipeline(Pipeline):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         """Returns the training callbacks from both the Dataloader and the Model."""
         datamanager_callbacks = self.datamanager.get_training_callbacks(training_callback_attributes)
         model_callbacks = self.model.get_training_callbacks(training_callback_attributes)
         callbacks = datamanager_callbacks + model_callbacks
         return callbacks
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:
+    def get_param_groups(self) -> dict[str, list[Parameter]]:
         """Get the param groups for the pipeline.
 
         Returns:
@@ -483,7 +478,7 @@ class VanillaPipeline(Pipeline):
 class FlexibleInputPipelineConfig(VanillaPipelineConfig):
     """Configuration for pipeline instantiation"""
 
-    _target: Type = field(default_factory=lambda: FlexibleInputPipeline)
+    _target: type = field(default_factory=lambda: FlexibleInputPipeline)
     """target class to instantiate"""
     datamanager: FlexibleDataManagerConfig = field(default_factory=FlexibleDataManagerConfig)
     """specifies the datamanager config"""

@@ -19,7 +19,8 @@ Scene Colliders
 from __future__ import annotations
 
 import torch
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 
 from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.data.scene_box import SceneBox

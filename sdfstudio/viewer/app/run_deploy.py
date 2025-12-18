@@ -18,7 +18,6 @@ We use the library sshconf (https://github.com/sorend/sshconf) for working with 
 """
 
 import json
-import os
 import subprocess
 from os.path import expanduser
 from pathlib import Path
@@ -103,7 +102,7 @@ def main(
     config.save()
 
     # get the version
-    with open(package_json_filename, "r", encoding="utf-8") as f:
+    with open(package_json_filename, encoding="utf-8") as f:
         package_json = json.load(f)
 
     # TODO: add logic to increment the version number

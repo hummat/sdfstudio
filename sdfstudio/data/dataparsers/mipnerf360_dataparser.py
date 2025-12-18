@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path, PurePath
-from typing import Optional, Type
 
 import numpy as np
 import torch
@@ -43,13 +42,13 @@ MAX_AUTO_RESOLUTION = 1600
 class Mipnerf360DataParserConfig(DataParserConfig):
     """Mipnerf360 dataset config"""
 
-    _target: Type = field(default_factory=lambda: Mipnerf360)
+    _target: type = field(default_factory=lambda: Mipnerf360)
     """target class to instantiate"""
     data: Path = Path("data/sdfstudio-data-mipnerf360/garden")
     """Directory or explicit json file path specifying location of data."""
     scale_factor: float = 1.0
     """How much to scale the camera origins by."""
-    downscale_factor: Optional[int] = None
+    downscale_factor: int | None = None
     """How much to downscale images. If not set, images are chosen such that the max dimension is <1600px."""
     scene_scale: float = 1.0
     """How much to scale the region of interest by."""
@@ -68,7 +67,7 @@ class Mipnerf360(DataParser):
     """Mipnerf360 DatasetParser"""
 
     config: Mipnerf360DataParserConfig
-    downscale_factor: Optional[int] = None
+    downscale_factor: int | None = None
 
     def _generate_dataparser_outputs(self, split="train"):
         # pylint: disable=too-many-statements
@@ -164,7 +163,7 @@ class Mipnerf360(DataParser):
         if num_skipped_image_filenames >= 0:
             CONSOLE.log(f"Skipping {num_skipped_image_filenames} files in dataset split {split}.")
         assert len(image_filenames) != 0, """
-        No image files found. 
+        No image files found.
         You should check the file_paths in the transforms.json file to make sure they are correct.
         """
         assert len(mask_filenames) == 0 or (len(mask_filenames) == len(image_filenames)), """

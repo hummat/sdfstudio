@@ -19,7 +19,6 @@ Implementation of VolSDF.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Type
 
 from sdfstudio.engine.callbacks import (
     TrainingCallback,
@@ -35,7 +34,7 @@ from sdfstudio.models.neus import NeuSModel, NeuSModelConfig
 class NeuralReconWModelConfig(NeuSModelConfig):
     """UniSurf Model Config"""
 
-    _target: Type = field(default_factory=lambda: NeuralReconWModel)
+    _target: type = field(default_factory=lambda: NeuralReconWModel)
 
 
 class NeuralReconWModel(NeuSModel):
@@ -61,11 +60,13 @@ class NeuralReconWModel(NeuSModel):
 
     def get_training_callbacks(
         self, training_callback_attributes: TrainingCallbackAttributes
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         callbacks = super().get_training_callbacks(training_callback_attributes)
 
         # add sampler call backs
-        sdf_fn = lambda x: self.field.forward_geonetwork(x)[:, 0].contiguous()
+        def sdf_fn(x):
+            return self.field.forward_geonetwork(x)[:, 0].contiguous()
+
         callbacks.append(
             TrainingCallback(
                 where_to_run=[TrainingCallbackLocation.AFTER_TRAIN_ITERATION],

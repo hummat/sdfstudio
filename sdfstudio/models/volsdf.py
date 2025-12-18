@@ -19,7 +19,6 @@ Implementation of VolSDF.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Type
 
 from sdfstudio.cameras.rays import RayBundle
 from sdfstudio.field_components.field_heads import FieldHeadNames
@@ -31,7 +30,7 @@ from sdfstudio.models.base_surface_model import SurfaceModel, SurfaceModelConfig
 class VolSDFModelConfig(SurfaceModelConfig):
     """VolSDF Model Config"""
 
-    _target: Type = field(default_factory=lambda: VolSDFModel)
+    _target: type = field(default_factory=lambda: VolSDFModel)
     num_samples: int = 64
     """Number of samples after error bounded sampling"""
     num_samples_eval: int = 128
@@ -59,7 +58,7 @@ class VolSDFModel(SurfaceModel):
             num_samples_extra=self.config.num_samples_extra,
         )
 
-    def sample_and_forward_field(self, ray_bundle: RayBundle) -> Dict:
+    def sample_and_forward_field(self, ray_bundle: RayBundle) -> dict:
         ray_samples, eik_points = self.sampler(
             ray_bundle, density_fn=self.field.laplace_density, sdf_fn=self.field.get_sdf
         )
@@ -76,7 +75,7 @@ class VolSDFModel(SurfaceModel):
         }
         return samples_and_field_outputs
 
-    def get_metrics_dict(self, outputs, batch) -> Dict:
+    def get_metrics_dict(self, outputs, batch) -> dict:
         metrics_dict = super().get_metrics_dict(outputs, batch)
         if self.training:
             # training statics

@@ -18,14 +18,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional, Type
-from typing_extensions import Literal
 
 import numpy as np
 import torch
 from PIL import Image
 from rich.console import Console
 from torch import Tensor as TensorType
+from typing_extensions import Literal
 
 from sdfstudio.cameras import camera_utils
 from sdfstudio.cameras.cameras import Cameras, CameraType
@@ -43,7 +42,7 @@ CONSOLE = Console()
 
 def get_src_from_pairs(
     ref_idx, all_imgs, pairs_srcs, neighbors_num=None, neighbors_shuffle=False
-) -> Dict[str, TensorType]:
+) -> dict[str, TensorType]:
     # src_idx[0] is ref img
     src_idx = pairs_srcs[ref_idx]
     # randomly sample neighbors
@@ -139,7 +138,7 @@ def get_sparse_sfm_points(image_idx: int, sfm_points):
 class SDFStudioDataParserConfig(DataParserConfig):
     """Scene dataset parser config"""
 
-    _target: Type = field(default_factory=lambda: SDFStudio)
+    _target: type = field(default_factory=lambda: SDFStudio)
     """target class to instantiate"""
     data: Path = Path("data/DTU/scan65")
     """Directory specifying location of data."""
@@ -164,10 +163,10 @@ class SDFStudioDataParserConfig(DataParserConfig):
     """Whether to automatically scale the poses to fit in +/- 1 bounding box."""
     load_pairs: bool = False
     """whether to load pairs for multi-view consistency"""
-    neighbors_num: Optional[int] = None
-    neighbors_shuffle: Optional[bool] = False
-    pairs_sorted_ascending: Optional[bool] = True
-    """if src image pairs are sorted in ascending order by similarity i.e. 
+    neighbors_num: int | None = None
+    neighbors_shuffle: bool | None = False
+    pairs_sorted_ascending: bool | None = True
+    """if src image pairs are sorted in ascending order by similarity i.e.
     the last element is the most similar to the first (ref)"""
     skip_every_for_val_split: int = 1
     """sub sampling validation images"""
@@ -219,7 +218,7 @@ class SDFStudio(DataParser):
         cx = []
         cy = []
         camera_to_worlds = []
-        for i, frame in enumerate(meta["frames"]):
+        for _i, frame in enumerate(meta["frames"]):
             image_filename = self.config.data / frame["rgb_path"]
 
             intrinsics = torch.tensor(frame["intrinsics"])
@@ -391,9 +390,12 @@ class SDFStudio(DataParser):
         # load pair information
         pairs_path = self.config.data / "pairs.txt"
         if pairs_path.exists() and split == "train" and self.config.load_pairs:
-            with open(pairs_path, "r") as f:
+            with open(pairs_path) as f:
                 pairs = f.readlines()
-            split_ext = lambda x: x.split(".")[0]
+
+            def split_ext(x):
+                return x.split(".")[0]
+
             pairs_srcs = []
             for sources_line in pairs:
                 sources_array = [int(split_ext(img_name)) for img_name in sources_line.split(" ")]

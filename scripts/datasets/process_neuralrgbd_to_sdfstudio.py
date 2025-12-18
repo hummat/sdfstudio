@@ -36,7 +36,7 @@ def alphanum_key(s):
 
 
 def load_poses(posefile):
-    file = open(posefile, "r")
+    file = open(posefile)
     lines = file.readlines()
     file.close()
     poses = []

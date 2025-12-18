@@ -18,7 +18,7 @@ import csv
 import json
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import numpy as np
 from PIL import Image
@@ -28,12 +28,12 @@ from sdfstudio.utils.rich_utils import CONSOLE
 
 
 def realitycapture_to_json(
-    image_filename_map: Dict[str, Path],
+    image_filename_map: dict[str, Path],
     csv_filename: Path,
     ply_filename: Optional[Path],
     output_dir: Path,
     verbose: bool = False,
-) -> List[str]:
+) -> list[str]:
     """Convert RealityCapture data into a sdfstudio dataset.
     See https://dev.epicgames.com/community/learning/knowledge-base/vzwB/capturing-reality-realitycapture-xmp-camera-math
 

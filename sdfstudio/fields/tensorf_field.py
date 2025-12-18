@@ -17,7 +17,8 @@
 from typing import Optional
 
 import torch
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 from torch.nn.parameter import Parameter
 
 from sdfstudio.cameras.rays import RaySamples

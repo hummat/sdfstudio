@@ -17,7 +17,7 @@ Tools supporting the execution of COLMAP and preparation of COLMAP-based dataset
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal, Optional, Union
 
 import appdirs
 import cv2
@@ -193,7 +193,7 @@ def run_colmap(
         CONSOLE.log("[bold green]:tada: Done refining intrinsics.")
 
 
-def parse_colmap_camera_params(camera) -> Dict[str, Any]:
+def parse_colmap_camera_params(camera) -> dict[str, Any]:
     """
     Parses all currently supported COLMAP cameras into the transforms.json metadata
 
@@ -203,7 +203,7 @@ def parse_colmap_camera_params(camera) -> Dict[str, Any]:
         transforms.json metadata containing camera's intrinsics and distortion parameters
 
     """
-    out: Dict[str, Any] = {
+    out: dict[str, Any] = {
         "w": camera.width,
         "h": camera.height,
     }
@@ -400,12 +400,12 @@ def colmap_to_json(
     recon_dir: Path,
     output_dir: Path,
     camera_mask_path: Optional[Path] = None,
-    image_id_to_depth_path: Optional[Dict[int, Path]] = None,
-    image_rename_map: Optional[Dict[str, str]] = None,
+    image_id_to_depth_path: Optional[dict[int, Path]] = None,
+    image_rename_map: Optional[dict[str, str]] = None,
     ply_filename="sparse_pc.ply",
     keep_original_world_coordinate: bool = False,
     use_single_camera_mode: bool = True,
-    crop_factor: Union[Tuple[float, float, float, float], List] = (0.0, 0.0, 0.0, 0.0),
+    crop_factor: Union[tuple[float, float, float, float], list] = (0.0, 0.0, 0.0, 0.0),
 ) -> int:
     """Converts COLMAP's cameras.bin and images.bin to a JSON file.
 
@@ -543,7 +543,7 @@ def create_sfm_depth(
     min_n_visible: int = 2,
     include_depth_debug: bool = False,
     input_images_dir: Optional[Path] = None,
-) -> Dict[int, Path]:
+) -> dict[int, Path]:
     """Converts COLMAP's points3d.bin to sparse depth map images encoded as
     16-bit "millimeter depth" PNGs.
 

@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import pymeshlab
@@ -44,13 +43,13 @@ class TSDF:
     Class for creating TSDFs.
     """
 
-    voxel_coords: TensorType[3, "xdim", "ydim", "zdim"]
+    voxel_coords: TensorType[3, xdim, ydim, zdim]
     """Coordinates of each voxel in the TSDF."""
-    values: TensorType["xdim", "ydim", "zdim"]
+    values: TensorType[xdim, ydim, zdim]
     """TSDF values for each voxel."""
-    weights: TensorType["xdim", "ydim", "zdim"]
+    weights: TensorType[xdim, ydim, zdim]
     """TSDF weights for each voxel."""
-    colors: TensorType["xdim", "ydim", "zdim", 3]
+    colors: TensorType[xdim, ydim, zdim, 3]
     """TSDF colors for each voxel."""
     voxel_size: TensorType[3]
     """Size of each voxel in the TSDF. [x, y, z] size."""
@@ -167,11 +166,11 @@ class TSDF:
 
     def integrate_tsdf(
         self,
-        c2w: TensorType["batch", 4, 4],
-        K: TensorType["batch", 3, 3],
-        depth_images: TensorType["batch", 1, "height", "width"],
-        color_images: Optional[TensorType["batch", 3, "height", "width"]] = None,
-        mask_images: Optional[TensorType["batch", 1, "height", "width"]] = None,
+        c2w: TensorType[batch, 4, 4],
+        K: TensorType[batch, 3, 3],
+        depth_images: TensorType[batch, 1, height, width],
+        color_images: TensorType[batch, 3, height, width] | None = None,
+        mask_images: TensorType[batch, 1, height, width] | None = None,
     ):
         """Integrates a batch of depth images into the TSDF.
 
@@ -287,11 +286,11 @@ def export_tsdf_mesh(
     downscale_factor: int = 2,
     depth_output_name: str = "depth",
     rgb_output_name: str = "rgb",
-    resolution: Union[int, List[int]] = field(default_factory=lambda: [256, 256, 256]),
+    resolution: int | list[int] = field(default_factory=lambda: [256, 256, 256]),
     batch_size: int = 10,
     use_bounding_box: bool = True,
-    bounding_box_min: Tuple[float, float, float] = (-1.0, -1.0, -1.0),
-    bounding_box_max: Tuple[float, float, float] = (1.0, 1.0, 1.0),
+    bounding_box_min: tuple[float, float, float] = (-1.0, -1.0, -1.0),
+    bounding_box_max: tuple[float, float, float] = (1.0, 1.0, 1.0),
 ):
     """Export a TSDF mesh from a pipeline.
 
@@ -319,7 +318,7 @@ def export_tsdf_mesh(
         aabb = torch.tensor([bounding_box_min, bounding_box_max])
     if isinstance(resolution, int):
         volume_dims = torch.tensor([resolution] * 3)
-    elif isinstance(resolution, List):
+    elif isinstance(resolution, list):
         volume_dims = torch.tensor(resolution)
     else:
         raise ValueError("Resolution must be an int or a list.")
@@ -339,11 +338,11 @@ def export_tsdf_mesh(
     )
 
     # camera extrinsics and intrinsics
-    c2w: TensorType["N", 3, 4] = cameras.camera_to_worlds.to(device)
+    c2w: TensorType[N, 3, 4] = cameras.camera_to_worlds.to(device)
     # make c2w homogeneous
     c2w = torch.cat([c2w, torch.zeros(c2w.shape[0], 1, 4, device=device)], dim=1)
     c2w[:, 3, 3] = 1
-    K: TensorType["N", 3, 3] = cameras.get_intrinsics_matrices().to(device)
+    K: TensorType[N, 3, 3] = cameras.get_intrinsics_matrices().to(device)
     color_images = torch.tensor(np.array(color_images), device=device).permute(0, 3, 1, 2)  # shape (N, 3, H, W)
     depth_images = torch.tensor(np.array(depth_images), device=device).permute(0, 3, 1, 2)  # shape (N, 1, H, W)
 

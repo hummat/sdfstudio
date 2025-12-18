@@ -20,7 +20,8 @@ from enum import Enum
 from typing import Callable, Optional, Union
 
 import torch
-from torch import nn, Tensor as TensorType
+from torch import Tensor as TensorType
+from torch import nn
 
 from sdfstudio.field_components.base_field_component import FieldComponent
 

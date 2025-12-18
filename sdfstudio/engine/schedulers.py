@@ -15,7 +15,7 @@
 """Scheduler Classes"""
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, Type, List
+from typing import Any, Optional
 
 import numpy as np
 from torch.optim import Optimizer, lr_scheduler
@@ -27,7 +27,7 @@ from sdfstudio.configs.base_config import InstantiateConfig
 class SchedulerConfig(InstantiateConfig):
     """Basic scheduler config with self-defined exponential decay schedule"""
 
-    _target: Type = field(default_factory=lambda: ExponentialDecaySchedule)
+    _target: type = field(default_factory=lambda: ExponentialDecaySchedule)
     lr_final: float = 0.000005
     max_steps: int = 1000000
 
@@ -135,7 +135,7 @@ class DelayedExponentialScheduler(DelayerScheduler):
 class MultiStepSchedulerConfig(InstantiateConfig):
     """Basic scheduler config with self-defined exponential decay schedule"""
 
-    _target: Type = field(default_factory=lambda: lr_scheduler.MultiStepLR)
+    _target: type = field(default_factory=lambda: lr_scheduler.MultiStepLR)
     max_steps: int = 1000000
 
     def setup(self, optimizer=None, lr_init=None, **kwargs) -> Any:
@@ -155,7 +155,7 @@ class MultiStepSchedulerConfig(InstantiateConfig):
 class ExponentialSchedulerConfig(InstantiateConfig):
     """Basic scheduler config with self-defined exponential decay schedule"""
 
-    _target: Type = field(default_factory=lambda: lr_scheduler.ExponentialLR)
+    _target: type = field(default_factory=lambda: lr_scheduler.ExponentialLR)
     decay_rate: float = 0.1
     max_steps: int = 1000000
 
@@ -171,7 +171,7 @@ class ExponentialSchedulerConfig(InstantiateConfig):
 class NeuSSchedulerConfig(InstantiateConfig):
     """Basic scheduler config with self-defined exponential decay schedule"""
 
-    _target: Type = field(default_factory=lambda: NeuSScheduler)
+    _target: type = field(default_factory=lambda: NeuSScheduler)
     warm_up_end: int = 5000
     learning_rate_alpha: float = 0.05
     max_steps: int = 300000
@@ -206,9 +206,9 @@ class NeuSScheduler(lr_scheduler.LambdaLR):
 class MultiStepWarmupSchedulerConfig(InstantiateConfig):
     """Basic scheduler config with self-defined exponential decay schedule"""
 
-    _target: Type = field(default_factory=lambda: MultiStepWarmupScheduler)
+    _target: type = field(default_factory=lambda: MultiStepWarmupScheduler)
     warm_up_end: int = 5000
-    milestones: List[int] = field(default_factory=lambda: [300000, 400000, 500000])
+    milestones: list[int] = field(default_factory=lambda: [300000, 400000, 500000])
     gamma: float = 0.33
     # Optional max_steps is accepted for CLI compatibility, but is not used by
     # MultiStepWarmupScheduler. Use `milestones` to control decay points.

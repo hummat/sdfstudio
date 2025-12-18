@@ -10,7 +10,7 @@ import shutil
 import stat
 import subprocess
 import sys
-from typing import List, Union
+from typing import Union
 
 import tyro
 from rich.console import Console
@@ -107,8 +107,7 @@ def _generate_completion(
     try:
         new = subprocess.run(
             args=args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             encoding="utf8",
             check=True,
         ).stdout
@@ -211,8 +210,8 @@ def main(mode: ConfigureMode = "install") -> None:
         return
 
     # Try to locate the user's bashrc or zshrc.
-    shells_supported: List[ShellType] = ["zsh", "bash"]
-    shells_found: List[ShellType] = []
+    shells_supported: list[ShellType] = ["zsh", "bash"]
+    shells_found: list[ShellType] = []
     for shell in shells_supported:
         rc_path = pathlib.Path(os.environ["HOME"]) / f".{shell}rc"
         if not rc_path.exists():
@@ -269,9 +268,7 @@ def main(mode: ConfigureMode = "install") -> None:
             )
 
         # Delete obsolete completion files.
-        for unexpected_path in set(p.absolute() for p in existing_completions) - set(
-            p.absolute() for p in completion_paths
-        ):
+        for unexpected_path in {p.absolute() for p in existing_completions} - {p.absolute() for p in completion_paths}:
             if unexpected_path.is_dir():
                 shutil.rmtree(unexpected_path)
             elif unexpected_path.exists():

@@ -22,7 +22,7 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any
 
 import yaml
 from rich.console import Console
@@ -45,7 +45,7 @@ class PrintableConfig:  # pylint: disable=too-few-public-methods
     def __str__(self):
         lines = [self.__class__.__name__ + ":"]
         for key, val in vars(self).items():
-            if isinstance(val, Tuple):
+            if isinstance(val, tuple):
                 flattened_val = "["
                 for item in val:
                     flattened_val += str(item) + "\n"
@@ -60,7 +60,7 @@ class PrintableConfig:  # pylint: disable=too-few-public-methods
 class InstantiateConfig(PrintableConfig):  # pylint: disable=too-few-public-methods
     """Config class for instantiating an the class specified in the _target attribute."""
 
-    _target: Type
+    _target: type
 
     def setup(self, **kwargs) -> Any:
         """Returns the instantiated object using the config."""
@@ -88,11 +88,11 @@ class MachineConfig(PrintableConfig):
 class LocalWriterConfig(InstantiateConfig):
     """Local Writer config"""
 
-    _target: Type = writer.LocalWriter
+    _target: type = writer.LocalWriter
     """target class to instantiate"""
     enable: bool = False
     """if True enables local logging, else disables"""
-    stats_to_track: Tuple[writer.EventName, ...] = (
+    stats_to_track: tuple[writer.EventName, ...] = (
         writer.EventName.ITER_TRAIN_TIME,
         writer.EventName.TRAIN_RAYS_PER_SEC,
         writer.EventName.CURR_TEST_PSNR,
@@ -103,7 +103,7 @@ class LocalWriterConfig(InstantiateConfig):
     max_log_size: int = 10
     """maximum number of rows to print before wrapping. if 0, will print everything."""
 
-    def setup(self, banner_messages: Optional[List[str]] = None, **kwargs) -> Any:
+    def setup(self, banner_messages: list[str] | None = None, **kwargs) -> Any:
         """Instantiate local writer
 
         Args:
@@ -154,11 +154,11 @@ class TrainerConfig(PrintableConfig):
     save_only_latest_checkpoint: bool = True
     """Whether to only save the latest checkpoint or all checkpoints."""
     # optional parameters if we want to resume training
-    load_dir: Optional[Path] = None
+    load_dir: Path | None = None
     """Optionally specify a pre-trained model directory to load from."""
-    load_step: Optional[int] = None
+    load_step: int | None = None
     """Optionally specify model step to load from; if none, will find most recent model in load_dir."""
-    load_config: Optional[Path] = None
+    load_config: Path | None = None
     """Optionally specify model config to load from; if none, will use the default config?"""
     load_scheduler: bool = True
     """Whether to load the lr scheduler state_dict if exists"""
@@ -176,11 +176,11 @@ class ViewerConfig(PrintableConfig):
     start_train: bool = True
     """whether to immediately start training upon loading viewer
     if False, will just visualize dataset but you can toggle training in viewer"""
-    zmq_port: Optional[int] = None
+    zmq_port: int | None = None
     """The zmq port to connect to for communication. If None, find an available port."""
     launch_bridge_server: bool = True
     """whether or not to launch the bridge server"""
-    websocket_port: Optional[int] = 7007
+    websocket_port: int | None = 7007
     """the default websocket port to connect to"""
     ip_address: str = "127.0.0.1"
     """the ip address where the bridge server is running"""
@@ -204,9 +204,9 @@ class Config(PrintableConfig):
 
     output_dir: Path = Path("outputs")
     """relative or absolute output directory to save all checkpoints and logging"""
-    method_name: Optional[str] = None
+    method_name: str | None = None
     """Method name. Required to set in python or via cli"""
-    experiment_name: Optional[str] = None
+    experiment_name: str | None = None
     """Experiment name. If None, will automatically be set to dataset name"""
     timestamp: str = "{timestamp}"
     """Experiment timestamp."""
@@ -220,7 +220,7 @@ class Config(PrintableConfig):
     """Trainer configuration"""
     pipeline: VanillaPipelineConfig = field(default_factory=VanillaPipelineConfig)
     """Pipeline configuration"""
-    optimizers: Dict[str, Any] = to_immutable_dict(
+    optimizers: dict[str, Any] = to_immutable_dict(
         {
             "fields": {
                 "optimizer": OptimizerConfig(),
@@ -231,7 +231,7 @@ class Config(PrintableConfig):
     """Dictionary of optimizer groups and their schedulers"""
     vis: Literal["viewer", "wandb", "tensorboard"] = "wandb"
     """Which visualizer to use."""
-    data: Optional[Path] = None
+    data: Path | None = None
     """Alias for --pipeline.datamanager.dataparser.data"""
 
     def is_viewer_enabled(self) -> bool:

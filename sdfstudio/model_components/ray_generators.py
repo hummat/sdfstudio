@@ -16,7 +16,7 @@
 Ray generator.
 """
 
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 from sdfstudio.cameras.camera_optimizers import CameraOptimizer
 from sdfstudio.cameras.cameras import Cameras

@@ -16,13 +16,14 @@
 
 import sys
 from threading import Thread
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 
-from . import umsgpack
 import zmq
 from rich.console import Console
 
 from sdfstudio.viewer.server.path import Path
+
+from . import umsgpack
 
 CONSOLE = Console(width=120)
 
@@ -142,7 +143,7 @@ class Viewer:
     def __repr__(self):
         return f"<Viewer using: {self.window} at path: {self.path}>"
 
-    def write(self, data: Union[Dict, str, None] = None):
+    def write(self, data: Union[dict, str, None] = None):
         """Write data."""
         path = self.path.lower()
         return self.window.send({"type": "write", "path": path, "data": data})

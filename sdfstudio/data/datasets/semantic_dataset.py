@@ -16,8 +16,6 @@
 Semantic dataset.
 """
 
-from typing import Dict
-
 import torch
 
 from sdfstudio.data.dataparsers.base_dataparser import DataparserOutputs, Semantics
@@ -40,7 +38,7 @@ class SemanticDataset(InputDataset):
             [self.semantics.classes.index(mask_class) for mask_class in self.semantics.mask_classes]
         ).view(1, 1, -1)
 
-    def get_metadata(self, data: Dict) -> Dict:
+    def get_metadata(self, data: dict) -> dict:
         # handle mask
         filepath = self.semantics.filenames[data["image_idx"]]
         semantic_label, mask = get_semantics_and_mask_tensors_from_path(

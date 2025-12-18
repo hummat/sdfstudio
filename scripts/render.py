@@ -9,7 +9,6 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
 
 import mediapy as media
 import numpy as np
@@ -27,7 +26,6 @@ from typing_extensions import Literal, assert_never
 
 from sdfstudio.cameras.camera_paths import get_path_from_json, get_spiral_path
 from sdfstudio.cameras.cameras import Cameras
-from sdfstudio.configs.base_config import Config  # pylint: disable=unused-import
 from sdfstudio.pipelines.base_pipeline import Pipeline
 from sdfstudio.utils import install_checks
 from sdfstudio.utils.eval_utils import eval_setup
@@ -40,7 +38,7 @@ def _render_trajectory_video(
     pipeline: Pipeline,
     cameras: Cameras,
     output_filename: Path,
-    rendered_output_names: List[str],
+    rendered_output_names: list[str],
     rendered_resolution_scaling_factor: float = 1.0,
     seconds: float = 5.0,
     output_format: Literal["images", "video"] = "video",
@@ -114,7 +112,7 @@ class RenderTrajectory:
     # Path to config YAML file.
     load_config: Path
     # Name of the renderer outputs to use. rgb, depth, etc. concatenates them along y axis
-    rendered_output_names: List[str] = field(default_factory=lambda: ["rgb"])
+    rendered_output_names: list[str] = field(default_factory=lambda: ["rgb"])
     #  Trajectory to render.
     traj: Literal["spiral", "filename"] = "spiral"
     # Scaling factor to apply to the camera image resolution.
@@ -128,7 +126,7 @@ class RenderTrajectory:
     # How to save output data.
     output_format: Literal["images", "video"] = "video"
     # Specifies number of rays per chunk during eval.
-    eval_num_rays_per_chunk: Optional[int] = None
+    eval_num_rays_per_chunk: int | None = None
 
     def main(self) -> None:
         """Main function."""
@@ -148,7 +146,7 @@ class RenderTrajectory:
             # TODO(ethan): pass in the up direction of the camera
             camera_path = get_spiral_path(camera_start, steps=30, radius=0.1)
         elif self.traj == "filename":
-            with open(self.camera_path_filename, "r", encoding="utf-8") as f:
+            with open(self.camera_path_filename, encoding="utf-8") as f:
                 camera_path = json.load(f)
             seconds = camera_path["seconds"]
             camera_path = get_path_from_json(camera_path)

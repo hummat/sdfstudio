@@ -16,12 +16,12 @@
 Decorator definitions
 """
 
-from typing import Callable, List
+from typing import Callable
 
 from sdfstudio.utils import comms
 
 
-def decorate_all(decorators: List[Callable]) -> Callable:
+def decorate_all(decorators: list[Callable]) -> Callable:
     """A decorator to decorate all member functions of a class
 
     Args:

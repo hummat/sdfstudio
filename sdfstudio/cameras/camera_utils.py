@@ -16,7 +16,7 @@ Camera transformation helper code.
 """
 
 import math
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import torch
@@ -157,7 +157,7 @@ def quaternion_matrix(quaternion) -> np.ndarray:
     )
 
 
-def get_interpolated_poses(pose_a, pose_b, steps: int = 10) -> List[float]:
+def get_interpolated_poses(pose_a, pose_b, steps: int = 10) -> list[float]:
     """Return interpolation of poses with specified number of steps.
     Args:
         poseA: first pose
@@ -202,7 +202,7 @@ def get_interpolated_poses_many(
     poses: Tensor,
     Ks: Tensor,
     steps_per_transition=10,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Return interpolated poses for many camera poses.
 
     Args:
@@ -278,7 +278,7 @@ def _compute_residual_and_jacobian(
     xd: torch.Tensor,
     yd: torch.Tensor,
     distortion_params: torch.Tensor,
-) -> Tuple[
+) -> tuple[
     torch.Tensor,
     torch.Tensor,
     torch.Tensor,
@@ -586,8 +586,8 @@ def adjust_intrinsics_for_crop(
     height: int,
     cx: float,
     cy: float,
-    crop_factor: Tuple[float, float, float, float],
-) -> Tuple[int, int, float, float]:
+    crop_factor: tuple[float, float, float, float],
+) -> tuple[int, int, float, float]:
     """Adjusts the intrinsics for a crop factor.
 
     Args:

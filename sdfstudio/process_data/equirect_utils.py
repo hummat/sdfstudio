@@ -17,7 +17,6 @@
 import os
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 import cv2
 import numpy as np
@@ -167,7 +166,7 @@ def equirect2persp(img: torch.Tensor, fov: int, theta: int, phi: int, hd: int, w
     return remap_cubic(img, lon, lat, border_mode="wrap")
 
 
-def _crop_top(bound_arr: list, fov: int, crop_factor: float) -> List[float]:
+def _crop_top(bound_arr: list, fov: int, crop_factor: float) -> list[float]:
     """Returns a list of vertical bounds with the bottom cropped.
 
     Args:
@@ -193,7 +192,7 @@ def _crop_top(bound_arr: list, fov: int, crop_factor: float) -> List[float]:
     return bound_arr
 
 
-def _crop_bottom(bound_arr: list, fov: int, crop_factor: float) -> List[float]:
+def _crop_bottom(bound_arr: list, fov: int, crop_factor: float) -> list[float]:
     """Returns a list of vertical bounds with the top cropped.
 
     Args:
@@ -222,7 +221,7 @@ def _crop_bottom(bound_arr: list, fov: int, crop_factor: float) -> List[float]:
 def _crop_bound_arr_vertical(
     bound_arr: list,
     fov: int,
-    crop_factor: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
+    crop_factor: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
 ) -> list:
     """Returns a list of vertical bounds adjusted for cropping.
 
@@ -243,9 +242,9 @@ def _crop_bound_arr_vertical(
 
 def generate_planar_projections_from_equirectangular(
     image_dir: Path,
-    planar_image_size: Tuple[int, int],
+    planar_image_size: tuple[int, int],
     samples_per_im: int,
-    crop_factor: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
+    crop_factor: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0),
 ) -> Path:
     """Generate planar projections from an equirectangular image.
 
@@ -339,7 +338,7 @@ def generate_planar_projections_from_equirectangular(
     return output_dir
 
 
-def compute_resolution_from_equirect(image_dir: Path, num_images: int) -> Tuple[int, int]:
+def compute_resolution_from_equirect(image_dir: Path, num_images: int) -> tuple[int, int]:
     """Compute the resolution of the perspective projections of equirectangular images
        from the heuristic: num_image * res**2 = orig_height * orig_width.
 

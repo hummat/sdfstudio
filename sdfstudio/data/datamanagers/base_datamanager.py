@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any
 
 import torch
 import tyro
@@ -136,10 +136,10 @@ class DataManager(nn.Module):
 
     """
 
-    train_dataset: Optional[Dataset] = None
-    eval_dataset: Optional[Dataset] = None
-    train_sampler: Optional[DistributedSampler] = None
-    eval_sampler: Optional[DistributedSampler] = None
+    train_dataset: Dataset | None = None
+    eval_dataset: Dataset | None = None
+    train_sampler: DistributedSampler | None = None
+    eval_sampler: DistributedSampler | None = None
 
     def __init__(self):
         """Constructor for the DataManager class.
@@ -216,7 +216,7 @@ class DataManager(nn.Module):
         raise NotImplementedError
 
     @abstractmethod
-    def next_train(self, step: int) -> Tuple:
+    def next_train(self, step: int) -> tuple:
         """Returns the next batch of data from the train data manager.
 
         This will be a tuple of all the information that this data manager outputs.
@@ -224,7 +224,7 @@ class DataManager(nn.Module):
         raise NotImplementedError
 
     @abstractmethod
-    def next_eval(self, step: int) -> Tuple:
+    def next_eval(self, step: int) -> tuple:
         """Returns the next batch of data from the eval data manager.
 
         This will be a tuple of all the information that this data manager outputs.
@@ -232,19 +232,19 @@ class DataManager(nn.Module):
         raise NotImplementedError
 
     @abstractmethod
-    def next_eval_image(self, step: int) -> Tuple:
+    def next_eval_image(self, step: int) -> tuple:
         """Returns the next eval image."""
         raise NotImplementedError
 
     def get_training_callbacks(  # pylint:disable=no-self-use
         self,
         training_callback_attributes: TrainingCallbackAttributes,  # pylint: disable=unused-argument
-    ) -> List[TrainingCallback]:
+    ) -> list[TrainingCallback]:
         """Returns a list of callbacks to be used during training."""
         return []
 
     @abstractmethod
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:  # pylint: disable=no-self-use
+    def get_param_groups(self) -> dict[str, list[Parameter]]:  # pylint: disable=no-self-use
         """Get the param groups for the data manager.
 
         Returns:
@@ -260,7 +260,7 @@ class VanillaDataManagerConfig(InstantiateConfig):
     train/eval data at each iteration
     """
 
-    _target: Type = field(default_factory=lambda: VanillaDataManager)
+    _target: type = field(default_factory=lambda: VanillaDataManager)
     """Target class to instantiate."""
     dataparser: AnnotatedDataParserUnion = field(default_factory=BlenderDataParserConfig)
     """Specifies the dataparser used to unpack the data."""
@@ -278,7 +278,7 @@ class VanillaDataManagerConfig(InstantiateConfig):
     eval_num_times_to_repeat_images: int = -1
     """When not evaluating on all images, number of iterations before picking
     new images. If -1, never pick new images."""
-    eval_image_indices: Optional[Tuple[int, ...]] = (0,)
+    eval_image_indices: tuple[int, ...] | None = (0,)
     """Specifies the image indices to use during eval; if None, uses all."""
     camera_optimizer: CameraOptimizerConfig = field(default_factory=CameraOptimizerConfig)
     """Specifies the camera pose optimizer used during training. Helpful if poses are noisy, such as for data from
@@ -289,7 +289,7 @@ class VanillaDataManagerConfig(InstantiateConfig):
     """The scale factor for scaling spatial data such as images, mask, semantics
     along with relevant information about camera intrinsics.
     """
-    eval_camera_res_scale_factor: Optional[float] = None
+    eval_camera_res_scale_factor: float | None = None
     """The scale factor for eval data. If None (default), uses half of camera_res_scale_factor.
     Set explicitly to override (e.g., 1.0 for full resolution eval).
     """
@@ -315,7 +315,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
     def __init__(
         self,
         config: VanillaDataManagerConfig,
-        device: Union[torch.device, str] = "cpu",
+        device: torch.device | str = "cpu",
         test_mode: Literal["test", "val", "inference"] = "val",
         world_size: int = 1,
         local_rank: int = 0,
@@ -430,7 +430,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
             shuffle=False,
         )
 
-    def next_train(self, step: int) -> Tuple[RayBundle, Dict]:
+    def next_train(self, step: int) -> tuple[RayBundle, dict]:
         """Returns the next batch of data from the train dataloader."""
         self.train_count += 1
         image_batch = next(self.iter_train_image_dataloader)
@@ -439,7 +439,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
         ray_bundle = self.train_ray_generator(ray_indices)
         return ray_bundle, batch
 
-    def next_eval(self, step: int) -> Tuple[RayBundle, Dict]:
+    def next_eval(self, step: int) -> tuple[RayBundle, dict]:
         """Returns the next batch of data from the eval dataloader."""
         self.eval_count += 1
         image_batch = next(self.iter_eval_image_dataloader)
@@ -448,7 +448,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
         ray_bundle = self.eval_ray_generator(ray_indices)
         return ray_bundle, batch
 
-    def next_eval_image(self, step: int) -> Tuple[int, RayBundle, Dict]:
+    def next_eval_image(self, step: int) -> tuple[int, RayBundle, dict]:
         for camera_ray_bundle, batch in self.eval_dataloader:
             assert camera_ray_bundle.camera_indices is not None
             if isinstance(batch["image"], BasicImages):  # If this is a generalized dataset, we need to get image tensor
@@ -458,7 +458,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
             return image_idx, camera_ray_bundle, batch
         raise ValueError("No more eval images")
 
-    def get_param_groups(self) -> Dict[str, List[Parameter]]:  # pylint: disable=no-self-use
+    def get_param_groups(self) -> dict[str, list[Parameter]]:  # pylint: disable=no-self-use
         """Get the param groups for the data manager.
         Returns:
             A list of dictionaries containing the data manager's param groups.
@@ -482,14 +482,14 @@ class FlexibleDataManagerConfig(VanillaDataManagerConfig):
     train/eval data at each iteration
     """
 
-    _target: Type = field(default_factory=lambda: FlexibleDataManager)
+    _target: type = field(default_factory=lambda: FlexibleDataManager)
     """Target class to instantiate."""
     train_num_images_to_sample_from: int = 1
     """Number of images to sample during training iteration."""
 
 
 class FlexibleDataManager(VanillaDataManager):
-    def next_train(self, step: int) -> Tuple[RayBundle, Dict, Dict]:
+    def next_train(self, step: int) -> tuple[RayBundle, dict, dict]:
         """Returns the next batch of data from the train dataloader."""
         self.train_count += 1
         image_batch = next(self.iter_train_image_dataloader)

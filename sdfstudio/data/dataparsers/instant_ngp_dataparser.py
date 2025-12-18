@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Tuple, Type
 
 import numpy as np
 import torch
@@ -41,7 +40,7 @@ CONSOLE = Console(width=120)
 class InstantNGPDataParserConfig(DataParserConfig):
     """Instant-NGP dataset parser config"""
 
-    _target: Type = field(default_factory=lambda: InstantNGP)
+    _target: type = field(default_factory=lambda: InstantNGP)
     """target class to instantiate"""
     data: Path = Path("data/ours/posterv2")
     """Directory specifying location of data."""
@@ -72,7 +71,7 @@ class InstantNGP(DataParser):
         if num_skipped_image_filenames >= 0:
             CONSOLE.print(f"Skipping {num_skipped_image_filenames} files in dataset split {split}.")
         assert len(image_filenames) != 0, """
-        No image files found. 
+        No image files found.
         You should check the file_paths in the transforms.json file to make sure they are correct.
         """
         poses = np.array(poses).astype(np.float32)
@@ -124,7 +123,7 @@ class InstantNGP(DataParser):
         return dataparser_outputs
 
     @classmethod
-    def get_focal_lengths(cls, meta: Dict) -> Tuple[float, float]:
+    def get_focal_lengths(cls, meta: dict) -> tuple[float, float]:
         """Reads or computes the focal length from transforms dict.
         Args:
             meta: metadata from transforms.json file.

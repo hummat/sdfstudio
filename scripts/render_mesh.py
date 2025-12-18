@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
 
 import cv2
 import mediapy as media
@@ -27,7 +26,6 @@ from sdfstudio.cameras.camera_paths import (
     get_spiral_path,
 )
 from sdfstudio.cameras.cameras import Cameras
-from sdfstudio.configs.base_config import Config  # pylint: disable=unused-import
 from sdfstudio.data.datamanagers.base_datamanager import AnnotatedDataParserUnion
 from sdfstudio.data.dataparsers.sdfstudio_dataparser import SDFStudioDataParserConfig
 from sdfstudio.utils import install_checks
@@ -91,7 +89,6 @@ def _render_trajectory_video(
         output_format: How to save output data.
     """
     CONSOLE.print("[bold green]Creating trajectory video")
-    images = []
     cameras.rescale_output_resolution(rendered_resolution_scaling_factor)
     # cameras = cameras.to(pipeline.device)
 
@@ -190,7 +187,7 @@ class RenderTrajectory:
     # Path to config YAML file.
     meshfile: Path
     # Name of the renderer outputs to use. rgb, depth, etc. concatenates them along y axis
-    rendered_output_names: List[str] = field(default_factory=lambda: ["rgb", "normal"])
+    rendered_output_names: list[str] = field(default_factory=lambda: ["rgb", "normal"])
     #  Trajectory to render.
     traj: Literal["spiral", "filename", "interpolate", "ellipse"] = "spiral"
     # Scaling factor to apply to the camera image resolution.
@@ -219,7 +216,7 @@ class RenderTrajectory:
             assert str(self.output_path)[-4:] == ".mp4"
 
         if self.traj == "filename":
-            with open(self.camera_path_filename, "r", encoding="utf-8") as f:
+            with open(self.camera_path_filename, encoding="utf-8") as f:
                 camera_path = json.load(f)
             seconds = camera_path["seconds"]
             camera_path = get_path_from_json(camera_path)

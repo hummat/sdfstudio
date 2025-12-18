@@ -21,7 +21,7 @@ import sys
 from collections import OrderedDict
 from enum import Enum
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional, Union
 
 import cv2
 import imageio
@@ -127,7 +127,7 @@ def convert_video_to_images(
     verbose: bool = False,
     image_prefix: str = "frame_",
     keep_image_dir: bool = False,
-    random_seed: int | None = None,
+    random_seed: Optional[int] = None,
 ) -> tuple[list[str], int]:
     """Converts a video into a sequence of images.
 
@@ -237,8 +237,8 @@ def copy_images_list(
     image_dir: Path,
     num_downscales: int,
     image_prefix: str = "frame_",
-    crop_border_pixels: int | None = None,
-    crop_factor: tuple[float, float, float, float] | Literal["auto"] = (
+    crop_border_pixels: Optional[int] = None,
+    crop_factor: Union[tuple[float, float, float, float], Literal["auto"]] = (
         0.0,
         0.0,
         0.0,
@@ -246,7 +246,7 @@ def copy_images_list(
     ),
     verbose: bool = False,
     keep_image_dir: bool = False,
-    upscale_factor: int | None = None,
+    upscale_factor: Optional[int] = None,
     nearest_neighbor: bool = False,
     same_dimensions: bool = True,
 ) -> tuple[list[Path], list]:
@@ -398,7 +398,7 @@ def copy_and_upscale_polycam_depth_maps_list(
     polycam_depth_image_filenames: list[Path],
     depth_dir: Path,
     num_downscales: int,
-    crop_border_pixels: int | None = None,
+    crop_border_pixels: Optional[int] = None,
     verbose: bool = False,
 ) -> list[Path]:
     """
@@ -444,7 +444,7 @@ def copy_images(
     image_prefix: str = "frame_",
     verbose: bool = False,
     keep_image_dir: bool = False,
-    crop_factor: tuple[float, float, float, float] | Literal["auto"] = (
+    crop_factor: Union[tuple[float, float, float, float], Literal["auto"]] = (
         0.0,
         0.0,
         0.0,
@@ -567,9 +567,9 @@ def find_tool_feature_matcher_combination(
         "disk+lightglue",
         "superpoint+lightglue",
     ],
-) -> (
-    tuple[None, None, None]
-    | tuple[
+) -> Union[
+    tuple[None, None, None],
+    tuple[
         Literal["colmap", "hloc"],
         Literal[
             "sift", "superpoint_aachen", "superpoint_max", "superpoint_inloc", "r2d2", "d2net-ss", "sosnet", "disk"
@@ -585,8 +585,8 @@ def find_tool_feature_matcher_combination(
             "disk+lightglue",
             "superpoint+lightglue",
         ],
-    ]
-):
+    ],
+]:
     """Find a valid combination of sfm tool, feature type, and matcher type.
     Basically, replace the default parameters 'any' by usable value
 
@@ -622,7 +622,7 @@ def find_tool_feature_matcher_combination(
     return (None, None, None)
 
 
-def generate_circle_mask(height: int, width: int, percent_radius) -> np.ndarray | None:
+def generate_circle_mask(height: int, width: int, percent_radius) -> Optional[np.ndarray]:
     """generate a circle mask of the given size.
 
     Args:
@@ -645,7 +645,7 @@ def generate_circle_mask(height: int, width: int, percent_radius) -> np.ndarray 
     return mask
 
 
-def generate_crop_mask(height: int, width: int, crop_factor: tuple[float, float, float, float]) -> np.ndarray | None:
+def generate_crop_mask(height: int, width: int, crop_factor: tuple[float, float, float, float]) -> Optional[np.ndarray]:
     """generate a crop mask of the given size.
 
     Args:
@@ -676,7 +676,7 @@ def generate_mask(
     width: int,
     crop_factor: tuple[float, float, float, float],
     percent_radius: float,
-) -> np.ndarray | None:
+) -> Optional[np.ndarray]:
     """generate a mask of the given size.
 
     Args:
@@ -702,7 +702,7 @@ def save_mask(
     num_downscales: int,
     crop_factor: tuple[float, float, float, float] = (0, 0, 0, 0),
     percent_radius: float = 1.0,
-) -> Path | None:
+) -> Optional[Path]:
     """Save a mask for each image in the image directory.
 
     Args:

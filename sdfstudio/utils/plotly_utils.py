@@ -21,7 +21,7 @@ The function use prefix conventions in the following way:
         return 'go.Figure' objects which are the plots. Go Figure! :')
 """
 
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -52,12 +52,12 @@ def get_line_segments_from_lines(
     lines: TensorType["num_rays", 2, 3],
     color: str = color_str((1, 0, 0)),
     marker_color: str = color_str((1, 0, 0)),
-    colors: Optional[List[str]] = None,
+    colors: Optional[list[str]] = None,
     draw_marker: bool = True,
     draw_line: bool = True,
     marker_size: float = 4,
     line_width: float = 10,
-) -> List[Any]:
+) -> list[Any]:
     """Returns a list of Scatter3D objects for creating lines with plotly.
     # TODO(ethan): make this function more efficient instead of having a list of objects.
 
@@ -86,14 +86,14 @@ def get_line_segments_from_lines(
                 y=line[:, 1],
                 z=line[:, 2],
                 showlegend=False,
-                marker=dict(
-                    size=marker_size,
-                    color=marker_color,
-                    colorscale="Viridis",
-                )
+                marker={
+                    "size": marker_size,
+                    "color": marker_color,
+                    "colorscale": "Viridis",
+                }
                 if draw_marker
-                else dict(color="rgba(0, 0, 0, 0)"),
-                line=dict(color=thiscolor, width=line_width),
+                else {"color": "rgba(0, 0, 0, 0)"},
+                line={"color": thiscolor, "width": line_width},
             )
         )
     return data
@@ -122,7 +122,7 @@ def vis_dataset(camera_origins: TensorType["num_cameras", 3], ray_bundle: RayBun
             z=camera_origins[::skip, 2],
             mode="markers",
             name="camera origins",
-            marker=dict(color="rgba(0, 0, 0, 1)", size=size),
+            marker={"color": "rgba(0, 0, 0, 1)", "size": size},
         )
     ]
 
@@ -140,18 +140,18 @@ def vis_dataset(camera_origins: TensorType["num_cameras", 3], ray_bundle: RayBun
         margin=go.layout.Margin(l=50, r=50, b=100, t=100, pad=4),  # type: ignore
         scene=go.layout.Scene(  # type: ignore
             aspectmode="data",
-            camera=dict(
-                up=dict(x=0, y=0, z=1),
-                center=dict(x=0, y=0, z=0),
-                eye=dict(x=1.25, y=1.25, z=1.25),
-            ),
+            camera={
+                "up": {"x": 0, "y": 0, "z": 1},
+                "center": {"x": 0, "y": 0, "z": 0},
+                "eye": {"x": 1.25, "y": 1.25, "z": 1.25},
+            },
         ),
     )
     fig = go.Figure(data=data, layout=layout)
     return fig
 
 
-def get_random_color(colormap: Optional[List[str]] = None, idx: Optional[int] = None) -> str:
+def get_random_color(colormap: Optional[list[str]] = None, idx: Optional[int] = None) -> str:
     """Get a random color from a colormap.
 
     Args:
@@ -316,7 +316,7 @@ def get_gaussian_ellipsoids_list(
     opacity: float = 0.5,
     color: str = "random",
     resolution: int = 20,
-) -> List[Union[go.Mesh3d, go.Scatter3d]]:  # type: ignore
+) -> list[Union[go.Mesh3d, go.Scatter3d]]:  # type: ignore
     """Get a list of plotly meshes for frustums.
 
     Args:
@@ -335,7 +335,7 @@ def get_gaussian_ellipsoids_list(
         y=gaussians.mean[:, 1],
         z=gaussians.mean[:, 2],
         mode="markers",
-        marker=dict(size=2, color="black"),
+        marker={"size": 2, "color": "black"},
         name="Means",
     )
     data.append(vis_means)
@@ -416,7 +416,7 @@ def get_frustums_mesh_list(
     opacity: float = 1.0,
     color: str = "random",
     resolution: int = 20,
-) -> List[go.Mesh3d]:  # type: ignore
+) -> list[go.Mesh3d]:  # type: ignore
     """Get a list of plotly meshes for a list of frustums.
 
     Args:
@@ -461,11 +461,11 @@ def get_frustum_points(
         y=pts[..., 1],
         z=pts[..., 2],
         mode="markers",
-        marker=dict(
-            size=size,
-            color=color,
-            opacity=opacity,
-        ),
+        marker={
+            "size": size,
+            "color": color,
+            "opacity": opacity,
+        },
         name="Frustums -> Positions",
     )
 
@@ -497,7 +497,7 @@ def get_ray_bundle_lines(
         z=lines[..., 2],
         mode="lines",
         name="Ray Bundle",
-        line=dict(color=color, width=width),
+        line={"color": color, "width": width},
     )
 
 
@@ -535,20 +535,20 @@ def vis_camera_rays(cameras: Cameras) -> go.Figure:  # type: ignore
             x=lines[:, 0],
             y=lines[:, 2],
             z=lines[:, 1],
-            marker=dict(
-                size=4,
-                color=colors,
-            ),
-            line=dict(color="lightblue", width=1),
+            marker={
+                "size": 4,
+                "color": colors,
+            },
+            line={"color": "lightblue", "width": 1},
         )
     )
     fig.update_layout(
-        scene=dict(
-            xaxis=dict(title="x", showspikes=False),
-            yaxis=dict(title="z", showspikes=False),
-            zaxis=dict(title="y", showspikes=False),
-        ),
-        margin=dict(r=0, b=10, l=0, t=10),
+        scene={
+            "xaxis": {"title": "x", "showspikes": False},
+            "yaxis": {"title": "z", "showspikes": False},
+            "zaxis": {"title": "y", "showspikes": False},
+        },
+        margin={"r": 0, "b": 10, "l": 0, "t": 10},
         hovermode=False,
     )
 

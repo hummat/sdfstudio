@@ -17,14 +17,13 @@ Code for sampling pixels.
 """
 
 import random
-from typing import Dict
 
 import torch
 
 from sdfstudio.utils.images import BasicImages
 
 
-def collate_image_dataset_batch(batch: Dict, num_rays_per_batch: int, keep_full_image: bool = False):
+def collate_image_dataset_batch(batch: dict, num_rays_per_batch: int, keep_full_image: bool = False):
     """
     Operates on a batch of images and samples pixels to use for generating rays.
     Returns a collated batch which is input to the Graph.
@@ -72,7 +71,7 @@ def collate_image_dataset_batch(batch: Dict, num_rays_per_batch: int, keep_full_
     return collated_batch
 
 
-def collate_image_dataset_batch_list(batch: Dict, num_rays_per_batch: int, keep_full_image: bool = False):
+def collate_image_dataset_batch_list(batch: dict, num_rays_per_batch: int, keep_full_image: bool = False):
     """
     Does the same as collate_image_dataset_batch, except it will operate over a list of images / masks inside
     a list.
@@ -181,7 +180,7 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
         """
         self.num_rays_per_batch = num_rays_per_batch
 
-    def sample(self, image_batch: Dict):
+    def sample(self, image_batch: dict):
         """Sample an image batch and return a pixel batch.
 
         Args:
@@ -220,7 +219,7 @@ class PixelSampler:  # pylint: disable=too-few-public-methods
         return pixel_batch
 
 
-def collate_image_dataset_batch_equirectangular(batch: Dict, num_rays_per_batch: int, keep_full_image: bool = False):
+def collate_image_dataset_batch_equirectangular(batch: dict, num_rays_per_batch: int, keep_full_image: bool = False):
     """
     Operates on a batch of equirectangular images and samples pixels to use for
     generating rays. Rays will be generated uniformly on the sphere.
@@ -278,7 +277,7 @@ class EquirectangularPixelSampler(PixelSampler):  # pylint: disable=too-few-publ
     """
 
     # overrides base method
-    def sample(self, image_batch: Dict):
+    def sample(self, image_batch: dict):
         pixel_batch = collate_image_dataset_batch_equirectangular(
             image_batch, self.num_rays_per_batch, keep_full_image=self.keep_full_image
         )

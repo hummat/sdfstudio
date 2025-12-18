@@ -18,7 +18,7 @@ Some ray datastructures.
 
 import random
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Optional
 
 import torch
 from torch import Tensor as TensorType
@@ -123,7 +123,7 @@ class RaySamples(TensorDataclass):
     """Start of normalized bin edges along ray [0,1], before warping is applied, ie. linear in disparity sampling."""
     spacing_to_euclidean_fn: Optional[Callable] = None
     """Function to convert bins to euclidean distance."""
-    metadata: Optional[Dict[str, TensorType]] = None
+    metadata: Optional[dict[str, TensorType]] = None
     """addtional information relevant to generating ray samples"""
 
     times: Optional[TensorType] = None
@@ -171,7 +171,7 @@ class RaySamples(TensorDataclass):
 
         return weights
 
-    def get_weights_and_transmittance(self, densities: TensorType) -> Tuple[TensorType, TensorType]:
+    def get_weights_and_transmittance(self, densities: TensorType) -> tuple[TensorType, TensorType]:
         """Return weights and transmittance based on predicted densities
 
         Args:
@@ -223,7 +223,7 @@ class RaySamples(TensorDataclass):
 
         return weights
 
-    def get_weights_and_transmittance_from_alphas(self, alphas: TensorType) -> Tuple[TensorType, TensorType]:
+    def get_weights_and_transmittance_from_alphas(self, alphas: TensorType) -> tuple[TensorType, TensorType]:
         """Return weights based on predicted alphas
 
         Args:
@@ -268,7 +268,7 @@ class RayBundle(TensorDataclass):
     """Distance along ray to start sampling"""
     fars: Optional[TensorType] = None
     """Rays Distance along ray to stop sampling"""
-    metadata: Optional[Dict[str, TensorType]] = None
+    metadata: Optional[dict[str, TensorType]] = None
     """Additional metadata or data needed for interpolation, will mimic shape of rays"""
     times: Optional[TensorType] = None
     """Times at which rays are sampled"""
