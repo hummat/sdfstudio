@@ -973,6 +973,9 @@ def export_textured_mesh_v2(
     # PBR-proxy maps
     if "roughness" in textures:
         roughness_img = textures["roughness"].cpu().numpy().clip(0.0, 1.0)
+        # mediapy/PIL can't write (H, W, 1) arrays; use (H, W) for grayscale.
+        if roughness_img.ndim == 3 and roughness_img.shape[-1] == 1:
+            roughness_img = roughness_img[..., 0]
         media.write_image(str(output_dir / "roughness.png"), roughness_img)
         saved_textures.append(output_dir / "roughness.png")
     if "specular" in textures:

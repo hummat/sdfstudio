@@ -457,6 +457,9 @@ def export_textured_mesh(
 
     if "roughness" in outputs:
         roughness_image = outputs["roughness"].cpu().numpy()
+        # mediapy/PIL can't write (H, W, 1) arrays; use (H, W) for grayscale.
+        if roughness_image.ndim == 3 and roughness_image.shape[-1] == 1:
+            roughness_image = roughness_image[..., 0]
         media.write_image(str(output_dir / "roughness.png"), roughness_image)
 
     # save the normal image
