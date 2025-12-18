@@ -367,6 +367,45 @@ Lower priority, only after core pipeline works:
 
 ## References
 
+## Core References (PBR / BRDF / Shading)
+
+These are “go-to” references to build working knowledge and to consult during implementation.
+
+### Books (best for fundamentals)
+
+- **Physically Based Rendering (PBRT), 3rd or 4th ed.** (Pharr, Jakob, Humphreys)
+  - BRDF/BSDF fundamentals, radiometry, microfacet models, Fresnel, sampling, and practical implementation details.
+- **Real-Time Rendering, 4th ed.** (Akenine-Möller, Haines, Hoffman)
+  - Pragmatic PBR in engines: approximations, parameter conventions, and implementation tradeoffs.
+
+### Practical engine notes (high signal for “metal–rough”)
+
+- **“Real Shading in Unreal Engine 4”** (Brian Karis)
+  - Widely used GGX + Schlick Fresnel + Smith masking-shadowing recipe; very implementation-oriented.
+- **Disney BRDF notes** (Brent Burley)
+  - Clear explanations of artist-friendly parameterizations and energy considerations; good intuition-builder.
+
+### Key microfacet + Fresnel papers (for the “why” behind GGX)
+
+- **Schlick (1994)** — Fresnel approximation (“Schlick Fresnel”)
+- **Walter et al. (2007)** — Microfacet models for refraction / full microfacet framework
+- **Heitz (2014+)** — Masking-shadowing and microfacet model understanding (excellent for correctness intuition)
+
+### Lighting representations (for SH / env lighting baselines)
+
+- **Ramamoorthi & Hanrahan (2001)** — Irradiance environment maps / low-frequency lighting representation
+- **Debevec (late 1990s)** — Light probes / rendering synthetic objects into real scenes (practical IBL intuition)
+
+### Neural-field factorization / “NeuSFactor-lite” context
+
+- **Ref-NeRF (Verbin et al., 2022)** — reflection-dir encoding, diffuse/spec split, tint, angular cues
+- **NeRFactor (Zhang et al., 2021)** — explicit reflectance + lighting factorization under unknown illumination
+- **NeRD (Boss et al., 2021)** — reflectance decomposition from image collections (priors, degeneracy discussion)
+
+### File formats / conventions (for export correctness)
+
+- **glTF 2.0 spec (PBR metallic-roughness)** — map packing conventions, color space expectations, normal map semantics
+
 ### Inverse Rendering
 - **nvdiffrec**: Munkberg et al., CVPR 2022 — "Extracting Triangular 3D Models, Materials, and Lighting From Images"
 - **nvdiffrecmc**: Hasselgren et al., SIGGRAPH Asia 2022 — Monte Carlo version
