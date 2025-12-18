@@ -51,7 +51,7 @@ def color_str(color):
 
 
 def get_line_segments_from_lines(
-    lines: TensorType["num_rays", 2, 3],
+    lines: TensorType[num_rays, 2, 3],
     color: str = color_str((1, 0, 0)),
     marker_color: str = color_str((1, 0, 0)),
     colors: Optional[list[str]] = None,
@@ -101,7 +101,7 @@ def get_line_segments_from_lines(
     return data
 
 
-def vis_dataset(camera_origins: TensorType["num_cameras", 3], ray_bundle: RayBundle) -> go.FigureWidget:  # type: ignore
+def vis_dataset(camera_origins: TensorType[num_cameras, 3], ray_bundle: RayBundle) -> go.FigureWidget:  # type: ignore
     """Visualize a dataset with plotly using our cameras and generated rays.
 
     Args:

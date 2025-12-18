@@ -94,7 +94,7 @@ class Frustums(TensorDataclass):
         )
 
     @classmethod
-    def get_mock_frustum(cls, device="cpu") -> "Frustums":
+    def get_mock_frustum(cls, device="cpu") -> Frustums:
         """Helper function to generate a placeholder frustum.
 
         Returns:
@@ -287,7 +287,7 @@ class RayBundle(TensorDataclass):
         num_rays = torch.numel(self.origins) // self.origins.shape[-1]
         return num_rays
 
-    def sample(self, num_rays: int) -> "RayBundle":
+    def sample(self, num_rays: int) -> RayBundle:
         """Returns a RayBundle as a subset of rays.
 
         Args:
@@ -300,7 +300,7 @@ class RayBundle(TensorDataclass):
         indices = random.sample(range(len(self)), k=num_rays)
         return self[indices]
 
-    def get_row_major_sliced_ray_bundle(self, start_idx: int, end_idx: int) -> "RayBundle":
+    def get_row_major_sliced_ray_bundle(self, start_idx: int, end_idx: int) -> RayBundle:
         """Flattens RayBundle and extracts chunk given start and end indicies.
 
         Args:

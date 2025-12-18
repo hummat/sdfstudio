@@ -39,7 +39,6 @@ from __future__ import annotations
 # POSSIBILITY OF SUCH DAMAGE.
 #
 # Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
-
 import collections
 import os
 import struct

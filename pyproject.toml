@@ -163,11 +163,15 @@ ignore = [
     "E501",  # line too long
     "B008",  # do not perform function calls in argument defaults
     "UP007", # keep Optional/Union (py39 compatibility); don't rewrite to PEP604 `X | None`
+    "UP045", # keep Optional[...] (py39 compatibility); don't rewrite to `T | None`
     "W191",  # indentation contains tabs
 ]
 
 [tool.ruff.lint.isort]
 known-first-party = ["sdfstudio"]
+
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true
 
 # pyright
 [tool.pyright]

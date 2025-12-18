@@ -86,7 +86,7 @@ class SceneBox:
         }
 
     @staticmethod
-    def from_json(json_: dict) -> "SceneBox":
+    def from_json(json_: dict) -> SceneBox:
         """Returns the an instance of SceneBox from a json dictionary.
 
         Args:
@@ -97,7 +97,7 @@ class SceneBox:
         return SceneBox(aabb=aabb)
 
     @staticmethod
-    def from_camera_poses(poses: TensorType, scale_factor: float) -> "SceneBox":
+    def from_camera_poses(poses: TensorType, scale_factor: float) -> SceneBox:
         """Returns the instance of SceneBox that fully envelopes a set of poses
 
         Args:

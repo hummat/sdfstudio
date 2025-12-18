@@ -31,7 +31,7 @@ class Path:
     def __init__(self, entries: tuple = ()):
         self.entries = entries
 
-    def append(self, other: str) -> "Path":
+    def append(self, other: str) -> Path:
         """Methodthat appends a new component and returns new Path
 
         Args:
