@@ -51,7 +51,7 @@ class TextureMesh:
         It uses a different UV V convention than xatlas, so the exporter must not
         unconditionally flip V for OBJ output.
     """
-    num_directions: int = 6
+    num_directions: int = 1
     """Number of ray directions per texel for averaging (v2 cpu/gpu only)."""
     pad_px: int = 32
     """Number of pixels to dilate charts outward (v2 cpu/gpu/open3d)."""
