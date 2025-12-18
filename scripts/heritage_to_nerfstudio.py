@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """Convert ETH3D to NerfStudio data format"""
 
+from __future__ import annotations
+
 import os
 from enum import Enum
 from pathlib import Path

@@ -2,6 +2,8 @@
 generate kitti360 train split
 """
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 

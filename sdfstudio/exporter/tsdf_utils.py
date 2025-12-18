@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 import pymeshlab
@@ -286,7 +287,7 @@ def export_tsdf_mesh(
     downscale_factor: int = 2,
     depth_output_name: str = "depth",
     rgb_output_name: str = "rgb",
-    resolution: int | list[int] = field(default_factory=lambda: [256, 256, 256]),
+    resolution: Union[int, list[int]] = field(default_factory=lambda: [256, 256, 256]),
     batch_size: int = 10,
     use_bounding_box: bool = True,
     bounding_box_min: tuple[float, float, float] = (-1.0, -1.0, -1.0),

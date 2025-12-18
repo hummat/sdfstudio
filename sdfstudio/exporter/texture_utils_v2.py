@@ -26,6 +26,7 @@ from __future__ import annotations
 import importlib.util
 import math
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import torch
@@ -636,7 +637,7 @@ def write_textured_mesh_fast(
     vertex_normals: Tensor,
     texture_uvs: Tensor,
     texture_image: np.ndarray,
-    orm_image: np.ndarray | None,
+    orm_image: Optional[np.ndarray],
     output_dir: Path,
     mesh_name: str = "mesh",
     *,
@@ -1013,7 +1014,7 @@ def render_views_from_nerf(
     intrinsics: Tensor,
     extrinsics: Tensor,
     image_size: tuple[int, int] = (1024, 1024),
-    appearance_idx: int | None = None,
+    appearance_idx: Optional[int] = None,
 ) -> tuple[list[Tensor], list[Tensor]]:
     """Render synthetic views from NeRF at given camera poses.
 
@@ -1385,7 +1386,7 @@ def export_textured_mesh_multiview(
     elevation_range: tuple[float, float] = (-30.0, 60.0),
     radius_mult: float = 2.0,
     pad_px: int = 32,
-    appearance_idx: int | None = None,
+    appearance_idx: Optional[int] = None,
 ) -> None:
     """Export textured mesh using multiview render-and-project/reproject.
 

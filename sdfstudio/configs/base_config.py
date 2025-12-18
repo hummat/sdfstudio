@@ -22,7 +22,7 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import yaml
 from rich.console import Console
@@ -154,11 +154,11 @@ class TrainerConfig(PrintableConfig):
     save_only_latest_checkpoint: bool = True
     """Whether to only save the latest checkpoint or all checkpoints."""
     # optional parameters if we want to resume training
-    load_dir: Path | None = None
+    load_dir: Optional[Path] = None
     """Optionally specify a pre-trained model directory to load from."""
-    load_step: int | None = None
+    load_step: Optional[int] = None
     """Optionally specify model step to load from; if none, will find most recent model in load_dir."""
-    load_config: Path | None = None
+    load_config: Optional[Path] = None
     """Optionally specify model config to load from; if none, will use the default config?"""
     load_scheduler: bool = True
     """Whether to load the lr scheduler state_dict if exists"""
@@ -176,11 +176,11 @@ class ViewerConfig(PrintableConfig):
     start_train: bool = True
     """whether to immediately start training upon loading viewer
     if False, will just visualize dataset but you can toggle training in viewer"""
-    zmq_port: int | None = None
+    zmq_port: Optional[int] = None
     """The zmq port to connect to for communication. If None, find an available port."""
     launch_bridge_server: bool = True
     """whether or not to launch the bridge server"""
-    websocket_port: int | None = 7007
+    websocket_port: Optional[int] = 7007
     """the default websocket port to connect to"""
     ip_address: str = "127.0.0.1"
     """the ip address where the bridge server is running"""
@@ -204,9 +204,9 @@ class Config(PrintableConfig):
 
     output_dir: Path = Path("outputs")
     """relative or absolute output directory to save all checkpoints and logging"""
-    method_name: str | None = None
+    method_name: Optional[str] = None
     """Method name. Required to set in python or via cli"""
-    experiment_name: str | None = None
+    experiment_name: Optional[str] = None
     """Experiment name. If None, will automatically be set to dataset name"""
     timestamp: str = "{timestamp}"
     """Experiment timestamp."""
@@ -231,7 +231,7 @@ class Config(PrintableConfig):
     """Dictionary of optimizer groups and their schedulers"""
     vis: Literal["viewer", "wandb", "tensorboard"] = "wandb"
     """Which visualizer to use."""
-    data: Path | None = None
+    data: Optional[Path] = None
     """Alias for --pipeline.datamanager.dataparser.data"""
 
     def is_viewer_enabled(self) -> bool:

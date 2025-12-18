@@ -9,6 +9,7 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 import mediapy as media
 import numpy as np
@@ -126,7 +127,7 @@ class RenderTrajectory:
     # How to save output data.
     output_format: Literal["images", "video"] = "video"
     # Specifies number of rays per chunk during eval.
-    eval_num_rays_per_chunk: int | None = None
+    eval_num_rays_per_chunk: Optional[int] = None
 
     def main(self) -> None:
         """Main function."""

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # adapted from https://github.com/EPFL-VILAB/omnidata
 import argparse
 import glob

@@ -18,11 +18,10 @@ Abstracts for the Pipeline class.
 
 from __future__ import annotations
 
-import typing
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from time import time
-from typing import Any, cast
+from typing import Any, Optional, Union, cast
 
 import torch
 import torch.distributed as dist
@@ -51,7 +50,7 @@ from sdfstudio.utils import profiler
 from sdfstudio.utils.images import BasicImages
 
 
-def module_wrapper(ddp_or_model: DDP | Model) -> Model:
+def module_wrapper(ddp_or_model: Union[DDP, Model]) -> Model:
     """
     If DDP, then return the .module. Otherwise, return the model.
     """
@@ -158,7 +157,7 @@ class Pipeline(nn.Module):
 
     @abstractmethod
     @profiler.time_function
-    def get_average_eval_image_metrics(self, step: int | None = None):
+    def get_average_eval_image_metrics(self, step: Optional[int] = None):
         """Iterate over all the images in the eval dataset and get the average."""
 
     def load_pipeline(self, loaded_state: dict[str, Any]) -> None:
@@ -324,7 +323,7 @@ class VanillaPipeline(Pipeline):
         return metrics_dict, images_dict
 
     @profiler.time_function
-    def get_average_eval_image_metrics(self, step: int | None = None):
+    def get_average_eval_image_metrics(self, step: Optional[int] = None):
         """Iterate over all the images in the eval dataset and get the average.
 
         Returns:

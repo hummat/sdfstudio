@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Optional, Union
 
 # Copyright 2022 The Nerfstudio Team. All rights reserved.

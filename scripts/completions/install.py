@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """Configuration script for setting up tab completion for sdfstudio in bash and zsh."""
 
+from __future__ import annotations
+
 import concurrent.futures
 import itertools
 import os

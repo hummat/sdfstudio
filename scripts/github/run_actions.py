@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """Simple yaml debugger"""
 
+from __future__ import annotations
+
 import subprocess
 import sys
 

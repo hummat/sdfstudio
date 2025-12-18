@@ -7,7 +7,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated, Union
+from typing import Annotated, Optional, Union
 
 import numpy as np
 import open3d as o3d
@@ -108,7 +108,7 @@ class ExportTSDFMesh(Exporter):
     """Name of the depth output."""
     rgb_output_name: str = "rgb"
     """Name of the RGB output."""
-    resolution: int | list[int] = field(default_factory=lambda: [128, 128, 128])
+    resolution: Union[int, list[int]] = field(default_factory=lambda: [128, 128, 128])
     """Resolution of the TSDF volume or [x, y, z] resolutions individually."""
     batch_size: int = 10
     """How many depth images to integrate per batch."""
@@ -126,7 +126,7 @@ class ExportTSDFMesh(Exporter):
     """The method to use for unwrapping the mesh."""
     num_pixels_per_side: int = 2048
     """If using xatlas for unwrapping, the pixels per side of the texture image."""
-    target_num_faces: int | None = 50000
+    target_num_faces: Optional[int] = 50000
     """Target number of faces for the mesh to texture."""
 
     def main(self) -> None:
@@ -206,7 +206,7 @@ class ExportPoissonMesh(Exporter):
     """The method to use for unwrapping the mesh."""
     num_pixels_per_side: int = 2048
     """If using xatlas for unwrapping, the pixels per side of the texture image."""
-    target_num_faces: int | None = 50000
+    target_num_faces: Optional[int] = 50000
     """Target number of faces for the mesh to texture."""
     std_ratio: float = 10.0
     """Threshold based on STD of the average distances across the point cloud to remove outliers."""

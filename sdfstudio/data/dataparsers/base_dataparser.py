@@ -19,7 +19,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import torch
 from torch import Tensor as TensorType
@@ -53,15 +53,15 @@ class DataparserOutputs:
     """Filenames for the images."""
     cameras: Cameras
     """Camera object storing collection of camera information in dataset."""
-    alpha_color: TensorType | None = None
+    alpha_color: Optional[TensorType] = None
     """Color of dataset background."""
     scene_box: SceneBox = field(default_factory=SceneBox)
     """Scene box of dataset. Used to bound the scene or provide the scene scale depending on model."""
-    mask_filenames: list[Path] | None = None
+    mask_filenames: Optional[list[Path]] = None
     """Filenames for any masks that are required"""
-    depths: torch.Tensor | None = None
+    depths: Optional[torch.Tensor] = None
     """Monocular depth."""
-    normals: torch.Tensor | None = None
+    normals: Optional[torch.Tensor] = None
     """Monocular normal."""
     additional_inputs: dict[str, Any] = to_immutable_dict({})
     """Dictionary of additional dataset information (e.g. semantics/point clouds/masks).

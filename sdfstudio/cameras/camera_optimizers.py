@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import functools
 from dataclasses import dataclass, field
+from typing import Union
 
 import torch
 import tyro
@@ -68,7 +69,7 @@ class CameraOptimizer(nn.Module):
         self,
         config: CameraOptimizerConfig,
         num_cameras: int,
-        device: torch.device | str,
+        device: Union[torch.device, str],
         **kwargs,  # pylint: disable=unused-argument
     ) -> None:
         super().__init__()

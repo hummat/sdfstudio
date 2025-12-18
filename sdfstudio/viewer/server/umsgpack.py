@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # u-msgpack-python v2.8.0 - v at sergeev.io
 # https://github.com/vsergeev/u-msgpack-python
 #

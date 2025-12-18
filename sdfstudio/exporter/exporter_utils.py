@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from typing import Optional, Union
 
 import numpy as np
 import open3d as o3d
@@ -54,7 +55,7 @@ class Mesh:
     """Faces of the mesh."""
     normals: TensorType
     """Normals of the mesh."""
-    colors: TensorType | None = None
+    colors: Optional[TensorType] = None
     """Colors of the mesh."""
 
 
@@ -70,7 +71,7 @@ def get_mesh_from_pymeshlab_mesh(mesh: pymeshlab.Mesh) -> Mesh:
     )
 
 
-def get_mesh_from_filename(filename: str, target_num_faces: int | float | None = None) -> Mesh:
+def get_mesh_from_filename(filename: str, target_num_faces: Union[int, float, None] = None) -> Mesh:
     ms = pymeshlab.MeshSet()
     ms.load_new_mesh(filename)
     if target_num_faces is not None:
@@ -107,7 +108,7 @@ def generate_point_cloud(
     estimate_normals: bool = False,
     rgb_output_name: str = "rgb",
     depth_output_name: str = "depth",
-    normal_output_name: str | None = None,
+    normal_output_name: Optional[str] = None,
     use_bounding_box: bool = True,
     bounding_box_min: tuple[float, float, float] = (-1.0, -1.0, -1.0),
     bounding_box_max: tuple[float, float, float] = (1.0, 1.0, 1.0),

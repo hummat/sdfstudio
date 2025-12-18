@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional, Union
 
 import torch
 import tyro
@@ -136,10 +136,10 @@ class DataManager(nn.Module):
 
     """
 
-    train_dataset: Dataset | None = None
-    eval_dataset: Dataset | None = None
-    train_sampler: DistributedSampler | None = None
-    eval_sampler: DistributedSampler | None = None
+    train_dataset: Optional[Dataset] = None
+    eval_dataset: Optional[Dataset] = None
+    train_sampler: Optional[DistributedSampler] = None
+    eval_sampler: Optional[DistributedSampler] = None
 
     def __init__(self):
         """Constructor for the DataManager class.
@@ -278,7 +278,7 @@ class VanillaDataManagerConfig(InstantiateConfig):
     eval_num_times_to_repeat_images: int = -1
     """When not evaluating on all images, number of iterations before picking
     new images. If -1, never pick new images."""
-    eval_image_indices: tuple[int, ...] | None = (0,)
+    eval_image_indices: Optional[tuple[int, ...]] = (0,)
     """Specifies the image indices to use during eval; if None, uses all."""
     camera_optimizer: CameraOptimizerConfig = field(default_factory=CameraOptimizerConfig)
     """Specifies the camera pose optimizer used during training. Helpful if poses are noisy, such as for data from
@@ -289,7 +289,7 @@ class VanillaDataManagerConfig(InstantiateConfig):
     """The scale factor for scaling spatial data such as images, mask, semantics
     along with relevant information about camera intrinsics.
     """
-    eval_camera_res_scale_factor: float | None = None
+    eval_camera_res_scale_factor: Optional[float] = None
     """The scale factor for eval data. If None (default), uses half of camera_res_scale_factor.
     Set explicitly to override (e.g., 1.0 for full resolution eval).
     """
@@ -315,7 +315,7 @@ class VanillaDataManager(DataManager):  # pylint: disable=abstract-method
     def __init__(
         self,
         config: VanillaDataManagerConfig,
-        device: torch.device | str = "cpu",
+        device: Union[torch.device, str] = "cpu",
         test_mode: Literal["test", "val", "inference"] = "val",
         world_size: int = 1,
         local_rank: int = 0,

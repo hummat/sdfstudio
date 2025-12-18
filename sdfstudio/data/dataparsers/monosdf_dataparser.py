@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from glob import glob
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import cv2
 import numpy as np
@@ -146,9 +146,9 @@ class MonoSDFDataParserConfig(DataParserConfig):
     """center crop type as monosdf, we should create a dataset that don't need this"""
     load_pairs: bool = False
     """whether to load pairs for multi-view consistency"""
-    neighbors_num: int | None = None
-    neighbors_shuffle: bool | None = False
-    pairs_sorted_ascending: bool | None = True
+    neighbors_num: Optional[int] = None
+    neighbors_shuffle: Optional[bool] = False
+    pairs_sorted_ascending: Optional[bool] = True
     """if src image pairs are sorted in ascending order by similarity i.e. the last element is the most similar to the first (ref)"""
 
 

@@ -18,6 +18,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from pathlib import Path, PurePath
+from typing import Optional
 
 import numpy as np
 import torch
@@ -49,7 +50,7 @@ class NerfstudioDataParserConfig(DataParserConfig):
     """Directory specifying location of data."""
     scale_factor: float = 1.0
     """How much to scale the camera origins by."""
-    downscale_factor: int | None = None
+    downscale_factor: Optional[int] = None
     """How much to downscale images. If not set, images are chosen such that the max dimension is <1600px."""
     scene_scale: float = 1.0
     """How much to scale the region of interest by."""
@@ -70,7 +71,7 @@ class Nerfstudio(DataParser):
     """Nerfstudio DatasetParser"""
 
     config: NerfstudioDataParserConfig
-    downscale_factor: int | None = None
+    downscale_factor: Optional[int] = None
 
     def _generate_dataparser_outputs(self, split="train"):
         # pylint: disable=too-many-statements

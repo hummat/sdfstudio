@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional, Union
 
 import tyro
 from rich.console import Console
@@ -38,7 +38,7 @@ class TextureMesh:
     """Mesh filename to texture."""
     num_pixels_per_side: int = 2048
     """Pixels per side of the texture image."""
-    target_num_faces: int | float | None = 50000
+    target_num_faces: Union[int, float, None] = 50000
     """Target number of faces for the mesh to texture. If < 1, it is a fraction of the original mesh faces."""
     method: Literal["legacy", "cpu", "gpu", "open3d"] = "gpu"
     """Texturing method.
@@ -67,9 +67,9 @@ class TextureMesh:
     """Maximum elevation angle for --method open3d."""
     radius_mult: float = 2.0
     """Multiplier for mesh bounding sphere radius for --method open3d."""
-    eval_num_rays_per_chunk: int | None = None
+    eval_num_rays_per_chunk: Optional[int] = None
     """Override `pipeline.model.eval_num_rays_per_chunk` used during texture queries."""
-    appearance_idx: int | None = None
+    appearance_idx: Optional[int] = None
     """Override camera indices for appearance embeddings.
 
     - v2 cpu/gpu and legacy exporters query the model with a single camera index; if unset, defaults to 0.

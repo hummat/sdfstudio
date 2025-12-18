@@ -5,6 +5,8 @@ and do sparse reconstruction.
 Requires hloc module from : https://github.com/cvg/Hierarchical-Localization
 """
 
+from __future__ import annotations
+
 # Copyright 2022 the Regents of the University of California, Nerfstudio Team and contributors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

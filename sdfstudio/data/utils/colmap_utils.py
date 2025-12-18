@@ -7,6 +7,8 @@ TODO(1480) Delete this file when moving to pycolmap.
 
 """
 
+from __future__ import annotations
+
 # Copyright (c) 2023, ETH Zurich and UNC Chapel Hill.
 # All rights reserved.
 #

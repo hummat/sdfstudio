@@ -23,7 +23,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import cv2
 import numpy as np
@@ -553,7 +553,7 @@ class ViewerState:
             self.vis["renderingState/train_eta"].write("Paused")
             self.vis["renderingState/vis_train_ratio"].write("100% spent on viewer")
 
-    def _calculate_image_res(self, camera_object, is_training: bool) -> tuple[int, int] | None:
+    def _calculate_image_res(self, camera_object, is_training: bool) -> Optional[tuple[int, int]]:
         """Calculate the maximum image height that can be rendered in the time budget
 
         Args:
