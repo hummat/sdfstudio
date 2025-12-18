@@ -14,12 +14,27 @@ If the target is “true PBR from real video under unknown lighting”, this pla
 1) a strong *initialization / proxy-PBR export*, and
 2) an on-ramp to Stage 3 (inverse rendering) when needed.
 
+---
+
+## Practical “Minimal Real PBR” Target (Metal–Rough)
+
+Minimum maps (typical glTF/Unreal pipelines):
+- **Basecolor / Albedo** (sRGB)
+- **Normal** (linear)
+- **Roughness** (linear)
+- **Metallic** (linear; often constant)
+
+Notes:
+- For dielectrics (wood/plastic/stone/paint/skin), **metallic ≈ 0 everywhere** → prefer a constant `metallicFactor=0` unless you truly have mixed materials.
+- Many pipelines assume dielectric **F0 ≈ 0.04**; keep specular fixed initially for stability.
+
 ## Overview
 
 | Stage | Effort | Description |
 |-------|--------|-------------|
 | **Training-time** | Low | Enable existing diffuse/specular/roughness outputs in SDFField |
 | **Export** | Medium | glTF/GLB with proper PBR material wiring |
+| **BRDF-ish Baseline** | Medium–High | In-repo UV-space Lambert → GGX fitting (fixed geometry) |
 | **Refinement A** | Medium | Optional nvdiffrec inverse rendering |
 | **Refinement B** | Medium | Optional generative per-view prediction (Material Palette, MatFusion) |
 
@@ -76,6 +91,79 @@ Current texture export saves raw PNGs (`diffuse_0.png`, `roughness_0.png`, etc.)
 - Can extend existing `export_textured_mesh_v2` or add new function
 - Tangent-space normal baking needs correct tangent frame from xatlas UVs
   - Many viewers can compute tangents if missing, but quality varies; ideally compute tangents (MikkTSpace) during export.
+
+---
+
+## Stage 2.5: In-Repo “BRDF-ish” Baseline (UV-Space Lambert → GGX)
+
+This stage reintroduces the “physics baseline” from the original video-notes: given **known geometry + cameras** (from SDFStudio) and **real video frames**, fit an explicit forward shading model in UV space.
+
+Goal: a buildable baseline that produces better “true PBR” maps than proxy exports, without trying to solve hard unsupervised inverse rendering end-to-end.
+
+### 2.5A) Freeze geometry + define conventions
+
+- [ ] Define a canonical mesh contract for fitting:
+  - [ ] mesh triangles
+  - [ ] UV atlas
+  - [ ] normals (and ideally tangents/bitangents for tangent-space normal maps)
+- [ ] Document texture-space convention (V flip expectations) and normal map convention (OpenGL vs DirectX Y).
+
+### 2.5B) Build UV-space observation dataset (real frames)
+
+Deliverable: a reusable “texel observations” dataset where each texel `(u,v)` has multi-view samples:
+`{rgb_i, viewdir_i, frame_idx, weight_i, mask_i}`.
+
+TODOs:
+- [ ] Add a new script (tentative): `scripts/pbr_uv_observations.py`
+- [ ] Inputs:
+  - [ ] mesh (+ UVs if present; otherwise unwrap)
+  - [ ] per-frame RGB images
+  - [ ] per-frame cameras (intrinsics + c2w)
+  - [ ] optional foreground masks
+- [ ] Per-frame association:
+  - [ ] rasterize the mesh in the frame to map visible pixels → UV texels (store RGB + viewdir + confidence)
+  - [ ] aggregate samples per texel for fitting
+- [ ] Outlier hooks (minimum viable):
+  - [ ] downweight grazing angles
+  - [ ] mask saturated pixels (simple threshold)
+  - [ ] record UV coverage stats to drive regularization defaults
+
+### 2.5C) Lighting model (simple and stable first)
+
+- [ ] Option A (recommended): **global low-order SH** + **per-frame exposure scalar**
+- [ ] Option B: per-frame SH (more flexible, more degenerate)
+
+### 2.5D) Forward shading model (Lambert → GGX)
+
+- [ ] Lambertian baseline:
+  - parameters: `A(u,v)` (albedo), SH lighting, per-frame exposure
+  - optimize in **linear** color space (linearize input frames)
+- [ ] GGX microfacet next (dielectric first):
+  - add `r(u,v)` (roughness)
+  - keep `metallic=0` and `F0≈0.04` fixed initially
+
+### 2.5E) Minimal objective (from the original notes)
+
+Let:
+- `A(u,v) ∈ [0,1]^3` (linear albedo)
+- `r(u,v) ∈ (0,1]` (roughness)
+- `m(u,v) ∈ [0,1]` (optional metallic; default constant 0)
+- per-frame lighting `θ_i` (e.g., SH) and exposure `e_i`
+
+```
+min_{A, r, (m), {θ_i}, {e_i}}  Σ_{(u,v)} Σ_{i∈V(u,v)}  ρ( I_i(u,v) - Render(A, r, m, N, V_i, θ_i, e_i) )
+                             + λ_TV · (TV(A) + TV(r) + TV(m))
+                             + λ_prior · Prior(A, r, m)
+```
+
+Implementation notes:
+- [ ] Use robust `ρ` (Charbonnier/Huber) and stage the optimization (Lambert first, then GGX).
+- [ ] Enforce bounds: optimize roughness/metallic in logit space and clamp where needed.
+
+### 2.5F) Validation
+
+- [ ] Re-render frames with fitted maps (albedo should be less contaminated by shadows/highlights).
+- [ ] Quick relighting sanity check (swap env lighting).
 
 ---
 
@@ -162,6 +250,17 @@ Lower priority, only after core pipeline works:
 
 ---
 
+## “Things That Bite” Checklist (From the Original Notes)
+
+- [ ] **Color space:** linearize input images for fitting; export basecolor as sRGB; keep roughness/metallic/normal as linear.
+- [ ] **Normal conventions:** tangent basis + channel conventions (OpenGL vs DirectX normal Y).
+- [ ] **Masking/outliers:** specular highlights, saturation, motion blur → robust loss and masking.
+- [ ] **UV coverage:** sparse observation regions need stronger regularization (and should output a coverage metric).
+- [ ] **Exposure changes:** per-frame exposure scalar often matters on real video.
+- [ ] **Parameter bounds:** roughness/metallic constrained (logit), avoid degenerate “roughness explains everything”.
+
+---
+
 ## File Touchpoints
 
 | File | Role |
@@ -172,6 +271,8 @@ Lower priority, only after core pipeline works:
 | `sdfstudio/exporter/texture_utils_v2.py` | v2 export, handles diffuse/roughness/etc. |
 | `scripts/texture.py` | CLI for texture export |
 | **NEW** `sdfstudio/exporter/gltf_export.py` | glTF/GLB with PBR material |
+| **NEW** `scripts/pbr_uv_observations.py` | Build UV-space observations from real video |
+| **NEW** `scripts/pbr_fit_uv.py` | UV-space Lambert/GGX fitting baseline |
 | **NEW** `scripts/pbr_refine.py` | Optional nvdiffrec / generative refinement |
 
 ---
