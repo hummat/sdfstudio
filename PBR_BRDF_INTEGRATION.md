@@ -28,6 +28,40 @@ Notes:
 - For dielectrics (wood/plastic/stone/paint/skin), **metallic ≈ 0 everywhere** → prefer a constant `metallicFactor=0` unless you truly have mixed materials.
 - Many pipelines assume dielectric **F0 ≈ 0.04**; keep specular fixed initially for stability.
 
+---
+
+## BRDF / Shading Effects Scope (What We Model When)
+
+This section keeps the project self-contained by listing the relevant shading effects explicitly and how they map to our staged plan.
+
+### MVP (should be “engineering-stable”)
+
+- **Diffuse / albedo separation**: view-independent `A(x)` / `diffuse`.
+- **Smooth lighting**: low-order environment lighting (SH) + per-image exposure scalar.
+- **Basic angular cues**: `n·v` available as an input feature (helps Fresnel-like ramps and silhouette behavior).
+- **Roughness proxy**: a per-point/per-sample roughness parameter in `[0,1]` (even if it starts as a heuristic/proxy).
+
+### Next (improves “PBR-ness” for indoor scans)
+
+- **Explicit specular term**:
+  - start with a simple dielectric spec model (fixed `F0≈0.04`) before full microfacet GGX
+  - optionally keep a small residual/spec term during a warmup
+- **GGX microfacet** (Cook–Torrance) with:
+  - roughness-driven lobe width
+  - Fresnel (Schlick) and a masking–shadowing approximation (e.g., Smith)
+
+### Later / optional (likely “research-y” for robustness)
+
+- **Hard visibility / cast shadows** (beyond what smooth lighting can explain).
+- **Indirect illumination / interreflections** (especially noticeable indoors).
+- **Per-frame lighting variation** beyond exposure (risk: degeneracy where lighting explains material).
+
+### Out of scope (for now)
+
+- **Transmission/refraction** (glass, thin plastics).
+- **Subsurface scattering** (skin, wax, marble).
+- **Anisotropy** (brushed metals) unless there’s a strong need.
+
 ## Overview
 
 | Stage | Effort | Description |
