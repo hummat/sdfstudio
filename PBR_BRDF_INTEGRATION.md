@@ -66,11 +66,16 @@ This section keeps the project self-contained by listing the relevant shading ef
 
 | Stage | Effort | Description |
 |-------|--------|-------------|
-| **Training-time** | Low | Enable existing diffuse/specular/roughness outputs in SDFField |
-| **Export** | Medium | glTF/GLB with proper PBR material wiring |
-| **BRDF-ish Baseline** | Medium–High | In-repo UV-space Lambert → GGX fitting (fixed geometry) |
-| **Refinement A** | Medium | Optional nvdiffrec inverse rendering |
-| **Refinement B** | Medium | Optional generative per-view prediction (Material Palette, MatFusion) |
+| **1: Training-time (existing)** | Low | Enable existing Ref-NeRF-ish outputs (diffuse/spec/tint/roughness proxy) |
+| **2: Export (engineering)** | Medium | glTF/GLB with correct metal-rough wiring + Blender-friendly conventions |
+| **1.5: NeuSFactor-lite (new method)** | High | New forward renderer + SH lighting + training schedule (warmup/blend) |
+| **2.5: UV-space Lambert→GGX (new tool)** | High | UV observation builder + differentiable shader + optimization loop |
+| **3A: Refinement (external, optimization)** | Medium | Optional nvdiffrec-style material refinement (mostly integration) |
+| **3B: Refinement (external, generative)** | Medium | Optional per-view SVBRDF prediction + UV aggregation (integration + glue) |
+
+Interpretation:
+- Stages **1** and **2** are the “low-hanging fruit” path (export better maps/materials using what we already predict).
+- Stages **1.5** and **2.5** are the main bespoke engineering projects (bounded, but substantial).
 
 ---
 
