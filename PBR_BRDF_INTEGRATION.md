@@ -92,20 +92,46 @@ SDFField already has Ref-NeRF-style factorization. Enable it:
 | `use_reflections` | Reflection-direction encoding for specular |
 | `use_n_dot_v` | Explicit incidence angle to color MLP |
 | `enable_pred_roughness` | Roughness ∈ [0,1] mixing view/reflection dirs |
+| `roughness_blend_space` | Where roughness mixes view vs reflection (“encoding” vs “direction”) |
+| `use_roughness_in_color_mlp` | Append roughness scalar to the color MLP input (requires `enable_pred_roughness`) |
+| `use_fresnel_term` | Append a Schlick-style Fresnel scalar to the color MLP input |
+
+Notes:
+- In `SDFField`, ray `directions` are camera→point; view vector is point→camera = `-directions`. `use_n_dot_v` and `use_fresnel_term` use `n·v` with that sign convention.
+- `roughness` is only emitted in field outputs when `use_diffuse_color=True` (because the “diffuse/specular/roughness” tuple outputs only exist in that mode).
 
 ### Current status
 
 - `bakedsdf` and `bakedsdf-mlp` enable diffuse/specular/tint/reflections/n_dot_v
-- **`enable_pred_roughness` is not used in any config** ← enable this
+- **`enable_pred_roughness` is not used in any config** ← enable this (and optionally the new knobs below)
 
 ### TODO
 
 - [ ] Add config variant or document CLI override (note: roughness output is only emitted when `use_diffuse_color=True`):
   ```bash
-  --pipeline.model.sdf-field.enable-pred-roughness True
+  --pipeline.model.sdf-field.enable-pred-roughness
+  # optional:
+  --pipeline.model.sdf-field.roughness-blend-space direction
+  --pipeline.model.sdf-field.use-roughness-in-color-mlp
+  --pipeline.model.sdf-field.use-fresnel-term
   ```
+  - Tyro boolean flags are typically presence/absence (`--flag` / `--no-flag`), not `--flag True`.
 - [ ] Verify roughness output flows through `base_surface_model.py` → texture export (branch `pbr-low-hanging-fruit` already added this passthrough)
 - [ ] Test with a real scene, inspect diffuse/roughness maps
+
+### Suggested starting recipes (Stage 1 only)
+
+Dielectric indoor smartphone object scan (e.g., LEGO/plastic):
+- Start with: `use_diffuse_color`, `use_reflections`, `use_n_dot_v` (or `use_fresnel_term`), keep `use_specular_tint` off.
+- If highlights look unstable / too sharp / “wrong”: add `enable_pred_roughness`.
+- If roughness doesn’t seem to control appearance enough: add `use_roughness_in_color_mlp`.
+- Only then try `roughness_blend_space=direction` (often a smaller effect than adding scalar conditioning).
+
+Metallic / colored specular (jewelry, coins, brass):
+- Add `use_specular_tint` (and consider `use_fresnel_term`).
+
+Quick ablation (to see what mattered):
+- With `enable_pred_roughness` on, test `use_roughness_in_color_mlp` alone first, then `use_fresnel_term`, then switch `roughness_blend_space`.
 
 ---
 
@@ -165,23 +191,63 @@ To prevent the structured renderer from underfitting early and harming geometry:
 
 ## Stage 2: glTF/GLB Export with PBR Material
 
-Current texture export saves raw PNGs (`diffuse_0.png`, `roughness_0.png`, etc.) but doesn't wire them into a proper material.
+The v2 exporter already writes a viewer-friendly `mesh.glb` with a metal–rough PBR material, plus canonical texture PNGs.
+
+### Current status (what exists today)
+
+- `sdfstudio/exporter/texture_utils_v2.py`:
+  - writes `basecolor.png` and also `texture.png` (OBJ/MTL compatibility)
+  - writes `normal.png` (tangent-space normal map) when model normals are available, and wires it as glTF `normalTexture`
+  - writes `roughness.png` and packs `orm.png` (Occlusion=R, Roughness=G, Metallic=B) when roughness exists
+  - exports `mesh.obj`/`mesh.mtl` and `mesh.glb`
+  - best-effort wires glTF PBR fields via `trimesh.visual.material.PBRMaterial` when available
+- Not yet fully covered:
+  - robust, version-stable glTF writing (trimesh API varies)
+  - tangent-space normal baking (MikkTSpace) and documented conventions
+
+### How to export today (end-to-end)
+
+1) Train with the signals you want to export (example flags only):
+```bash
+# Ensure diffuse/specular outputs exist and roughness can be exported.
+--pipeline.model.sdf-field.use-diffuse-color
+--pipeline.model.sdf-field.use-reflections
+--pipeline.model.sdf-field.enable-pred-roughness
+```
+
+2) Texture an extracted mesh:
+```bash
+sdf-texture-mesh \
+  --load-config outputs/<exp>/<method>/<timestamp>/config.yml \
+  --input-mesh-filename meshes/<mesh>.ply \
+  --output-dir meshes/textured \
+  --method gpu \
+  --num-pixels-per-side 2048
+```
+
+Expected outputs (v2 cpu/gpu):
+- `mesh.glb`, `mesh.obj`, `mesh.mtl`
+- `basecolor.png` (and `texture.png` alias for OBJ wiring)
+- `normal.png` (tangent-space normal map; used by GLB when available)
+- `roughness.png`, `orm.png` (if roughness is available)
+- `rgb.png`, `specular.png`, `tint.png` (if available)
+- `normal_object.png` (proxy only; not a tangent-space normal map)
 
 ### TODO
 
-- [ ] Add glTF/GLB export function that creates a metal-rough material:
-  - `baseColorTexture` ← diffuse output (already sRGB-ish; ensure glTF baseColor is treated as sRGB by consumers)
-  - `normalTexture` ← baked normals (tangent-space, ensure conventions)
-  - `metallicRoughnessTexture` ← pack roughness into G channel, metallic in B (or separate)
-  - `metallicFactor` = 0 default (dielectric), allow override
-- [ ] Standardize output naming: `basecolor.png`, `normal.png`, `roughness.png`, `metallic.png`
-- [ ] Document color space conventions (optimize in linear, export basecolor as sRGB, others linear)
-  - [ ] Confirm whether exporters write `diffuse` as sRGB or linear and document it (today it’s sRGB-ish from the field).
+- [ ] Upgrade normal map baking to MikkTSpace (match Blender) and validate `normal.png` on real exports.
+- [ ] Ensure the GLB material uses:
+  - `baseColorTexture` ← `basecolor.png` / `texture.png` (sRGB)
+  - `metallicRoughnessTexture` ← `orm.png` (linear; roughness in G, metallic in B; dielectric defaults)
+- [ ] Document color space conventions explicitly:
+  - basecolor: sRGB texture
+  - normal/roughness/metallic/ORM: linear (non-color)
+- [ ] Decide whether to keep trimesh-based GLB export or add a dedicated glTF writer for reproducibility across environments.
 
 ### Implementation notes
 
-- Use `pygltflib` or similar for glTF writing
-- Can extend existing `export_textured_mesh_v2` or add new function
+- Current implementation uses trimesh for GLB export; this is convenient but not always stable across trimesh versions.
+- A dedicated writer (e.g., via `pygltflib`) is still attractive if we want deterministic output and full control over normal maps, samplers, and color-space metadata.
 - Tangent-space normal baking needs correct tangent frame from xatlas UVs
   - Many viewers can compute tangents if missing, but quality varies; ideally compute tangents (MikkTSpace) during export.
 

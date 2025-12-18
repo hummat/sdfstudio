@@ -426,7 +426,7 @@ def unwrap_mesh_with_xatlas_v2(
     vertex_normals: Tensor,
     texture_size: int = 1024,
     use_gpu: bool = True,
-) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     """Unwrap mesh using xatlas and rasterize to get per-pixel 3D positions/normals.
 
     Args:
@@ -441,6 +441,8 @@ def unwrap_mesh_with_xatlas_v2(
         faces_uv_order: Per-face vertex indices aligned to UV corner order (F, 3)
         origins: Per-pixel 3D positions (H, W, 3)
         normals: Per-pixel normals (H, W, 3)
+        tangents: Per-pixel tangent vectors (H, W, 3)
+        tangent_sign: Per-pixel handedness sign (H, W, 1), where bitangent = sign * cross(normal, tangent)
         valid_mask: Per-pixel validity mask (H, W)
     """
     device = vertices.device
@@ -485,6 +487,31 @@ def unwrap_mesh_with_xatlas_v2(
     # Valid mask: pixels that belong to a triangle (atlas background stays invalid)
     valid_mask = triangle_ids >= 0
 
+    def safe_normalize(x: Tensor, eps: float = 1e-8) -> Tensor:
+        return x / (x.norm(dim=-1, keepdim=True) + eps)
+
+    def fallback_tangent_from_normal(n: Tensor) -> Tensor:
+        up = torch.tensor([0.0, 0.0, 1.0], device=n.device, dtype=n.dtype)
+        alt = torch.tensor([0.0, 1.0, 0.0], device=n.device, dtype=n.dtype)
+        parallel_mask = torch.abs(n[..., 2]) > 0.99
+        a = torch.where(parallel_mask.unsqueeze(-1), alt, up)
+        t = torch.cross(a.expand_as(n), n, dim=-1)
+        return safe_normalize(t)
+
+    def compute_face_tangent_bitangent(pos_f: Tensor, uv_f: Tensor) -> tuple[Tensor, Tensor]:
+        p0, p1, p2 = pos_f[:, 0], pos_f[:, 1], pos_f[:, 2]
+        w0, w1, w2 = uv_f[:, 0], uv_f[:, 1], uv_f[:, 2]
+        dp1 = p1 - p0
+        dp2 = p2 - p0
+        duv1 = w1 - w0
+        duv2 = w2 - w0
+        denom = duv1[:, 0] * duv2[:, 1] - duv1[:, 1] * duv2[:, 0]
+        r = torch.where(denom.abs() > 1e-12, 1.0 / denom, torch.zeros_like(denom))
+        r = r.unsqueeze(-1)
+        t = (dp1 * duv2[:, 1:2] - dp2 * duv1[:, 1:2]) * r
+        b = (-dp1 * duv2[:, 0:1] + dp2 * duv1[:, 0:1]) * r
+        return t, b
+
     if use_gpu and NVDIFFRAST_AVAILABLE and device.type == "cuda" and rast_out is not None:
         # Interpolate on the UV vertex domain directly using nvdiffrast.
         #
@@ -504,6 +531,41 @@ def unwrap_mesh_with_xatlas_v2(
 
         origins = interp_pos[0]
         normals = torch.nn.functional.normalize(interp_nrm[0], dim=-1)
+
+        # Tangent frame on the UV vertex domain, then interpolate to pixels.
+        uv_f = uv_coords[uv_faces]  # (F, 3, 2)
+        pos_f = pos_uv[uv_faces]  # (F, 3, 3)
+        face_t, face_b = compute_face_tangent_bitangent(pos_f, uv_f)
+
+        V_uv = uv_coords.shape[0]
+        idx_flat = uv_faces.reshape(-1)
+        t_sum = torch.zeros((V_uv, 3), device=device, dtype=pos_uv.dtype)
+        b_sum = torch.zeros((V_uv, 3), device=device, dtype=pos_uv.dtype)
+        t_sum.index_add_(0, idx_flat, face_t.repeat_interleave(3, dim=0))
+        b_sum.index_add_(0, idx_flat, face_b.repeat_interleave(3, dim=0))
+
+        # Orthonormalize tangents against UV-domain normals.
+        t_ortho = t_sum - nrm_uv * (t_sum * nrm_uv).sum(dim=-1, keepdim=True)
+        t_fallback = fallback_tangent_from_normal(nrm_uv)
+        use_fallback = t_ortho.norm(dim=-1, keepdim=True) < 1e-6
+        t_ortho = torch.where(use_fallback, t_fallback, t_ortho)
+        t_ortho = safe_normalize(t_ortho)
+
+        # Handedness sign so that bitangent = sign * cross(n, t).
+        b_ref = b_sum
+        c = torch.cross(nrm_uv, t_ortho, dim=-1)
+        s = torch.sign((c * b_ref).sum(dim=-1, keepdim=True))
+        s = torch.where(s == 0, torch.ones_like(s), s)
+
+        interp_t, _ = dr.interpolate(t_ortho.unsqueeze(0), rast_out, uv_faces_int)  # type: ignore
+        interp_s, _ = dr.interpolate(s.unsqueeze(0), rast_out, uv_faces_int)  # type: ignore
+
+        tangents = interp_t[0]
+        tangent_sign = interp_s[0]
+        tangents = tangents - normals * (tangents * normals).sum(dim=-1, keepdim=True)
+        tangents = safe_normalize(tangents)
+        tangent_sign = torch.sign(tangent_sign)
+        tangent_sign = torch.where(tangent_sign == 0, torch.ones_like(tangent_sign), tangent_sign)
     else:
         # Clamp triangle IDs for gathering (invalid will be masked out anyway)
         triangle_ids_clamped = triangle_ids.clamp(min=0)
@@ -521,9 +583,28 @@ def unwrap_mesh_with_xatlas_v2(
         normals = (pixel_norms * bary).sum(dim=2)  # (H, W, 3)
         normals = torch.nn.functional.normalize(normals, dim=-1)
 
+        # Per-face tangents from (pos, uv) in UV corner order, gathered by triangle id.
+        face_pos = vertices[faces_uv_order]  # (F, 3, 3)
+        face_t, face_b = compute_face_tangent_bitangent(face_pos, texture_uvs)  # (F, 3)
+
+        face_t_pix = face_t[triangle_ids_clamped]  # (H, W, 3)
+        face_b_pix = face_b[triangle_ids_clamped]  # (H, W, 3)
+
+        tangents = face_t_pix - normals * (face_t_pix * normals).sum(dim=-1, keepdim=True)
+        tangents = torch.where(
+            tangents.norm(dim=-1, keepdim=True) < 1e-6,
+            fallback_tangent_from_normal(normals),
+            tangents,
+        )
+        tangents = safe_normalize(tangents)
+
+        c = torch.cross(normals, tangents, dim=-1)
+        tangent_sign = torch.sign((c * face_b_pix).sum(dim=-1, keepdim=True))
+        tangent_sign = torch.where(tangent_sign == 0, torch.ones_like(tangent_sign), tangent_sign)
+
     CONSOLE.print("[green]Rasterization complete")
 
-    return texture_uvs, faces_uv_order, origins, normals, valid_mask
+    return texture_uvs, faces_uv_order, origins, normals, tangents, tangent_sign, valid_mask
 
 
 def query_nerf_textures(
@@ -637,6 +718,7 @@ def write_textured_mesh_fast(
     vertex_normals: Tensor,
     texture_uvs: Tensor,
     texture_image: np.ndarray,
+    normal_image: Optional[np.ndarray],
     orm_image: Optional[np.ndarray],
     output_dir: Path,
     mesh_name: str = "mesh",
@@ -651,6 +733,7 @@ def write_textured_mesh_fast(
         vertex_normals: Vertex normals (V, 3)
         texture_uvs: Per-face UV coordinates (F, 3, 2)
         texture_image: Texture image (H, W, 3) as numpy array [0, 1]
+        normal_image: Optional tangent-space normal map image (H, W, 3) as numpy array [0, 1].
         orm_image: Optional ORM texture image (H, W, 3) as numpy array [0, 1].
 
             Convention for glTF metal-rough workflows:
@@ -704,20 +787,20 @@ def write_textured_mesh_fast(
     mtl_path = output_dir / f"{mesh_name}.mtl"
 
     # MTL assumes texture.png already exists in output_dir.
-    mtl_path.write_text(
-        "\n".join(
-            [
-                "newmtl material_0",
-                "Ka 0 0 0",
-                "Kd 1 1 1",
-                "Ks 0 0 0",
-                "d 1.0",
-                "illum 1",
-                "map_Kd texture.png",
-                "",
-            ]
-        )
-    )
+    mtl_lines = [
+        "newmtl material_0",
+        "Ka 0 0 0",
+        "Kd 1 1 1",
+        "Ks 0 0 0",
+        "d 1.0",
+        "illum 1",
+        "map_Kd texture.png",
+    ]
+    if normal_image is not None:
+        # Best-effort normal map hint for DCC tools; MTL support varies.
+        mtl_lines.append("map_Bump normal.png")
+    mtl_lines.append("")
+    mtl_path.write_text("\n".join(mtl_lines) + "\n")
 
     lines: list[str] = []
     lines.append(f"mtllib {mtl_path.name}")
@@ -739,6 +822,10 @@ def write_textured_mesh_fast(
     # Also export GLB for convenience
     texture_uint8 = (np.clip(texture_image, 0, 1) * 255).astype(np.uint8)
     texture_pil = PIL.Image.fromarray(texture_uint8)
+    normal_pil = None
+    if normal_image is not None:
+        normal_uint8 = (np.clip(normal_image, 0, 1) * 255).astype(np.uint8)
+        normal_pil = PIL.Image.fromarray(normal_uint8)
     material = None
     pbr_material_cls = getattr(trimesh.visual.material, "PBRMaterial", None)  # type: ignore[attr-defined]
     if pbr_material_cls is not None:
@@ -749,6 +836,8 @@ def write_textured_mesh_fast(
                 material.baseColorTexture = texture_pil
             if hasattr(material, "baseColorFactor"):
                 material.baseColorFactor = [1.0, 1.0, 1.0, 1.0]
+            if normal_pil is not None and hasattr(material, "normalTexture"):
+                material.normalTexture = normal_pil
             if orm_image is not None:
                 orm_uint8 = (np.clip(orm_image, 0, 1) * 255).astype(np.uint8)
                 orm_pil = PIL.Image.fromarray(orm_uint8)
@@ -820,7 +909,7 @@ def export_textured_mesh_v2(
     CONSOLE.print(f"[bold]Texturing mesh: {len(vertices)} vertices, {len(faces)} faces")
 
     # Step 1: UV unwrap and rasterize
-    texture_uvs, faces_uv_order, origins, normals, valid_mask = unwrap_mesh_with_xatlas_v2(
+    texture_uvs, faces_uv_order, origins, normals, tangents, tangent_sign, valid_mask = unwrap_mesh_with_xatlas_v2(
         vertices,
         faces,
         vertex_normals,
@@ -851,6 +940,16 @@ def export_textured_mesh_v2(
 
     # Step 3.5: Seam dilation to avoid seam bleeding / raster gaps without querying outside triangles.
     textures = pad_textures_nearest(textures, valid_mask, pad_px=pad_px)
+
+    # Pad the geometric basis too so derived maps don't show atlas-edge seams.
+    basis = pad_textures_nearest(
+        {"normal_geom": normals, "tangent": tangents, "tangent_sign": tangent_sign},
+        valid_mask,
+        pad_px=pad_px,
+    )
+    normals_padded = basis["normal_geom"]
+    tangents_padded = basis["tangent"]
+    tangent_sign_padded = basis["tangent_sign"]
 
     # Step 4: Save all texture maps (canonical names for DCC tools)
     import mediapy as media  # type: ignore
@@ -886,11 +985,42 @@ def export_textured_mesh_v2(
         saved_textures.append(output_dir / "tint.png")
 
     # Note: model "normal" output is not guaranteed to be tangent-space; export as object/world-style proxy.
+    normal_tangent_img = None
     if "normal" in textures:
-        normal_img = textures["normal"].cpu().numpy()
+        normal_world = textures["normal"]
+        normal_img = normal_world.cpu().numpy()
         normal_img = (normal_img * 0.5 + 0.5).clip(0.0, 1.0)
         media.write_image(str(output_dir / "normal_object.png"), normal_img)
         saved_textures.append(output_dir / "normal_object.png")
+
+        # Tangent-space normal map for PBR workflows (glTF expects tangent-space normals).
+        basis_valid = (normals_padded.norm(dim=-1, keepdim=True) > 1e-6) & (
+            tangents_padded.norm(dim=-1, keepdim=True) > 1e-6
+        )
+
+        n = torch.where(basis_valid, normals_padded, torch.tensor([0.0, 0.0, 1.0], device=device)).to(normals_padded)
+        n = torch.nn.functional.normalize(n, dim=-1)
+        t = tangents_padded - n * (tangents_padded * n).sum(dim=-1, keepdim=True)
+        t = torch.where(basis_valid, t, torch.tensor([1.0, 0.0, 0.0], device=device)).to(t)
+        t = torch.nn.functional.normalize(t, dim=-1)
+        s = torch.sign(tangent_sign_padded)
+        s = torch.where(s == 0, torch.ones_like(s), s)
+        b = torch.cross(n, t, dim=-1) * s
+        b = torch.nn.functional.normalize(b, dim=-1)
+
+        nw = torch.nn.functional.normalize(normal_world, dim=-1)
+        nt = torch.stack([(nw * t).sum(dim=-1), (nw * b).sum(dim=-1), (nw * n).sum(dim=-1)], dim=-1)
+        nt = torch.nn.functional.normalize(nt, dim=-1)
+        normal_tangent = (nt * 0.5 + 0.5).clamp(0.0, 1.0)
+        # Default invalid regions to a flat +Z tangent-space normal.
+        normal_tangent = torch.where(
+            basis_valid.expand_as(normal_tangent),
+            normal_tangent,
+            torch.tensor([0.5, 0.5, 1.0], device=device).to(normal_tangent),
+        )
+        normal_tangent_img = normal_tangent.detach().cpu().numpy()
+        media.write_image(str(output_dir / "normal.png"), normal_tangent_img)
+        saved_textures.append(output_dir / "normal.png")
 
     # ORM texture for glTF metal-rough workflows (Occlusion=R, Roughness=G, Metallic=B).
     orm_img = None
@@ -912,6 +1042,7 @@ def export_textured_mesh_v2(
         vertex_normals,
         texture_uvs,
         basecolor_img,
+        normal_tangent_img,
         orm_img,
         output_dir,
         mesh_name="mesh",
@@ -1471,13 +1602,15 @@ def export_textured_mesh_multiview(
             CONSOLE.print("[yellow]Open3D not available; using xatlas + reprojection instead")
 
         # UV unwrap & per-texel surface points for reprojection
-        texture_uvs, faces_uv_order, origins, surf_normals, valid_mask = unwrap_mesh_with_xatlas_v2(
-            vertices,
-            faces,
-            vertex_normals,
-            texture_size=texture_size,
-            use_gpu=True,
-        )
+        (
+            texture_uvs,
+            faces_uv_order,
+            origins,
+            surf_normals,
+            _tangents,
+            _tangent_sign,
+            valid_mask,
+        ) = unwrap_mesh_with_xatlas_v2(vertices, faces, vertex_normals, texture_size=texture_size, use_gpu=True)
         # Helpful debug signal: many unwraps have low coverage because the atlas is
         # sparse by design. This is not the same thing as rasterization "gaps".
         coverage = float(valid_mask.float().mean().item() * 100.0)
@@ -1512,6 +1645,7 @@ def export_textured_mesh_multiview(
         normals_for_export,
         texture_uvs.to(device),
         texture_np,
+        None,
         None,
         output_dir,
         mesh_name="mesh",
