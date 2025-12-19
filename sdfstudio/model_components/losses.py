@@ -250,7 +250,8 @@ def orientation_loss(
     """
     w = weights
     n = normals
-    v = viewdirs
+    # `viewdirs` are ray directions (camera→point); the view vector (point→camera) is the negation.
+    v = -viewdirs
     n_dot_v = (n * v[..., None, :]).sum(axis=-1)
     return (w[..., 0] * torch.fmin(torch.zeros_like(n_dot_v), n_dot_v) ** 2).sum(dim=-1)
 

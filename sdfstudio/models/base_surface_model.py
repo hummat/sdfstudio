@@ -136,7 +136,11 @@ class SurfaceModelConfig(ModelConfig):
     """L1 penalty on roughness values. Encourages low roughness (smooth/specular surfaces).
 
     Ref-NeRF uses this to prevent the network from explaining all view-dependence via high
-    roughness. Set to ~0.01 as a starting point. Requires enable_pred_roughness=True in SDFFieldConfig."""
+    roughness. This term is applied to the *rendered* roughness mean, so it can quickly
+    collapse roughness → 0 if set too high (making roughness/ORM exports uninformative).
+
+    Start with 0; if you enable it, try ~1e-4–1e-3 and consider turning it on late in training.
+    Requires enable_pred_roughness=True in SDFFieldConfig."""
     overwrite_near_far_plane: bool = False
     """whether to use near and far collider from command line"""
     scene_contraction_norm: Literal["inf", "l2"] = "inf"

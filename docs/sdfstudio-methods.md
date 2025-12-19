@@ -240,100 +240,49 @@ All flags are set via `--pipeline.model.sdf-field.<flag-name>`.
 | `use-roughness-gated-specular` | False | Multiplies specular by (1 - roughness). Rough surfaces get less specular contribution. Requires `enable-pred-roughness` and `use-diffuse-color`. |
 | `learned-specular-scale` | False | Learns per-point specular intensity instead of fixed 0.5. Requires `use-diffuse-color`. |
 
-#### Recommended Configurations by Scene Type
+#### Recommended Configurations (Copy/Paste)
 
-**Diffuse objects (matte surfaces, paper, cloth)**
-
-No BRDF flags needed. The baseline model handles diffuse materials well.
-
-```bash
-# Just use defaults
-sdf-train neus-facto sdfstudio-data --data YOUR_DATA
-```
-
-**Plastic objects (lego, toys, household items)**
-
-Plastic has white/neutral specular highlights and uniform roughness. Separate diffuse from specular, exclude geo
-features from specular branch so albedo stays in diffuse.
-
-```bash
---pipeline.model.sdf-field.use-diffuse-color True \
---pipeline.model.sdf-field.specular-exclude-geo-features True \
---pipeline.model.sdf-field.use-reflections True \
---pipeline.model.sdf-field.use-n-dot-v True \
---pipeline.model.sdf-field.enable-pred-roughness True \
---pipeline.model.sdf-field.use-roughness-gated-specular True
-```
-
-**Metal objects (chrome, steel, jewelry)**
-
-Metals have colored specular (the "reflection" is tinted by the metal color). Enable specular tint and roughness.
-
-```bash
---pipeline.model.sdf-field.use-diffuse-color True \
---pipeline.model.sdf-field.use-specular-tint True \
---pipeline.model.sdf-field.use-reflections True \
---pipeline.model.sdf-field.use-n-dot-v True \
---pipeline.model.sdf-field.enable-pred-roughness True
-```
-
-**Glossy/shiny objects (ceramics, polished wood, lacquered surfaces)**
-
-Similar to plastic but may have spatially varying roughness. Use learned specular scale if shininess varies.
-
-```bash
---pipeline.model.sdf-field.use-diffuse-color True \
---pipeline.model.sdf-field.use-reflections True \
---pipeline.model.sdf-field.use-n-dot-v True \
---pipeline.model.sdf-field.enable-pred-roughness True \
---pipeline.model.sdf-field.use-roughness-gated-specular True \
---pipeline.model.sdf-field.learned-specular-scale True
-```
-
-**Mixed materials (scenes with both rough and shiny surfaces)**
-
-Enable roughness prediction and pass it to color MLP so the network can learn material-dependent behavior.
-
-```bash
---pipeline.model.sdf-field.use-diffuse-color True \
---pipeline.model.sdf-field.use-reflections True \
---pipeline.model.sdf-field.use-n-dot-v True \
---pipeline.model.sdf-field.enable-pred-roughness True \
---pipeline.model.sdf-field.use-roughness-in-color-mlp True \
---pipeline.model.sdf-field.use-roughness-gated-specular True
-```
-
-**Indoor smartphone video (varying exposure, mixed lighting)**
-
-Enable appearance embedding to absorb per-frame photometric variation. Use conservative BRDF settings.
-
-```bash
---pipeline.model.sdf-field.use-appearance-embedding True \
---pipeline.model.sdf-field.use-diffuse-color True \
---pipeline.model.sdf-field.use-n-dot-v True
-```
-
-Add more BRDF flags based on the dominant material in the scene (see above).
+The full command recipes (including a few practical “proxy PBR” BRDF flag sets) live in `docs/sdfstudio-examples.md`.
+This page focuses on what each flag does and how the losses behave.
 
 #### Roughness Regularization (Ref-NeRF-style)
 
-When using `enable-pred-roughness`, add these regularizers to help the network learn sensible roughness values:
+When using `enable-pred-roughness`, these regularizers can help the network learn sensible roughness values:
 
 | Loss | Flag | Description | Suggested Value |
 |------|------|-------------|-----------------|
-| Roughness sparsity | `--pipeline.model.roughness-sparsity-loss-mult` | L1 penalty on roughness. Encourages low roughness (specular default). | 0.01 |
-| Orientation | `--pipeline.model.orientation-loss-mult` | Penalizes backfacing normals on visible surfaces. | 0.01 |
+| Orientation | `--pipeline.model.orientation-loss-mult` | Penalizes backfacing normals on visible surfaces (Ref-NeRF-style). | `1e-4` (start) |
+| Roughness sparsity | `--pipeline.model.roughness-sparsity-loss-mult` | L1 penalty on the *rendered* roughness mean. See warning below. | `0` (default); try `1e-4`–`1e-3` |
 
-Example for plastic/glossy objects:
+**Warning: Roughness sparsity conflicts with roughness gating.**
+
+`roughness-sparsity-loss-mult` should NOT be used with `use-roughness-gated-specular=True` (which most
+recommended configs above use). With roughness gating, the formula is `specular * (1 - roughness)`, so
+roughness=0 means **full** specular. The L1 penalty drives roughness to zero everywhere (satisfies the
+penalty while keeping full specular), collapsing roughness. If you see roughness go to 0 and ORM maps
+turn solid red, this is why.
+
+**When to use each:**
+- `use-roughness-gated-specular=True` (recommended for most scenes): Use orientation loss only. The gating
+  itself provides regularization by giving roughness a structural role.
+- `use-roughness-gated-specular=False` (e.g., metals with `use-specular-tint`): Roughness sparsity loss
+  can help prevent the network from setting roughness=1 everywhere to disable the reflection encoding.
+
+Example for configs using roughness gating (plastic, glossy, mixed):
 
 ```bash
---pipeline.model.roughness-sparsity-loss-mult 0.01 \
---pipeline.model.orientation-loss-mult 0.01
+--pipeline.model.orientation-loss-mult 1e-4
+```
+
+Example for configs NOT using roughness gating (metals):
+
+```bash
+--pipeline.model.orientation-loss-mult 1e-4 \
+--pipeline.model.roughness-sparsity-loss-mult 1e-4
 ```
 
 Note: Ref-NeRF also uses a roughness smoothness prior (TV loss on roughness). This is not implemented here
-because SDFStudio uses random ray sampling, making spatial neighbor computation non-trivial. The sparsity
-prior alone is usually sufficient to prevent degenerate roughness solutions.
+because SDFStudio uses random ray sampling, making spatial neighbor computation non-trivial.
 
 #### Notes
 
@@ -343,13 +292,8 @@ prior alone is usually sufficient to prevent degenerate roughness solutions.
 - `specular-exclude-geo-features` is recommended for scenes with uniform specular behavior (single material). It
   forces all color variation through the diffuse branch, preventing albedo from leaking into specular.
 - `use-roughness-gated-specular` provides a clean physical prior: rough surfaces should have less specular. This
-  helps the network converge to sensible roughness values.
-- The roughness sparsity regularizer helps prevent the network from explaining all view-dependence via high
-  roughness. Without it, the model may set roughness=1 everywhere (fully diffuse) and ignore the reflection encoding.
-- `use-appearance-embedding` adds a small per-image latent to the color network. On real-world captures with varying
-  exposure / white balance / lighting (e.g. handheld smartphones), this usually helps because it lets the model
-  absorb per-view photometric quirks without twisting geometry or BRDF parameters. On clean, studio-lit multi-view
-  photo sets where you primarily care about geometry, you may prefer to disable it.
+  helps the network converge to sensible roughness values. See the Roughness Regularization section for which
+  losses to combine with it.
 
 ### 3. Turn Up Existing Geometry Priors
 

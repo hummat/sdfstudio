@@ -8,25 +8,25 @@ things to understand.
 The most demonstrative and helpful example of the CLI structure is the difference in output between the following
 commands:
 
-    ns-train -h
-    ns-train nerfacto -h sdfstudio-data
-    ns-train nerfacto sdfstudio-data -h
+    sdf-train -h
+    sdf-train nerfacto -h sdfstudio-data
+    sdf-train nerfacto sdfstudio-data -h
 
-In each of these examples, the -h applies to the previous subcommand (ns-train, nerfacto, and sdfstudio-data).
+In each of these examples, the -h applies to the previous subcommand (sdf-train, nerfacto, and sdfstudio-data).
 
-In the first example, we get the help menu for the ns-train script.
+In the first example, we get the help menu for the sdf-train script.
 In the second example, we get the help menu for the nerfacto model.
 In the third example, we get the help menu for the sdfstudio-data dataparser.
 
 With our scripts, your arguments will apply to the preceding subcommand in your command, and thus where you put your
 arguments matters! Any optional arguments you discover from running
 
-    ns-train nerfacto -h sdfstudio-data
+    sdf-train nerfacto -h sdfstudio-data
 
 need to come directly after the nerfacto subcommand, since these optional arguments only belong to the nerfacto
 subcommand:
 
-    ns-train nerfacto {nerfacto optional args} sdfstudio-data
+    sdf-train nerfacto {nerfacto optional args} sdfstudio-data
 """
 
 from __future__ import annotations
