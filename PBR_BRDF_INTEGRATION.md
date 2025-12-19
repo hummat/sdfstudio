@@ -111,15 +111,23 @@ Notes:
 
 - [ ] Add config variant or document CLI override (note: roughness output is only emitted when `use_diffuse_color=True`):
   ```bash
-  --pipeline.model.sdf-field.enable-pred-roughness
+  --pipeline.model.sdf-field.enable-pred-roughness True
   # optional:
   --pipeline.model.sdf-field.roughness-blend-space direction
-  --pipeline.model.sdf-field.use-roughness-in-color-mlp
-  --pipeline.model.sdf-field.use-fresnel-term
+  --pipeline.model.sdf-field.use-roughness-in-color-mlp True
+  --pipeline.model.sdf-field.use-fresnel-term True
   ```
-  - Tyro boolean flags are typically presence/absence (`--flag` / `--no-flag`), not `--flag True`.
-- [ ] Verify roughness output flows through `base_surface_model.py` → texture export (branch `pbr-low-hanging-fruit` already added this passthrough)
+  - Note: `sdf-train` uses `tyro.conf.FlagConversionOff`, so booleans are passed as explicit `{True,False}`.
+- [x] Verify roughness output flows through `base_surface_model.py` → texture export (v2 exporter writes `roughness.png` and `orm.png` when roughness exists).
 - [ ] Test with a real scene, inspect diffuse/roughness maps
+
+### Roughness regularization note (important for exports)
+
+- `--pipeline.model.roughness-sparsity-loss-mult` is an L1 penalty on the **rendered roughness mean**. It strongly
+  biases roughness → 0 (mirror-smooth), and can collapse `roughness.png` to black and `orm.png` to solid red
+  (AO=1, roughness=0, metallic=0), especially when combined with `use-roughness-gated-specular=True`.
+- If you care about exporting a non-trivial roughness map, keep `roughness-sparsity-loss-mult=0` unless you have a
+  specific reason, and if you do enable it, start very small and/or enable it late in training.
 
 ### Suggested starting recipes (Stage 1 only)
 
@@ -218,9 +226,9 @@ The v2 exporter already writes a viewer-friendly `mesh.glb` with a metal–rough
 1) Train with the signals you want to export (example flags only):
 ```bash
 # Ensure diffuse/specular outputs exist and roughness can be exported.
---pipeline.model.sdf-field.use-diffuse-color
---pipeline.model.sdf-field.use-reflections
---pipeline.model.sdf-field.enable-pred-roughness
+--pipeline.model.sdf-field.use-diffuse-color True
+--pipeline.model.sdf-field.use-reflections True
+--pipeline.model.sdf-field.enable-pred-roughness True
 ```
 
 2) Texture an extracted mesh:
@@ -245,9 +253,6 @@ Expected outputs (v2 cpu/gpu):
 ### TODO
 
 - [ ] Upgrade normal map baking to MikkTSpace (match Blender) and validate `normal.png` on real exports.
-- [ ] Ensure the GLB material uses:
-  - `baseColorTexture` ← `basecolor.png` / `texture.png` (sRGB)
-  - `metallicRoughnessTexture` ← `orm.png` (linear; roughness in G, metallic in B; dielectric defaults)
 - [ ] Document color space conventions explicitly:
   - basecolor: sRGB texture
   - normal/roughness/metallic/ORM: linear (non-color)
