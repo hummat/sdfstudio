@@ -75,6 +75,15 @@ class TextureMesh:
     - v2 cpu/gpu and legacy exporters query the model with a single camera index; if unset, defaults to 0.
     - v2 open3d multiview exporter renders multiple synthetic cameras; if unset, preserves per-view indices.
     """
+    use_average_appearance_embedding: Optional[bool] = None
+    """Override how appearance embeddings are handled during export (inference mode).
+
+    When a model was trained with `--pipeline.model.sdf-field.use-appearance-embedding True`, inference can either:
+    - use the *mean* appearance embedding (more stable, canonical look), or
+    - use a *zero* embedding (may be darker/shifted if training relied on embeddings).
+
+    If unset, uses whatever is stored in the training config.
+    """
     normal_map_convention: Literal["opengl", "directx"] = "opengl"
     """Tangent-space normal map convention for v2 cpu/gpu exports.
 
@@ -94,6 +103,18 @@ class TextureMesh:
         _, pipeline, _ = eval_setup(
             self.load_config, test_mode="inference", eval_num_rays_per_chunk=self.eval_num_rays_per_chunk
         )
+        if self.use_average_appearance_embedding is not None:
+            # `eval_setup(..., test_mode="inference")` puts the pipeline in eval mode, and our fields choose
+            # between (zeros vs mean) appearance embeddings based on a boolean captured at field construction.
+            #
+            # Expose this here so users can pick a stable "canonical" appearance for mesh exports without
+            # having to edit the saved training config.
+            if hasattr(pipeline.model, "config") and hasattr(pipeline.model.config, "use_average_appearance_embedding"):
+                pipeline.model.config.use_average_appearance_embedding = self.use_average_appearance_embedding
+            for field_name in ("field", "field_background"):
+                field = getattr(pipeline.model, field_name, None)
+                if field is not None and hasattr(field, "use_average_appearance_embedding"):
+                    field.use_average_appearance_embedding = self.use_average_appearance_embedding
 
         if self.method == "legacy":
             CONSOLE.print("[yellow]Using legacy (v1) texture export")
