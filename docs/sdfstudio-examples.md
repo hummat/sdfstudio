@@ -51,7 +51,17 @@ sdf-train neus-facto --vis viewer sdfstudio-data --data YOUR_DATA \
   --pipeline.model.sdf-field.use-roughness-gated-specular True
 ```
 
-### Metals (colored specular)
+### Shiny metal (polished)
+
+```bash
+sdf-train neus-facto --vis viewer sdfstudio-data --data YOUR_DATA \
+  --pipeline.model.sdf-field.use-diffuse-color True \
+  --pipeline.model.sdf-field.use-specular-tint True \
+  --pipeline.model.sdf-field.use-reflections True \
+  --pipeline.model.sdf-field.use-n-dot-v True
+```
+
+### Matte / brushed metal
 
 ```bash
 sdf-train neus-facto --vis viewer sdfstudio-data --data YOUR_DATA \
@@ -59,7 +69,22 @@ sdf-train neus-facto --vis viewer sdfstudio-data --data YOUR_DATA \
   --pipeline.model.sdf-field.use-specular-tint True \
   --pipeline.model.sdf-field.use-reflections True \
   --pipeline.model.sdf-field.use-n-dot-v True \
-  --pipeline.model.sdf-field.enable-pred-roughness True
+  --pipeline.model.sdf-field.enable-pred-roughness True \
+  --pipeline.model.sdf-field.use-roughness-gated-specular True
+```
+
+### Mixed metal (matte + polished accents)
+
+```bash
+sdf-train neus-facto --vis viewer sdfstudio-data --data YOUR_DATA \
+  --pipeline.model.sdf-field.use-diffuse-color True \
+  --pipeline.model.sdf-field.use-specular-tint True \
+  --pipeline.model.sdf-field.use-reflections True \
+  --pipeline.model.sdf-field.use-n-dot-v True \
+  --pipeline.model.sdf-field.enable-pred-roughness True \
+  --pipeline.model.sdf-field.use-roughness-in-color-mlp True \
+  --pipeline.model.sdf-field.use-roughness-gated-specular True \
+  --pipeline.model.sdf-field.learned-specular-scale True
 ```
 
 ### Auxiliary losses / regularizers (optional add-ons)
