@@ -375,6 +375,7 @@ Per-paper files live at: `<paper_db>/papers/{paper}/`
 | “Find the exact formulation / definitions” | Read `{paper}/source.tex` |
 | “Which papers discuss X?” | Run `papi search "X"` (fast) or `papi ask "X"` (PaperQA2) |
 | “Compare methods across papers” | Load multiple `{paper}/equations.md` files |
+| “Do the generated summaries/equations look sane?” | Run `papi audit` (and optionally regenerate flagged papers) |
 
 ### Useful Commands
 
@@ -390,8 +391,16 @@ papi search "sdf loss"
 papi export neuralangelo neus --level equations --to ./paper-context/
 
 # Add papers (arXiv) / regenerate; use --no-llm to avoid LLM calls
-papi add 2303.13476 --name neuralangelo
+papi add 2303.13476                      # name auto-generated
+papi add 2303.13476 --name neuralangelo  # or explicit name
+papi add 2303.13476 --update             # refresh existing paper in-place
+papi add 2303.13476 --duplicate          # add a second copy (-2/-3 suffix)
 papi regenerate neuralangelo --no-llm
+
+# Audit generated content for obvious issues (and optionally regenerate flagged papers)
+papi audit
+papi audit --limit 5 --seed 0
+papi audit --regenerate --no-llm -o summary,equations,tags
 ```
 
 ### Code Verification Workflow
