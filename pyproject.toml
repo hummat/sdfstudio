@@ -154,8 +154,12 @@ disable = [
 
 #pytest
 [tool.pytest.ini_options]
-addopts = "-n=4 --typeguard-packages=sdfstudio --disable-warnings --cov=sdfstudio --cov-report=xml --cov-report=term"
+addopts = "-n=4 --typeguard-packages=sdfstudio --disable-warnings --cov=sdfstudio --cov-report=xml"
 testpaths = ["tests"]
+filterwarnings = [
+    # CI log hygiene: matplotlib/pyparsing deprecations can spam output enough to break Actions logs.
+    "ignore::DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 120
