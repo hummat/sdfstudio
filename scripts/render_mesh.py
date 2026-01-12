@@ -12,7 +12,6 @@ from pathlib import Path
 import cv2
 import mediapy as media
 import numpy as np
-import open3d as o3d
 import torch
 import tyro
 from rich.console import Console
@@ -31,6 +30,17 @@ from sdfstudio.data.dataparsers.sdfstudio_dataparser import SDFStudioDataParserC
 from sdfstudio.utils import install_checks
 
 CONSOLE = Console(width=120)
+
+try:
+    import open3d as o3d  # type: ignore
+except ImportError:  # pragma: no cover
+    o3d = None  # type: ignore[assignment]
+
+
+def _require_open3d():
+    if o3d is None:  # pragma: no cover
+        raise ImportError("open3d is required for this command; install with `pip install -e '.[export]'`.")
+    return o3d
 
 
 def _interpolate_trajectory(cameras: Cameras, num_views: int = 300):
@@ -88,6 +98,7 @@ def _render_trajectory_video(
         seconds: Length of output video.
         output_format: How to save output data.
     """
+    o3d_mod = _require_open3d()
     CONSOLE.print("[bold green]Creating trajectory video")
     cameras.rescale_output_resolution(rendered_resolution_scaling_factor)
     # cameras = cameras.to(pipeline.device)
@@ -95,11 +106,11 @@ def _render_trajectory_video(
     width = cameras[0].width[0].item()
     height = cameras[0].height[0].item()
 
-    ply = o3d.io.read_triangle_mesh(str(meshfile))
+    ply = o3d_mod.io.read_triangle_mesh(str(meshfile))
     ply.compute_vertex_normals()
     ply.paint_uniform_color([1, 1, 1])
 
-    vis = o3d.visualization.VisualizerWithKeyCallback()
+    vis = o3d_mod.visualization.VisualizerWithKeyCallback()
     vis.create_window("rendering", width=width, height=height)
 
     vis.add_geometry(ply)
@@ -132,9 +143,9 @@ def _render_trajectory_video(
                 output_image_dir_cur = output_image_dir / render_name
 
                 if render_name == "normal":
-                    vis.get_render_option().mesh_color_option = o3d.visualization.MeshColorOption.Normal
+                    vis.get_render_option().mesh_color_option = o3d_mod.visualization.MeshColorOption.Normal
                 elif render_name == "rgb":
-                    vis.get_render_option().mesh_color_option = o3d.visualization.MeshColorOption.Color
+                    vis.get_render_option().mesh_color_option = o3d_mod.visualization.MeshColorOption.Color
 
                 vis.capture_screen_image(str(output_image_dir_cur / f"{index:05d}.png"), True)
 

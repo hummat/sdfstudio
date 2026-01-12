@@ -8,7 +8,7 @@ version = "0.6.1"
 description = "All-in-one repository for state-of-the-art neural surface reconstruction"
 readme = "README.md"
 license = { text = "Apache 2.0" }
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.12"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python",
@@ -29,11 +29,9 @@ dependencies = [
     #"msgpack",
     #"msgpack_numpy",
     "nerfacc==0.5.2",
-    "open3d>=0.19.0,<0.20.0",
     "opencv-python-headless",
     #"plotly",
     #"protobuf",
-    "pymeshlab",
     "pyngrok",
     #"python-socketio",
     #"requests",
@@ -50,7 +48,6 @@ dependencies = [
     "xatlas",
     "trimesh",
     #"numpy==2.2.2",
-    "rawpy",
     #"scipy==1.15.1",
     "tornado",
     "pyzmq",
@@ -87,6 +84,18 @@ docs = [
     "sphinx-copybutton==0.5.0",
     "sphinx-design==0.2.0",
     "sphinxext-opengraph==0.6.3",
+]
+
+# Heavy optional dependencies (export / mesh / raw image processing)
+open3d = [
+    "open3d>=0.19.0,<0.20.0",
+]
+export = [
+    "open3d>=0.19.0,<0.20.0",
+    "pymeshlab",
+]
+raw = [
+    "rawpy",
 ]
 
 [dependency-groups]
@@ -154,11 +163,25 @@ disable = [
 
 #pytest
 [tool.pytest.ini_options]
-addopts = "-n=4 --typeguard-packages=sdfstudio --disable-warnings --cov=sdfstudio --cov-report=xml"
+addopts = "--typeguard-packages=sdfstudio --cov=sdfstudio --cov-report=term-missing --cov-report=xml"
 testpaths = ["tests"]
+markers = [
+    "integration: integration/smoke tests (slower, may exercise training loops)",
+    "slow: intentionally slow tests",
+]
 filterwarnings = [
     # CI log hygiene: matplotlib/pyparsing deprecations can spam output enough to break Actions logs.
     "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["sdfstudio"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == .__main__.:",
+    "pragma: no cover",
 ]
 
 [tool.ruff]

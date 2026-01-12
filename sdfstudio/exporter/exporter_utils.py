@@ -25,8 +25,6 @@ from dataclasses import dataclass
 from typing import Optional, Union
 
 import numpy as np
-import open3d as o3d
-import pymeshlab
 import torch
 from rich.console import Console
 from rich.progress import (
@@ -43,6 +41,28 @@ from sdfstudio.pipelines.base_pipeline import Pipeline
 from sdfstudio.utils.rich_utils import ItersPerSecColumn
 
 CONSOLE = Console(width=120)
+
+try:
+    import open3d as o3d  # type: ignore
+except ImportError:  # pragma: no cover
+    o3d = None  # type: ignore[assignment]
+
+try:
+    import pymeshlab  # type: ignore
+except ImportError:  # pragma: no cover
+    pymeshlab = None  # type: ignore[assignment]
+
+
+def _require_open3d():
+    if o3d is None:  # pragma: no cover
+        raise ImportError("open3d is required for export utilities; install with `pip install -e '.[export]'`.")
+    return o3d
+
+
+def _require_pymeshlab():
+    if pymeshlab is None:  # pragma: no cover
+        raise ImportError("pymeshlab is required for mesh utilities; install with `pip install -e '.[export]'`.")
+    return pymeshlab
 
 
 @dataclass
@@ -72,7 +92,8 @@ def get_mesh_from_pymeshlab_mesh(mesh: pymeshlab.Mesh) -> Mesh:
 
 
 def get_mesh_from_filename(filename: str, target_num_faces: Union[int, float, None] = None) -> Mesh:
-    ms = pymeshlab.MeshSet()
+    pml = _require_pymeshlab()
+    ms = pml.MeshSet()
     ms.load_new_mesh(filename)
     if target_num_faces is not None:
         target_perc = 0.0
@@ -210,9 +231,10 @@ def generate_point_cloud(
     points = torch.cat(points, dim=0)
     rgbs = torch.cat(rgbs, dim=0)
 
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points.float().cpu().numpy())
-    pcd.colors = o3d.utility.Vector3dVector(rgbs.float().cpu().numpy())
+    o3d_mod = _require_open3d()
+    pcd = o3d_mod.geometry.PointCloud()
+    pcd.points = o3d_mod.utility.Vector3dVector(points.float().cpu().numpy())
+    pcd.colors = o3d_mod.utility.Vector3dVector(rgbs.float().cpu().numpy())
 
     ind = None
     if remove_outliers:
@@ -239,7 +261,7 @@ def generate_point_cloud(
         if ind is not None:
             # mask out normals for points that were removed with remove_outliers
             normals = normals[ind]
-        pcd.normals = o3d.utility.Vector3dVector(normals.float().cpu().numpy())
+        pcd.normals = o3d_mod.utility.Vector3dVector(normals.float().cpu().numpy())
 
     return pcd
 

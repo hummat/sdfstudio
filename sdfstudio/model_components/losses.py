@@ -104,6 +104,14 @@ def interlevel_loss(weights_list, ray_samples_list):
     https://github.com/kakaobrain/NeRF-Factory/blob/f61bb8744a5cb4820a4d968fb3bfbed777550f4a/src/model/mipnerf360/model.py#L515
     https://github.com/google-research/multinerf/blob/b02228160d3179300c7d499dca28cb9ca3677f32/internal/train_utils.py#L133
     """
+    if len(ray_samples_list) != len(weights_list):
+        raise ValueError(
+            f"Expected ray_samples_list and weights_list to have same length; "
+            f"got {len(ray_samples_list)} and {len(weights_list)}."
+        )
+    if not ray_samples_list:
+        raise ValueError("Expected ray_samples_list/weights_list to be non-empty.")
+
     c = ray_samples_to_sdist(ray_samples_list[-1]).detach()
     w = weights_list[-1][..., 0].detach()
     loss_interlevel = 0.0
@@ -134,6 +142,14 @@ def blur_stepfun(x, y, r):
 @torch.amp.autocast("cuda", enabled=False)
 def interlevel_loss_zip(weights_list, ray_samples_list):
     """Calculates the proposal loss in the Zip-NeRF paper."""
+    if len(ray_samples_list) != len(weights_list):
+        raise ValueError(
+            f"Expected ray_samples_list and weights_list to have same length; "
+            f"got {len(ray_samples_list)} and {len(weights_list)}."
+        )
+    if not ray_samples_list:
+        raise ValueError("Expected ray_samples_list/weights_list to be non-empty.")
+
     c = ray_samples_to_sdist(ray_samples_list[-1]).detach()
     w = weights_list[-1][..., 0].detach()
 

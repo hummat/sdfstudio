@@ -25,11 +25,22 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
-import pymeshlab
 import torch
 import torch.nn.functional as F
 from rich.console import Console
 from skimage import measure
+
+try:
+    import pymeshlab  # type: ignore
+except ImportError:  # pragma: no cover
+    pymeshlab = None  # type: ignore[assignment]
+
+
+def _require_pymeshlab():
+    if pymeshlab is None:  # pragma: no cover
+        raise ImportError("pymeshlab is required for TSDF mesh export; install with `pip install -e '.[export]'`.")
+    return pymeshlab
+
 
 from sdfstudio.exporter.exporter_utils import Mesh, render_trajectory
 from sdfstudio.pipelines.base_pipeline import Pipeline
@@ -151,14 +162,15 @@ class TSDF:
         v_color_matrix = np.concatenate([v_color_matrix, np.ones((v_color_matrix.shape[0], 1))], axis=-1)
 
         # create a new Mesh
-        m = pymeshlab.Mesh(
+        pml = _require_pymeshlab()
+        m = pml.Mesh(
             vertex_matrix=vertex_matrix,
             face_matrix=face_matrix,
             v_normals_matrix=v_normals_matrix,
             v_color_matrix=v_color_matrix,
         )
         # create a new MeshSet
-        ms = pymeshlab.MeshSet()
+        ms = pml.MeshSet()
         # add the mesh to the MeshSet
         ms.add_mesh(m, "mesh")
         # save the current mesh

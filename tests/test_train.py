@@ -71,6 +71,8 @@ def set_reduced_config(config: Config):
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+@pytest.mark.integration
+@pytest.mark.slow
 @torch.amp.autocast("cuda", enabled=False)
 def test_train():
     """test run train script works properly"""

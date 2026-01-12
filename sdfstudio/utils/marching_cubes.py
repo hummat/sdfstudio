@@ -3,10 +3,23 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pymeshlab
 import torch
 import trimesh
 from skimage import measure
+
+try:
+    import pymeshlab  # type: ignore
+except ImportError:  # pragma: no cover
+    pymeshlab = None  # type: ignore[assignment]
+
+
+def _require_pymeshlab():
+    if pymeshlab is None:  # pragma: no cover
+        raise ImportError(
+            "pymeshlab is required for marching cubes utilities; install with `pip install -e '.[export]'`."
+        )
+    return pymeshlab
+
 
 avg_pool_3d = torch.nn.AvgPool3d(2, stride=2)
 upsample = torch.nn.Upsample(scale_factor=2, mode="nearest")
@@ -161,7 +174,7 @@ def get_surface_sliding(
         combined.merge_vertices(digits_vertex=6)
         combined.export(filename)
         if simplify_mesh:
-            ms = pymeshlab.MeshSet()
+            ms = _require_pymeshlab().MeshSet()
             ms.load_new_mesh(filename)
             ms.meshing_decimation_quadric_edge_collapse(
                 targetfacenum=2_000_000,
@@ -342,7 +355,7 @@ def get_surface_sliding_with_contraction(
 
         combined.export(filename)
         if simplify_mesh:
-            ms = pymeshlab.MeshSet()
+            ms = _require_pymeshlab().MeshSet()
             ms.load_new_mesh(filename)
             ms.meshing_decimation_quadric_edge_collapse(
                 targetfacenum=2_000_000,

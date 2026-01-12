@@ -2,9 +2,9 @@ name: Viewer Build and Deploy.
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -41,7 +41,7 @@ jobs:
     name: Deploy
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.SSH_KEY != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SSH_KEY != ''
 
     env:
       SSH_KEY: ${{secrets.SSH_KEY}}

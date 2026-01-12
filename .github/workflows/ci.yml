@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  python:
+  quality:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -36,7 +36,9 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Sync dependencies (app + dev)
-        run: uv sync --frozen --group dev
+        # Use the PyTorch CPU wheel index on CI to avoid downloading CUDA runtime wheels,
+        # which frequently exhaust GitHub runner disk space.
+        run: uv sync --frozen --group dev --index https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
 
       - name: Format check (ruff)
         run: uv run ruff format --check .
@@ -53,5 +55,61 @@ jobs:
       - name: Check notebook cell metadata
         run: uv run python ./scripts/docs/add_nb_tags.py --check
 
-      - name: Test (pytest)
-        run: uv run pytest
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+    env:
+      UV_PYTHON: python
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Sync dependencies (app + dev)
+        run: uv sync --frozen --group dev --index https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
+
+      - name: Unit tests (pytest)
+        run: uv run pytest -m "not integration"
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: quality
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9"]
+    env:
+      UV_PYTHON: python
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Sync dependencies (app + dev)
+        run: uv sync --frozen --group dev --index https://download.pytorch.org/whl/cpu --index-strategy unsafe-best-match
+
+      - name: Integration tests (pytest)
+        run: uv run pytest -m integration --no-cov

@@ -31,7 +31,10 @@ import imageio
 try:
     import rawpy
 except ImportError:
-    import newrawpy as rawpy  # type: ignore
+    try:
+        import newrawpy as rawpy  # type: ignore
+    except ImportError:  # pragma: no cover
+        rawpy = None  # type: ignore[assignment]
 
 import numpy as np
 
@@ -287,6 +290,10 @@ def copy_images_list(
         try:
             # if CR2 raw, we want to read raw and write RAW_CONVERTED_SUFFIX, and change the file suffix for downstream processing
             if image_path.suffix.lower() in ALLOWED_RAW_EXTS:
+                if rawpy is None:
+                    raise ImportError(
+                        "rawpy (or newrawpy) is required to process RAW images; install with `pip install -e '.[raw]'`."
+                    )
                 copied_image_path = image_dir / f"{image_prefix}{idx + 1:05d}{RAW_CONVERTED_SUFFIX}"
                 with rawpy.imread(str(image_path)) as raw:
                     rgb = raw.postprocess()
@@ -484,6 +491,10 @@ def copy_images(
             num_downscales=num_downscales,
             same_dimensions=same_dimensions,
         )
+        if len(copied_images) != len(image_paths):
+            raise ValueError(
+                f"Expected copy_images_list to return {len(image_paths)} images, got {len(copied_images)}."
+            )
         path_map = OrderedDict((original_path, new_path) for original_path, new_path in zip(image_paths, copied_images))
         return path_map, crop_factors
 

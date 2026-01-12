@@ -22,10 +22,23 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-import open3d as o3d
 
 from sdfstudio.process_data.process_data_utils import CAMERA_MODELS
 from sdfstudio.utils.rich_utils import CONSOLE
+
+try:
+    import open3d as o3d  # type: ignore
+except (ImportError, ModuleNotFoundError, OSError):
+    # Open3D is a compiled extension; missing shared libs (or a partial install) can surface as OSError at import time.
+    o3d = None  # type: ignore[assignment]
+
+
+def _require_open3d():
+    if o3d is None:  # pragma: no cover
+        raise ImportError(
+            "open3d is required for Metashape point cloud processing; install with `pip install -e '.[open3d]'`."
+        )
+    return o3d
 
 
 def _find_param(calib_xml: ET.Element, param_name: str):
@@ -54,6 +67,8 @@ def metashape_to_json(
     Returns:
         Summary of the conversion.
     """
+
+    o3d_mod = _require_open3d() if ply_filename is not None else None
 
     xml_tree = ET.parse(xml_filename)
     root = xml_tree.getroot()
@@ -202,12 +217,13 @@ def metashape_to_json(
     summary = []
 
     if ply_filename is not None:
+        assert o3d_mod is not None
         assert ply_filename.exists()
-        pc = o3d.io.read_point_cloud(str(ply_filename))
+        pc = o3d_mod.io.read_point_cloud(str(ply_filename))
         points3D = np.asarray(pc.points)
         points3D = np.einsum("ij,bj->bi", applied_transform[:3, :3], points3D) + applied_transform[:3, 3]
-        pc.points = o3d.utility.Vector3dVector(points3D)
-        o3d.io.write_point_cloud(str(output_dir / "sparse_pc.ply"), pc)
+        pc.points = o3d_mod.utility.Vector3dVector(points3D)
+        o3d_mod.io.write_point_cloud(str(output_dir / "sparse_pc.ply"), pc)
         data["ply_file_path"] = "sparse_pc.ply"
         summary.append(f"Imported {ply_filename} as starting points")
 

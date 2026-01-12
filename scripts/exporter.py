@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Annotated, Optional, Union
 
 import numpy as np
-import open3d as o3d
 import torch
 import tyro
 from rich.console import Console
@@ -26,6 +25,17 @@ from sdfstudio.pipelines.base_pipeline import Pipeline
 from sdfstudio.utils.eval_utils import eval_setup
 
 CONSOLE = Console(width=120)
+
+try:
+    import open3d as o3d  # type: ignore
+except ImportError:  # pragma: no cover
+    o3d = None  # type: ignore[assignment]
+
+
+def _require_open3d():
+    if o3d is None:  # pragma: no cover
+        raise ImportError("open3d is required for this command; install with `pip install -e '.[export]'`.")
+    return o3d
 
 
 @dataclass
@@ -65,6 +75,7 @@ class ExportPointCloud(Exporter):
 
     def main(self) -> None:
         """Export point cloud."""
+        o3d_mod = _require_open3d()
 
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
@@ -91,7 +102,7 @@ class ExportPointCloud(Exporter):
 
         CONSOLE.print(f"[bold green]:white_check_mark: Generated {pcd}")
         CONSOLE.print("Saving Point Cloud...")
-        o3d.io.write_point_cloud(str(self.output_dir / "point_cloud.ply"), pcd)
+        o3d_mod.io.write_point_cloud(str(self.output_dir / "point_cloud.ply"), pcd)
         print("\033[A\033[A")
         CONSOLE.print("[bold green]:white_check_mark: Saving Point Cloud")
 
@@ -241,6 +252,7 @@ class ExportPoissonMesh(Exporter):
 
     def main(self) -> None:
         """Export mesh"""
+        o3d_mod = _require_open3d()
 
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
@@ -272,19 +284,19 @@ class ExportPoissonMesh(Exporter):
 
         if self.save_point_cloud:
             CONSOLE.print("Saving Point Cloud...")
-            o3d.io.write_point_cloud(str(self.output_dir / "point_cloud.ply"), pcd)
+            o3d_mod.io.write_point_cloud(str(self.output_dir / "point_cloud.ply"), pcd)
             print("\033[A\033[A")
             CONSOLE.print("[bold green]:white_check_mark: Saving Point Cloud")
 
         CONSOLE.print("Computing Mesh... this may take a while.")
-        mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=9)
+        mesh, densities = o3d_mod.geometry.TriangleMesh.create_from_point_cloud_poisson(pcd, depth=9)
         vertices_to_remove = densities < np.quantile(densities, 0.1)
         mesh.remove_vertices_by_mask(vertices_to_remove)
         print("\033[A\033[A")
         CONSOLE.print("[bold green]:white_check_mark: Computing Mesh")
 
         CONSOLE.print("Saving Mesh...")
-        o3d.io.write_triangle_mesh(str(self.output_dir / "poisson_mesh.ply"), mesh)
+        o3d_mod.io.write_triangle_mesh(str(self.output_dir / "poisson_mesh.ply"), mesh)
         print("\033[A\033[A")
         CONSOLE.print("[bold green]:white_check_mark: Saving Mesh")
 

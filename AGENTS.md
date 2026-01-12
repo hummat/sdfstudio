@@ -40,6 +40,11 @@ sdfstudio/
 uv venv -p 3.11
 uv sync --group dev
 
+# Optional heavy deps (Open3D / mesh tooling / RAW images)
+uv sync --group dev --extra open3d
+uv sync --group dev --extra export
+uv sync --group dev --extra raw
+
 # Create conda environment (Python 3.10+ required)
 conda create --name sdfstudio -y python=3.10
 conda activate sdfstudio

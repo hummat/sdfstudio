@@ -21,11 +21,24 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-import open3d as o3d
 from scipy.spatial.transform import Rotation
 
 from sdfstudio.process_data.process_data_utils import CAMERA_MODELS
 from sdfstudio.utils import io
+
+try:
+    import open3d as o3d  # type: ignore
+except (ImportError, ModuleNotFoundError, OSError):
+    # Open3D is a compiled extension; missing shared libs (or a partial install) can surface as OSError at import time.
+    o3d = None  # type: ignore[assignment]
+
+
+def _require_open3d():
+    if o3d is None:  # pragma: no cover
+        raise ImportError(
+            "open3d is required for Record3D point cloud processing; install with `pip install -e '.[open3d]'`."
+        )
+    return o3d
 
 
 def record3d_to_json(
@@ -100,19 +113,20 @@ def record3d_to_json(
 
     # If .ply directory exists add the sparse point cloud for gsplat point initialization
     if ply_dirname is not None:
+        o3d_mod = _require_open3d()
         assert ply_dirname.exists(), f"Directory not found: {ply_dirname}"
         assert ply_dirname.is_dir(), f"Path given is not a directory: {ply_dirname}"
 
         # Create sparce point cloud
-        pcd = o3d.geometry.PointCloud()
+        pcd = o3d_mod.geometry.PointCloud()
         for ply_filename in ply_dirname.iterdir():
-            temp_pcd = o3d.io.read_point_cloud(str(ply_filename))
+            temp_pcd = o3d_mod.io.read_point_cloud(str(ply_filename))
             pcd += temp_pcd.voxel_down_sample(voxel_size=voxel_size)
 
         # Save point cloud
         points3D = np.asarray(pcd.points)
-        pcd.points = o3d.utility.Vector3dVector(points3D)
-        o3d.io.write_point_cloud(str(output_dir / "sparse_pc.ply"), pcd, write_ascii=True)
+        pcd.points = o3d_mod.utility.Vector3dVector(points3D)
+        o3d_mod.io.write_point_cloud(str(output_dir / "sparse_pc.ply"), pcd, write_ascii=True)
         out["ply_file_path"] = "sparse_pc.ply"
 
     with open(output_dir / "transforms.json", "w", encoding="utf-8") as f:
