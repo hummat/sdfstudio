@@ -22,7 +22,6 @@ from typing import Optional
 
 import torch
 from torch import nn
-from torchtyping import TensorType
 
 from sdfstudio.cameras.rays import RaySamples
 from sdfstudio.field_components.encodings import Encoding, Identity
@@ -99,8 +98,8 @@ class SemanticNerfField(Field):
         return density, base_mlp_out
 
     def get_outputs(
-        self, ray_samples: RaySamples, density_embedding: Optional[TensorType] = None
-    ) -> dict[FieldHeadNames, TensorType]:
+        self, ray_samples: RaySamples, density_embedding: Optional[torch.Tensor] = None
+    ) -> dict[FieldHeadNames, torch.Tensor]:
         encoded_dir = self.direction_encoding(ray_samples.frustums.directions)
         mlp_out = self.mlp_head(torch.cat([encoded_dir, density_embedding], dim=-1))  # type: ignore
         outputs = {}

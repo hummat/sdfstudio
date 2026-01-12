@@ -34,10 +34,11 @@ from sdfstudio.engine.callbacks import (
     TrainingCallbackAttributes,
     TrainingCallbackLocation,
 )
-from sdfstudio.field_components.field_heads import FieldHeadNames
+from sdfstudio.field_components.field_heads import FieldHeadNames, PredNormalsFieldHead, RGBFieldHead
 from sdfstudio.field_components.spatial_distortions import SceneContraction
 from sdfstudio.fields.density_fields import HashMLPDensityField
-from sdfstudio.fields.nerfacto_field import TCNNNerfactoField
+from sdfstudio.fields.nerfacto_field import TCNN_EXISTS as NERFACTO_TCNN_EXISTS
+from sdfstudio.fields.nerfacto_field import TCNNNerfactoField, TorchNerfactoField
 from sdfstudio.model_components.losses import (
     MSELoss,
     distortion_loss,
@@ -135,18 +136,31 @@ class NerfactoModel(Model):
         super().populate_modules()
 
         scene_contraction = SceneContraction(order=float("inf"))
+        model_device = str(self.kwargs.get("device") or "")
 
         # Fields
-        self.field = TCNNNerfactoField(
-            self.scene_box.aabb,
-            num_levels=self.config.num_levels,
-            max_res=self.config.max_res,
-            log2_hashmap_size=self.config.log2_hashmap_size,
-            spatial_distortion=scene_contraction,
-            num_images=self.num_train_data,
-            use_pred_normals=self.config.predict_normals,
-            use_average_appearance_embedding=self.config.use_average_appearance_embedding,
-        )
+        if NERFACTO_TCNN_EXISTS and model_device.startswith("cuda"):
+            self.field = TCNNNerfactoField(
+                self.scene_box.aabb,
+                num_levels=self.config.num_levels,
+                max_res=self.config.max_res,
+                log2_hashmap_size=self.config.log2_hashmap_size,
+                spatial_distortion=scene_contraction,
+                num_images=self.num_train_data,
+                use_pred_normals=self.config.predict_normals,
+                use_average_appearance_embedding=self.config.use_average_appearance_embedding,
+            )
+        else:
+            field_heads = (RGBFieldHead(),)
+            if self.config.predict_normals:
+                field_heads = (RGBFieldHead(), PredNormalsFieldHead())
+            self.field = TorchNerfactoField(
+                self.scene_box.aabb,
+                num_images=self.num_train_data,
+                spatial_distortion=scene_contraction,
+                field_heads=field_heads,
+                appearance_embedding_dim=32,
+            )
 
         self.density_fns = []
         num_prop_nets = self.config.num_proposal_iterations
@@ -158,6 +172,7 @@ class NerfactoModel(Model):
             network = HashMLPDensityField(
                 self.scene_box.aabb,
                 spatial_distortion=scene_contraction,
+                device=model_device,
                 **prop_net_args,
             )
             self.proposal_networks.append(network)
@@ -168,6 +183,7 @@ class NerfactoModel(Model):
                 network = HashMLPDensityField(
                     self.scene_box.aabb,
                     spatial_distortion=scene_contraction,
+                    device=model_device,
                     **prop_net_args,
                 )
                 self.proposal_networks.append(network)

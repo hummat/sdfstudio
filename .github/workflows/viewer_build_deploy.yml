@@ -2,9 +2,10 @@ name: Viewer Build and Deploy.
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -15,7 +16,7 @@ jobs:
         working-directory: ./sdfstudio/viewer/app
     steps:
       - name: Checkout code
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
 
       - name: Install Node.js
         uses: actions/setup-node@v3
@@ -31,7 +32,7 @@ jobs:
         run: CI=false yarn build
 
       - name: Upload production-ready build files
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: production-files
           path: ./sdfstudio/viewer/app/build
@@ -40,23 +41,24 @@ jobs:
     name: Deploy
     needs: build
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && secrets.SSH_KEY != ''
 
     env:
       SSH_KEY: ${{secrets.SSH_KEY}}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python 3.8.12
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.8.12'
 
       - name: Install dependencies
         run: |
-          pip install -r ./nerfstudio/viewer/app/requirements.txt
+          pip install -r ./sdfstudio/viewer/app/requirements.txt
 
       - name: Download artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: production-files
           path: ./sdfstudio/viewer/app/build
@@ -73,7 +75,7 @@ jobs:
 
       # TODO: detect file or scheme changes of the viewer and only
       # increment the version.txt file when there is a change.
-      # Update the version.txt code and push to master when things change.
+      # Update the version.txt code and push to main when things change.
       # https://github.com/marketplace/actions/changed-files
       # - name: Run changed-files with defaults on the dir1
       #   id: changed-files-for-dir1
@@ -88,10 +90,10 @@ jobs:
       #     done
 
       - run: |
-          python ./nerfstudio/viewer/app/run_deploy.py \
+          python ./sdfstudio/viewer/app/run_deploy.py \
             --branch-name ${{ env.BRANCH_NAME }} \
             --ssh-key-string "$SSH_KEY" \
-            --local-folder ./nerfstudio/viewer/app/build \
-            --package-json-filename ./nerfstudio/viewer/app/package.json \
+            --local-folder ./sdfstudio/viewer/app/build \
+            --package-json-filename ./sdfstudio/viewer/app/package.json \
             --increment-version "False"
       - run: cat ~/.ssh/config

@@ -2,43 +2,52 @@ name: Core Tests.
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  checks:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10"]
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python 3.7.13
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.7.13'
-      - uses: actions/cache@v2
-        with:
-          path: ${{ env.pythonLocation }}
-          key: ${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}
-      - name: Install dependencies
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
         run: |
-          pip install --upgrade --upgrade-strategy eager -e .[dev]
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        run: uv pip install -e ".[dev]"
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check .
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Type check (pyright)
+        run: uv run pyright sdfstudio
+
       - name: Run license checks
         run: |
           ./scripts/licensing/license_headers.sh --check
       - name: Check notebook cell metadata
         run: |
           python ./scripts/docs/add_nb_tags.py --check
-      - name: Run isort
-        run: isort docs/ sdfstudio/ scripts/ tests/ --profile black --check
-      - name: Run Black
-        run: black docs/ sdfstudio/ scripts/ tests/ --check
-      - name: Python Pylint
-        run: |
-          pylint nerfstudio tests scripts
       - name: Test with pytest
-        run: |
-          pytest
+        run: uv run pytest

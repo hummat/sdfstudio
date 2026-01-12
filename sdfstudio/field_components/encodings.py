@@ -18,6 +18,7 @@ from __future__ import annotations
 Encoding functions
 """
 
+import warnings
 from abc import abstractmethod
 from typing import Optional
 
@@ -33,11 +34,17 @@ from sdfstudio.utils.math import components_from_spherical_harmonics, expected_s
 from sdfstudio.utils.printing import print_tcnn_speed_warning
 
 try:
-    import tinycudann as tcnn
+    import tinycudann as tcnn  # type: ignore
 
     TCNN_EXISTS = True
-except ImportError:
+except (ImportError, ModuleNotFoundError, OSError) as e:
+    tcnn = None  # type: ignore
     TCNN_EXISTS = False
+    warnings.warn(
+        f"tinycudann not available ({type(e).__name__}: {e}); falling back to PyTorch implementations.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
 
 
 class Encoding(FieldComponent):
@@ -506,8 +513,8 @@ class TensorVMEncoding(Encoding):
             breakpoint()
 
         index = y * width + x
-        feature_offset = width * height * torch.arange(3)
-        index += feature_offset.to(x.device)[:, None, None]
+        feature_offset = (width * height * torch.arange(3, device=x.device)).view(3, *([1] * (index.ndim - 1)))
+        index = index + feature_offset
 
         return index.long()
 
@@ -529,11 +536,11 @@ class TensorVMEncoding(Encoding):
 
         offset = offset[..., None, :]
 
-        index_0 = self.index_fn(scaled_c[..., 0:1], scaled_c[..., 1:2], height, width)  # [..., num_levels]
-        index_2 = self.index_fn(scaled_f[..., 0:1], scaled_f[..., 1:2], height, width)
+        index_0 = self.index_fn(scaled_c[..., 0:1], scaled_c[..., 1:2], width, height)
+        index_2 = self.index_fn(scaled_f[..., 0:1], scaled_f[..., 1:2], width, height)
         if type == "plane":
-            index_1 = self.index_fn(scaled_c[..., 0:1], scaled_f[..., 1:2], height, width)
-            index_3 = self.index_fn(scaled_f[..., 0:1], scaled_c[..., 1:2], height, width)
+            index_1 = self.index_fn(scaled_c[..., 0:1], scaled_f[..., 1:2], width, height)
+            index_3 = self.index_fn(scaled_f[..., 0:1], scaled_c[..., 1:2], width, height)
 
         # breakpoint()
         if type == "plane":
@@ -575,15 +582,13 @@ class TensorVMEncoding(Encoding):
 
         # diff grid_sample
 
-        plane_features = self.grid_sample_2d(self.plane_coef, plane_coord, type="plane")  # [3, -1, 1, Components]
+        plane_features = self.grid_sample_2d(self.plane_coef, plane_coord, type="plane")  # [3, ..., 1, Components]
         # line_features = self.grid_sample_2d(self.line_coef, line_coord, type="line")  # [3, -1, 1, Components]
 
         # features = plane_features * line_features  # [3, -1, 1, components]
-        features = plane_features
-        features = torch.moveaxis(features, 0, 1).reshape(-1, 3 * self.num_components)
-
-        # features = torch.moveaxis(features.view(3 * self.num_components, *in_tensor.shape[:-1]), 0, -1)
-
+        features = plane_features.squeeze(-2)  # [3, ..., Components]
+        perm = list(range(1, features.ndim - 1)) + [0, features.ndim - 1]  # [..., 3, Components]
+        features = features.permute(*perm).reshape(*in_tensor.shape[:-1], 3 * self.num_components)
         return features  # [..., 3 * Components]
 
     @torch.no_grad()
@@ -593,24 +598,17 @@ class TensorVMEncoding(Encoding):
         Args:
             resolution: Target resolution.
         """
-        plane_coef = F.interpolate(
-            self.plane_coef.data,
-            size=(resolution, resolution),
-            mode="bilinear",
-            align_corners=True,
-        )
-        line_coef = F.interpolate(
-            self.line_coef.data,
-            size=(resolution, 1),
-            mode="bilinear",
-            align_corners=True,
-        )
+        plane = self.plane_coef.data.view(3, self.resolution, self.resolution, self.num_components).permute(0, 3, 1, 2)
+        line = self.line_coef.data.view(3, self.resolution, 1, self.num_components).permute(0, 3, 1, 2)
 
-        # TODO(ethan): are these torch.nn.Parameters needed?
-        self.plane_coef, self.line_coef = (
-            torch.nn.Parameter(plane_coef),
-            torch.nn.Parameter(line_coef),
-        )
+        plane_up = F.interpolate(plane, size=(resolution, resolution), mode="bilinear", align_corners=True)
+        line_up = F.interpolate(line, size=(resolution, 1), mode="bilinear", align_corners=True)
+
+        plane_coef = plane_up.permute(0, 2, 3, 1).reshape(3 * resolution * resolution, self.num_components)
+        line_coef = line_up.permute(0, 2, 3, 1).reshape(3 * resolution, self.num_components)
+
+        self.plane_coef = torch.nn.Parameter(plane_coef)
+        self.line_coef = torch.nn.Parameter(line_coef)
         self.resolution = resolution
 
 

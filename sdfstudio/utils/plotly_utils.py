@@ -30,7 +30,6 @@ import plotly.graph_objects as go
 import torch
 import torch.nn.functional as F
 from plotly import express as ex
-from torchtyping import TensorType
 
 from sdfstudio.cameras.cameras import Cameras
 from sdfstudio.cameras.rays import Frustums, RayBundle
@@ -51,7 +50,7 @@ def color_str(color):
 
 
 def get_line_segments_from_lines(
-    lines: TensorType[num_rays, 2, 3],
+    lines: torch.Tensor,
     color: str = color_str((1, 0, 0)),
     marker_color: str = color_str((1, 0, 0)),
     colors: Optional[list[str]] = None,
@@ -101,7 +100,7 @@ def get_line_segments_from_lines(
     return data
 
 
-def vis_dataset(camera_origins: TensorType[num_cameras, 3], ray_bundle: RayBundle) -> go.FigureWidget:  # type: ignore
+def vis_dataset(camera_origins: torch.Tensor, ray_bundle: RayBundle) -> go.FigureWidget:  # type: ignore
     """Visualize a dataset with plotly using our cameras and generated rays.
 
     Args:
@@ -172,7 +171,7 @@ def get_random_color(colormap: Optional[list[str]] = None, idx: Optional[int] = 
 
 def get_sphere(
     radius: float,
-    center: TensorType[3] = None,
+    center: Optional[torch.Tensor] = None,
     color: str = "black",
     opacity: float = 1.0,
     resolution: int = 32,
@@ -216,7 +215,7 @@ def get_sphere(
 
 def get_cube(
     side_length: float,
-    center: TensorType[3] = None,
+    center: Optional[np.ndarray] = None,
     color: str = "black",
     opacity: float = 1.0,
 ) -> go.Mesh3d:  # type: ignore
@@ -255,8 +254,8 @@ def get_cube(
 
 
 def get_gaussian_ellipsiod(
-    mean: TensorType[3],
-    cov: TensorType[3, 3],
+    mean: torch.Tensor,
+    cov: torch.Tensor,
     n_std: int = 2,
     color="lightblue",
     opacity: float = 0.5,

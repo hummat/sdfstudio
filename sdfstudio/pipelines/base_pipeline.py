@@ -234,6 +234,7 @@ class VanillaPipeline(Pipeline):
             scene_box=self.datamanager.train_dataset.scene_box,
             num_train_data=len(self.datamanager.train_dataset),
             metadata=self.datamanager.train_dataset.metadata,
+            device=device,
             world_size=world_size,
             local_rank=local_rank,
         )
@@ -241,7 +242,7 @@ class VanillaPipeline(Pipeline):
 
         self.world_size = world_size
         if world_size > 1:
-            self._model = typing.cast(
+            self._model = cast(
                 Model,
                 DDP(self._model, device_ids=[local_rank], find_unused_parameters=True),
             )

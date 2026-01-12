@@ -37,7 +37,7 @@ from sdfstudio.engine.callbacks import (
 from sdfstudio.field_components.encodings import NeRFEncoding, TensorVMEncoding
 from sdfstudio.field_components.field_heads import FieldHeadNames
 from sdfstudio.fields.tensorf_field import TensoRFField
-from sdfstudio.model_components.losses import MSELoss
+from sdfstudio.model_components.losses import S3IM, MSELoss
 from sdfstudio.model_components.ray_samplers import PDFSampler, UniformSampler
 from sdfstudio.model_components.renderers import (
     AccumulationRenderer,

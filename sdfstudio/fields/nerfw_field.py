@@ -20,7 +20,6 @@ from typing import Optional
 
 import torch
 from torch import nn
-from torchtyping import TensorType
 
 from sdfstudio.cameras.rays import RaySamples
 from sdfstudio.field_components.embedding import Embedding
@@ -122,16 +121,16 @@ class VanillaNerfWField(Field):
     def get_outputs(
         self,
         ray_samples: RaySamples,
-        density_embedding: Optional[TensorType[..., embedding_size]] = None,
-    ) -> dict[FieldHeadNames, TensorType]:
+        density_embedding: Optional[torch.Tensor] = None,
+    ) -> dict[FieldHeadNames, torch.Tensor]:
         """Returns the outputs of the NeRF-W field.
 
         Args:
             ray_samples (RaySamples): Ray samples.
-            density_embedding (TensorType[..., "embedding_size"], optional): Density embedding.
+            density_embedding (torch.Tensor, optional): Density embedding.
 
         Returns:
-            Dict[FieldHeadNames, TensorType]: Outputs of the NeRF-W field.
+            Dict[FieldHeadNames, torch.Tensor]: Outputs of the NeRF-W field.
         """
         outputs = {}
         encoded_dir = self.direction_encoding(ray_samples.frustums.directions)

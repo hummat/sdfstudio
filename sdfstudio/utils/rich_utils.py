@@ -17,7 +17,7 @@ from __future__ import annotations
 """Additional rich ui components"""
 
 from contextlib import nullcontext
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from rich.console import Console
 from rich.progress import (
@@ -29,6 +29,9 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 from rich.text import Text
+
+if TYPE_CHECKING:
+    from rich.progress import Task
 
 CONSOLE = Console(width=120)
 

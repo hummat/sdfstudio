@@ -383,6 +383,15 @@ def read_points3D_binary(path_to_model_file):
     return points3D
 
 
+# Backwards-compatible aliases for callers that use the `points3d` naming convention.
+def read_points3d_text(path):
+    return read_points3D_text(path)
+
+
+def read_points3d_binary(path_to_model_file):
+    return read_points3D_binary(path_to_model_file)
+
+
 def write_points3D_text(points3D, path):
     """
     see: src/base/reconstruction.cc

@@ -1,0 +1,22 @@
+{
+  "pythonVersion": "3.9",
+  "typeCheckingMode": "off",
+  "reportPrivateImportUsage": "none",
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    ".venv",
+    "build",
+    "dist",
+    "colab",
+    "docs",
+    "omnidata",
+    "scripts",
+    "sdfstudio/viewer",
+    "sdfstudio/process_data",
+    "sdfstudio/exporter",
+    "sdfstudio/cameras",
+    "sdfstudio/utils/marching_cubes.py",
+    "sdfstudio/utils/tensor_dataclass.py"
+  ]
+}

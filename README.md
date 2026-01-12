@@ -161,7 +161,7 @@ Nerfstudio supports three different methods to track training progress, using th
 
 ## 5. Using Custom Data
 
-Please refer to the [datasets](docs/sdfstudio-data.md) and [data format](https://github.com/autonomousvision/sdfstudio/blob/master/docs/sdfstudio-data.md#Dataset-format) documentation if you like to use custom datasets.
+Please refer to the [datasets](docs/sdfstudio-data.md) and [data format](https://github.com/autonomousvision/sdfstudio/blob/main/docs/sdfstudio-data.md#Dataset-format) documentation if you like to use custom datasets.
 
 # Built On
 

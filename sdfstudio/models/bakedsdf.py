@@ -110,6 +110,7 @@ class BakedSDFFactoModel(VolSDFModel):
     def populate_modules(self):
         """Set the fields and modules."""
         super().populate_modules()
+        model_device = str(self.kwargs.get("device") or "")
 
         self.density_fns = []
         num_prop_nets = self.config.num_proposal_iterations
@@ -121,6 +122,7 @@ class BakedSDFFactoModel(VolSDFModel):
             network = HashMLPDensityField(
                 self.scene_box.aabb,
                 spatial_distortion=self.scene_contraction,
+                device=model_device,
                 **prop_net_args,
             )
             self.proposal_networks.append(network)
@@ -131,6 +133,7 @@ class BakedSDFFactoModel(VolSDFModel):
                 network = HashMLPDensityField(
                     self.scene_box.aabb,
                     spatial_distortion=self.scene_contraction,
+                    device=model_device,
                     **prop_net_args,
                 )
                 self.proposal_networks.append(network)

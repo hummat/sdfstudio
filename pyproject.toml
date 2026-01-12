@@ -148,6 +148,19 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 120
 target-version = "py39"
+exclude = [
+    ".git",
+    ".venv",
+    "build",
+    "dist",
+    "node_modules",
+    "outputs",
+    "colab",
+    "docs",
+    "omnidata",
+    "scripts",
+    "sdfstudio/viewer",
+]
 
 [tool.ruff.lint]
 select = [
@@ -156,14 +169,11 @@ select = [
     "F",  # pyflakes
     "I",  # isort
     "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
 ]
 ignore = [
+    "E402",  # module level import not at top of file (legacy)
     "E501",  # line too long
     "B008",  # do not perform function calls in argument defaults
-    "UP007", # keep Optional/Union (py39 compatibility); don't rewrite to PEP604 `X | None`
-    "UP045", # keep Optional[...] (py39 compatibility); don't rewrite to `T | None`
     "W191",  # indentation contains tabs
 ]
 

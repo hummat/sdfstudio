@@ -18,6 +18,7 @@ from __future__ import annotations
 Field for compound nerf model, adds scene contraction and image embeddings to instant ngp
 """
 
+import warnings
 from typing import Optional
 
 import numpy as np
@@ -50,10 +51,16 @@ from sdfstudio.field_components.spatial_distortions import (
 from sdfstudio.fields.base_field import Field
 
 try:
-    import tinycudann as tcnn
-except ImportError:
-    # tinycudann module doesn't exist
-    pass
+    import tinycudann as tcnn  # type: ignore
+except (ImportError, ModuleNotFoundError, OSError) as e:
+    tcnn = None  # type: ignore
+    warnings.warn(
+        f"tinycudann not available ({type(e).__name__}: {e}); falling back to non-TCNN fields where supported.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+
+TCNN_EXISTS = tcnn is not None
 
 
 def get_normalized_directions(directions: TensorType):

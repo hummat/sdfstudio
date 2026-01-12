@@ -37,6 +37,7 @@ from sdfstudio.data.scene_box import SceneBox
 from sdfstudio.data.utils.colmap_utils import (
     read_cameras_binary,
     read_images_binary,
+    read_points3d_binary,
 )
 from sdfstudio.model_components.ray_samplers import save_points
 from sdfstudio.utils.images import BasicImages

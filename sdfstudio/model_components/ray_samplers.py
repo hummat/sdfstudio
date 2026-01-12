@@ -641,6 +641,7 @@ class ErrorBoundedSampler(Sampler):
         total_iters, not_converge = 0, True
         sorted_index = None
         new_samples = ray_samples
+        sdf = None
 
         # Algorithm 1
         while not_converge and total_iters < self.max_total_iters:
@@ -649,6 +650,7 @@ class ErrorBoundedSampler(Sampler):
 
             # merge sdf predictions
             if sorted_index is not None:
+                assert sdf is not None
                 sdf_merge = torch.cat([sdf.squeeze(-1), new_sdf.squeeze(-1)], -1)
                 sdf = torch.gather(sdf_merge, 1, sorted_index).unsqueeze(-1)
             else:
@@ -880,6 +882,7 @@ class NeuSSampler(Sampler):
         total_iters = 0
         sorted_index = None
         new_samples = ray_samples
+        sdf = None
 
         base_variance = self.base_variance
 
@@ -889,6 +892,7 @@ class NeuSSampler(Sampler):
 
             # merge sdf predictions
             if sorted_index is not None:
+                assert sdf is not None
                 sdf_merge = torch.cat([sdf.squeeze(-1), new_sdf.squeeze(-1)], -1)
                 sdf = torch.gather(sdf_merge, 1, sorted_index).unsqueeze(-1)
             else:
@@ -1017,11 +1021,12 @@ class UniSurfSampler(Sampler):
     def generate_ray_samples(
         self,
         ray_bundle: Optional[RayBundle] = None,
-        occupancy_fn: Optional[RayBundle] = None,
-        sdf_fn: Optional[Callable] = None,
+        occupancy_fn: Optional[Callable[[TensorType], TensorType]] = None,
+        sdf_fn: Optional[Callable[[RaySamples], TensorType]] = None,
         return_surface_points: bool = False,
     ) -> Union[tuple[RaySamples, torch.Tensor], RaySamples]:
         assert ray_bundle is not None
+        assert occupancy_fn is not None
         assert sdf_fn is not None
 
         # Start with uniform sampling

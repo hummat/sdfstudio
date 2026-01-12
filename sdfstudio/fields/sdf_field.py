@@ -19,6 +19,7 @@ Field for compound nerf model, adds scene contraction and image embeddings to in
 """
 
 import math
+import warnings
 from dataclasses import dataclass, field
 from typing import Literal, Optional
 
@@ -32,6 +33,7 @@ from torch.nn.parameter import Parameter
 from sdfstudio.cameras.rays import RaySamples
 from sdfstudio.field_components.embedding import Embedding
 from sdfstudio.field_components.encodings import (
+    HashEncoding,
     NeRFEncoding,
     PeriodicVolumeEncoding,
     TensorVMEncoding,
@@ -41,10 +43,14 @@ from sdfstudio.field_components.spatial_distortions import SpatialDistortion
 from sdfstudio.fields.base_field import Field, FieldConfig
 
 try:
-    import tinycudann as tcnn
-except ImportError:
-    # tinycudann module doesn't exist
-    pass
+    import tinycudann as tcnn  # type: ignore
+except (ImportError, ModuleNotFoundError, OSError) as e:
+    tcnn = None  # type: ignore
+    warnings.warn(
+        f"tinycudann not available ({type(e).__name__}: {e}); SDFField will use PyTorch encodings where applicable.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
 
 
 class LaplaceDensity(nn.Module):  # alpha * Laplace(loc=0, scale=beta).cdf(-sdf)
@@ -260,6 +266,7 @@ class SDFField(Field):
         num_images: int,
         use_average_appearance_embedding: bool = False,
         spatial_distortion: Optional[SpatialDistortion] = None,
+        device: Optional[str] = None,
     ) -> None:
         super().__init__()
         self.config = config
@@ -299,18 +306,36 @@ class SDFField(Field):
 
         if self.config.encoding_type == "hash":
             # feature encoding
-            self.encoding = tcnn.Encoding(
-                n_input_dims=3,
-                encoding_config={
-                    "otype": "HashGrid" if use_hash else "DenseGrid",
-                    "n_levels": self.num_levels,
-                    "n_features_per_level": self.features_per_level,
-                    "log2_hashmap_size": self.log2_hashmap_size,
-                    "base_resolution": self.base_res,
-                    "per_level_scale": self.growth_factor,
-                    "interpolation": "Smoothstep" if smoothstep else "Linear",
-                },
-            )
+            use_tcnn = tcnn is not None and device is not None and device.startswith("cuda")
+            if device is not None and device.startswith("cuda") and tcnn is None:
+                warnings.warn(
+                    "CUDA device requested but tinycudann is unavailable; using PyTorch hash encoding fallback.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+            if use_tcnn:
+                self.encoding = tcnn.Encoding(
+                    n_input_dims=3,
+                    encoding_config={
+                        "otype": "HashGrid" if use_hash else "DenseGrid",
+                        "n_levels": self.num_levels,
+                        "n_features_per_level": self.features_per_level,
+                        "log2_hashmap_size": self.log2_hashmap_size,
+                        "base_resolution": self.base_res,
+                        "per_level_scale": self.growth_factor,
+                        "interpolation": "Smoothstep" if smoothstep else "Linear",
+                    },
+                )
+            else:
+                # CPU-only / no-tcnn fallback for tests and non-CUDA installs
+                self.encoding = HashEncoding(
+                    num_levels=self.num_levels,
+                    min_res=self.base_res,
+                    max_res=self.max_res,
+                    log2_hashmap_size=self.log2_hashmap_size,
+                    features_per_level=self.features_per_level,
+                    implementation="torch",
+                )
             self.hash_encoding_mask = torch.ones(
                 self.num_levels * self.features_per_level,
                 dtype=torch.float32,
@@ -347,33 +372,37 @@ class SDFField(Field):
         # TODO move it to field components
         # MLP with geometric initialization
         dims = [self.config.hidden_dim for _ in range(self.config.num_layers)]
-        in_dim = 3 + self.position_encoding.get_out_dim() + self.encoding.n_output_dims
+        if hasattr(self.encoding, "n_output_dims"):
+            self.encoding_out_dim = int(self.encoding.n_output_dims)  # type: ignore[attr-defined]
+        else:
+            self.encoding_out_dim = int(self.encoding.get_out_dim())
+        in_dim = 3 + self.position_encoding.get_out_dim() + self.encoding_out_dim
         dims = [in_dim] + dims + [1 + self.config.geo_feat_dim]
         self.num_layers = len(dims)
         # TODO check how to merge skip_in to config
         self.skip_in = [4]
 
-        for l in range(0, self.num_layers - 1):
-            if l + 1 in self.skip_in:
-                out_dim = dims[l + 1] - dims[0]
+        for layer_idx in range(0, self.num_layers - 1):
+            if layer_idx + 1 in self.skip_in:
+                out_dim = dims[layer_idx + 1] - dims[0]
             else:
-                out_dim = dims[l + 1]
+                out_dim = dims[layer_idx + 1]
 
-            lin = nn.Linear(dims[l], out_dim)
+            lin = nn.Linear(dims[layer_idx], out_dim)
 
             if self.config.geometric_init:
-                if l == self.num_layers - 2:
+                if layer_idx == self.num_layers - 2:
                     if not self.config.inside_outside:
-                        torch.nn.init.normal_(lin.weight, mean=np.sqrt(np.pi) / np.sqrt(dims[l]), std=0.0001)
+                        torch.nn.init.normal_(lin.weight, mean=np.sqrt(np.pi) / np.sqrt(dims[layer_idx]), std=0.0001)
                         torch.nn.init.constant_(lin.bias, -self.config.bias)
                     else:
-                        torch.nn.init.normal_(lin.weight, mean=-np.sqrt(np.pi) / np.sqrt(dims[l]), std=0.0001)
+                        torch.nn.init.normal_(lin.weight, mean=-np.sqrt(np.pi) / np.sqrt(dims[layer_idx]), std=0.0001)
                         torch.nn.init.constant_(lin.bias, self.config.bias)
-                elif l == 0:
+                elif layer_idx == 0:
                     torch.nn.init.constant_(lin.bias, 0.0)
                     torch.nn.init.constant_(lin.weight[:, 3:], 0.0)
                     torch.nn.init.normal_(lin.weight[:, :3], 0.0, np.sqrt(2) / np.sqrt(out_dim))
-                elif l in self.skip_in:
+                elif layer_idx in self.skip_in:
                     torch.nn.init.constant_(lin.bias, 0.0)
                     torch.nn.init.normal_(lin.weight, 0.0, np.sqrt(2) / np.sqrt(out_dim))
                     torch.nn.init.constant_(lin.weight[:, -(dims[0] - 3) :], 0.0)
@@ -383,7 +412,7 @@ class SDFField(Field):
 
             if self.config.weight_norm:
                 lin = nn.utils.parametrizations.weight_norm(lin)
-            setattr(self, "glin" + str(l), lin)
+            setattr(self, "glin" + str(layer_idx), lin)
 
         # laplace function for transform sdf to density from VolSDF
         self.laplace_density = LaplaceDensity(init_val=self.config.beta_init)
@@ -428,15 +457,15 @@ class SDFField(Field):
         dims = [in_dim] + dims + [3]
         self.num_layers_color = len(dims)
 
-        for l in range(0, self.num_layers_color - 1):
-            out_dim = dims[l + 1]
-            lin = nn.Linear(dims[l], out_dim)
+        for layer_idx in range(0, self.num_layers_color - 1):
+            out_dim = dims[layer_idx + 1]
+            lin = nn.Linear(dims[layer_idx], out_dim)
             torch.nn.init.kaiming_uniform_(lin.weight.data)
             torch.nn.init.zeros_(lin.bias.data)
 
             if self.config.weight_norm:
                 lin = nn.utils.parametrizations.weight_norm(lin)
-            setattr(self, "clin" + str(l), lin)
+            setattr(self, "clin" + str(layer_idx), lin)
 
         self.softplus = nn.Softplus(beta=100)
         self.relu = nn.ReLU()
@@ -463,7 +492,7 @@ class SDFField(Field):
             # mask feature
             feature = feature * self.hash_encoding_mask.to(feature.device)
         else:
-            feature = torch.zeros_like(inputs[:, :1].repeat(1, self.encoding.n_output_dims))
+            feature = torch.zeros_like(inputs[:, :1].repeat(1, self.encoding_out_dim))
 
         pe = self.position_encoding(inputs)
         if not self.config.use_position_encoding:
@@ -473,15 +502,15 @@ class SDFField(Field):
 
         x = inputs
 
-        for l in range(0, self.num_layers - 1):
-            lin = getattr(self, "glin" + str(l))
+        for layer_idx in range(0, self.num_layers - 1):
+            lin = getattr(self, "glin" + str(layer_idx))
 
-            if l in self.skip_in:
+            if layer_idx in self.skip_in:
                 x = torch.cat([x, inputs], 1) / np.sqrt(2)
 
             x = lin(x)
 
-            if l < self.num_layers - 2:
+            if layer_idx < self.num_layers - 2:
                 x = self.softplus(x)
         return x
 
@@ -726,12 +755,12 @@ class SDFField(Field):
 
         h = torch.cat(h, dim=-1)
 
-        for l in range(0, self.num_layers_color - 1):
-            lin = getattr(self, "clin" + str(l))
+        for layer_idx in range(0, self.num_layers_color - 1):
+            lin = getattr(self, "clin" + str(layer_idx))
 
             h = lin(h)
 
-            if l < self.num_layers_color - 2:
+            if layer_idx < self.num_layers_color - 2:
                 h = self.relu(h)
 
         rgb = self.sigmoid(h)

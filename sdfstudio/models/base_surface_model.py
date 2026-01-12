@@ -18,6 +18,7 @@ Implementation of Base surface model.
 
 from __future__ import annotations
 
+import warnings
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Literal
@@ -34,6 +35,7 @@ from sdfstudio.cameras.rays import RayBundle, RaySamples
 from sdfstudio.field_components.encodings import NeRFEncoding
 from sdfstudio.field_components.field_heads import FieldHeadNames
 from sdfstudio.field_components.spatial_distortions import SceneContraction
+from sdfstudio.fields.nerfacto_field import TCNN_EXISTS as NERFACTO_TCNN_EXISTS
 from sdfstudio.fields.nerfacto_field import TCNNNerfactoField
 from sdfstudio.fields.sdf_field import SDFFieldConfig
 from sdfstudio.fields.vanilla_nerf_field import NeRFField
@@ -175,6 +177,7 @@ class SurfaceModel(Model):
             spatial_distortion=self.scene_contraction,
             num_images=self.num_train_data,
             use_average_appearance_embedding=self.config.use_average_appearance_embedding,
+            device=self.kwargs.get("device"),
         )
 
         # Collider
@@ -193,14 +196,25 @@ class SurfaceModel(Model):
             self.collider = NearFarCollider(near_plane=self.config.near_plane, far_plane=self.config.far_plane)
 
         # background model
-        if self.config.background_model == "grid":
+        background_model = self.config.background_model
+        model_device = str(self.kwargs.get("device") or "")
+        if background_model == "grid" and (not NERFACTO_TCNN_EXISTS or not model_device.startswith("cuda")):
+            warnings.warn(
+                "background_model='grid' requested but TCNN is unavailable or device is not CUDA; "
+                "falling back to background_model='mlp'.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            background_model = "mlp"
+
+        if background_model == "grid":
             self.field_background = TCNNNerfactoField(
                 self.scene_box.aabb,
                 spatial_distortion=self.scene_contraction,
                 num_images=self.num_train_data,
                 use_average_appearance_embedding=self.config.use_average_appearance_embedding,
             )
-        elif self.config.background_model == "mlp":
+        elif background_model == "mlp":
             position_encoding = NeRFEncoding(
                 in_dim=3,
                 num_frequencies=10,
