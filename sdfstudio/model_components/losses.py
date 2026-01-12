@@ -107,7 +107,7 @@ def interlevel_loss(weights_list, ray_samples_list):
     c = ray_samples_to_sdist(ray_samples_list[-1]).detach()
     w = weights_list[-1][..., 0].detach()
     loss_interlevel = 0.0
-    for ray_samples, weights in zip(ray_samples_list[:-1], weights_list[:-1], strict=False):
+    for ray_samples, weights in zip(ray_samples_list[:-1], weights_list[:-1]):
         sdist = ray_samples_to_sdist(ray_samples)
         cp = sdist  # (num_rays, num_samples + 1)
         wp = weights[..., 0]  # (num_rays, num_samples)
@@ -141,7 +141,7 @@ def interlevel_loss_zip(weights_list, ray_samples_list):
     w_normalize = w / (c[:, 1:] - c[:, :-1])
 
     loss_interlevel = 0.0
-    for ray_samples, weights, r in zip(ray_samples_list[:-1], weights_list[:-1], [0.03, 0.003], strict=False):
+    for ray_samples, weights, r in zip(ray_samples_list[:-1], weights_list[:-1], [0.03, 0.003]):
         # 2. step blur with different r
         x_r, y_r = blur_stepfun(c, w_normalize, r)
         y_r = torch.clip(y_r, min=0)

@@ -484,9 +484,7 @@ def copy_images(
             num_downscales=num_downscales,
             same_dimensions=same_dimensions,
         )
-        path_map = OrderedDict(
-            (original_path, new_path) for original_path, new_path in zip(image_paths, copied_images, strict=False)
-        )
+        path_map = OrderedDict((original_path, new_path) for original_path, new_path in zip(image_paths, copied_images))
         return path_map, crop_factors
 
 
