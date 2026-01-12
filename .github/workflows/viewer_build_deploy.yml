@@ -3,8 +3,12 @@ name: Viewer Build and Deploy.
 on:
   push:
     branches: [main]
+    paths:
+      - 'sdfstudio/viewer/**'
   pull_request:
     branches: [main]
+    paths:
+      - 'sdfstudio/viewer/**'
   workflow_dispatch:
 
 jobs:
