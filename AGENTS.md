@@ -36,6 +36,10 @@ sdfstudio/
 ### Installation
 
 ```bash
+# Recommended (uv): create venv and sync dev deps
+uv venv -p 3.11
+uv sync --group dev
+
 # Create conda environment (Python 3.10+ required)
 conda create --name sdfstudio -y python=3.10
 conda activate sdfstudio
@@ -78,6 +82,9 @@ All commands use the `sdf-` prefix:
 ### Testing
 
 ```bash
+# Run all tests (uv)
+uv run pytest
+
 # Run all tests with pytest (uses 4 parallel workers, coverage enabled)
 pytest
 
@@ -94,11 +101,20 @@ pytest -n 2
 ### Code Quality
 
 ```bash
+# Format code (uv)
+uv run ruff format .
+
 # Format code with ruff
 ruff format .
 
+# Lint (uv)
+uv run ruff check .
+
 # Lint with ruff
 ruff check .
+
+# Type checking (uv)
+uv run pyright sdfstudio
 
 # Type checking with pyright
 pyright sdfstudio

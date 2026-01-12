@@ -1,4 +1,4 @@
-name: Core Tests.
+name: CI
 
 on:
   push:
@@ -11,15 +11,19 @@ permissions:
   contents: read
 
 jobs:
-  checks:
+  python:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10"]
+        python-version: ["3.9", "3.10", "3.11"]
+    env:
+      # Force uv to use the interpreter provided by `actions/setup-python`.
+      UV_PYTHON: python
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -31,8 +35,8 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Install dependencies
-        run: uv pip install -e ".[dev]"
+      - name: Sync dependencies (app + dev)
+        run: uv sync --frozen --group dev
 
       - name: Format check (ruff)
         run: uv run ruff format --check .
@@ -44,10 +48,10 @@ jobs:
         run: uv run pyright sdfstudio
 
       - name: Run license checks
-        run: |
-          ./scripts/licensing/license_headers.sh --check
+        run: ./scripts/licensing/license_headers.sh --check
+
       - name: Check notebook cell metadata
-        run: |
-          python ./scripts/docs/add_nb_tags.py --check
-      - name: Test with pytest
+        run: uv run python ./scripts/docs/add_nb_tags.py --check
+
+      - name: Test (pytest)
         run: uv run pytest
