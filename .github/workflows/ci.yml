@@ -141,6 +141,11 @@ jobs:
     env:
       UV_PYTHON: python
     steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h
+
       - name: Checkout
         uses: actions/checkout@v4
 

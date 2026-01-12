@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -43,6 +44,12 @@ def set_reduced_config(config: Config):
     # Opt-in to CUDA via `SDFSTUDIO_TEST_USE_CUDA=1`.
     config.machine.num_gpus = torch.cuda.device_count() if USE_CUDA else 0
     config.trainer.max_num_iterations = 2
+    # Avoid writing large artifacts/checkpoints in CI.
+    config.trainer.steps_per_save = 10**9
+    config.trainer.steps_per_eval_batch = 10**9
+    config.trainer.steps_per_eval_image = 10**9
+    config.trainer.steps_per_eval_all_images = 10**9
+
     # reduce dataset factors; set dataset to test
     config.pipeline.datamanager.dataparser = BlenderDataParserConfig(data=Path("tests/data/lego_test"))
     config.pipeline.datamanager.train_num_images_to_sample_from = 1
@@ -50,7 +57,9 @@ def set_reduced_config(config: Config):
 
     # use tensorboard logging instead of wandb
     config.vis = "tensorboard"
-    config.logging.relative_log_dir = Path("/tmp/")
+    config.logging.steps_per_log = 10**9
+    config.logging.enable_profiler = False
+    config.logging.local_writer.enable = False
 
     # reduce model factors
     if hasattr(config.pipeline.model, "num_coarse_samples"):
@@ -77,16 +86,20 @@ def set_reduced_config(config: Config):
 def test_train():
     """test run train script works properly"""
     all_config_names = method_configs.keys()
-    for config_name in all_config_names:
-        if config_name in BLACKLIST:
-            print("skipping", config_name)
-            continue
-        print(f"testing run for: {config_name}")
-        config = method_configs[config_name]
-        config = set_reduced_config(config)
+    with tempfile.TemporaryDirectory(prefix="sdfstudio-test-") as tmpdir:
+        for config_name in all_config_names:
+            if config_name in BLACKLIST:
+                print("skipping", config_name)
+                continue
+            print(f"testing run for: {config_name}")
+            config = method_configs[config_name]
+            config = set_reduced_config(config)
+            config.output_dir = Path(tmpdir)
+            config.experiment_name = "pytest"
+            config.timestamp = "test"
 
-        world_size = config.machine.num_gpus * config.machine.num_machines
-        train_loop(local_rank=0, world_size=world_size, config=config)
+            world_size = config.machine.num_gpus * config.machine.num_machines
+            train_loop(local_rank=0, world_size=world_size, config=config)
 
 
 if __name__ == "__main__":
