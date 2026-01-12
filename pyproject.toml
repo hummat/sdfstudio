@@ -236,3 +236,13 @@ reportUndefinedVariable = false
 
 pythonVersion = "3.9"
 pythonPlatform = "Linux"
+
+# uv - use CPU-only PyTorch by default (saves ~3GB vs CUDA wheels)
+# For CUDA, after `uv sync`, run: uv pip install torch torchvision --index https://download.pytorch.org/whl/cu121
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
