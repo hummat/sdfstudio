@@ -368,97 +368,24 @@ Configure loss weights via CLI:
 
 ## Paper References (PaperPipe)
 
-This project implements methods from scientific papers. Papers are managed via `papi` (paperpipe).
+This repo implements methods from scientific papers. Papers are managed via `papi` (PaperPipe).
 
-### Paper Database Location
+- Paper DB root: run `papi path` (default `~/.paperpipe/`; override via `PAPER_DB_PATH`).
+- Inspect a paper (prints to stdout):
+  - Equations (verification): `papi show <paper> -l eq`
+  - Definitions (LaTeX): `papi show <paper> -l tex`
+  - Overview: `papi show <paper> -l summary`
+  - Quick TL;DR: `papi show <paper> -l tldr`
+- Direct files (if needed): `<paper_db>/papers/{paper}/equations.md`, `source.tex`, `summary.md`, `tldr.md`
 
-Default database root is `~/.paperpipe/`, but it may be overridden (e.g. via `PAPER_DB_PATH`).
-Prefer discovering the active location with:
-
-```bash
-papi path
-```
-
-Per-paper files live at: `<paper_db>/papers/{paper}/`
-
-- `meta.json` — metadata + tags
-- `summary.md` — coding-context overview
-- `equations.md` — key equations + explanations (best for implementation verification)
-- `notes.md` — implementation notes (yours; created automatically)
-- `source.tex` — full LaTeX (if available)
-- `paper.pdf` — PDF (used by PaperQA2)
-- `<paper_db>/.pqa_papers/` — PaperQA2 input staging (PDF-only; created on first `papi ask`)
-- `<paper_db>/.pqa_index/` — PaperQA2 index cache (created on first `papi ask`; override via `PAPERPIPE_PQA_INDEX_DIR`)
-
-### When to Use What
-
-| Task | Best source |
-|------|-------------|
-| “Does my code match the paper?” | Read `{paper}/equations.md` (and/or `{paper}/source.tex`) |
-| “What’s the high-level approach?” | Read `{paper}/summary.md` |
-| “Find the exact formulation / definitions” | Read `{paper}/source.tex` |
-| “Which papers discuss X?” | Run `papi search "X"` (fast) or `papi ask "X"` (PaperQA2) |
-| “Compare methods across papers” | Load multiple `{paper}/equations.md` files |
-| “Do the generated summaries/equations look sane?” | Run `papi audit` (and optionally regenerate flagged papers) |
-
-### Useful Commands
-
-```bash
-# List papers and tags
-papi list
-papi tags
-
-# Search by title, tag, or content
-papi search "sdf loss"
-
-# Export equations/summaries into the repo for a coding session
-papi export neuralangelo neus --level equations --to ./paper-context/
-
-# Or print directly to stdout for pasting into a terminal agent session
-papi show neuralangelo neus --level eq
-
-# Open or print per-paper implementation notes
-papi notes neuralangelo
-papi notes neuralangelo --print
-
-# Add papers (arXiv) / regenerate; use --no-llm to avoid LLM calls
-papi add 2303.13476                      # name auto-generated
-papi add 2303.13476 --name neuralangelo  # or explicit name
-papi add 2303.13476 --update             # refresh existing paper in-place
-papi add 2303.13476 --duplicate          # add a second copy (-2/-3 suffix)
-papi add --pdf ./paper.pdf --title "Some Paper" --tags my-project  # local PDF ingest
-papi regenerate neuralangelo --no-llm
-
-# Audit generated content for obvious issues (and optionally regenerate flagged papers)
-papi audit
-papi audit --limit 5 --seed 0
-papi audit --regenerate --no-llm -o summary,equations,tags
-```
-
-### LLM Configuration (Optional)
-
-```bash
-export PAPERPIPE_LLM_MODEL="gemini/gemini-3-flash-preview"  # any LiteLLM identifier
-export PAPERPIPE_LLM_TEMPERATURE=0.3                        # default: 0.3
-```
-
-Without LLM, paperpipe falls back to metadata + section headings + regex equation extraction.
-
-### Code Verification Workflow
-
-1. Identify the referenced paper(s) (comments, function names, README, etc.)
-2. Read `{paper}/equations.md` and compare symbol-by-symbol with the implementation
-3. If ambiguous, confirm definitions/assumptions in `{paper}/source.tex`
-4. If the question is broad or spans multiple papers, run `papi ask "..."` (requires PaperQA2)
-
-### Optional: Shared Prompts / Commands
-
-paperpipe ships prompt templates you can install into your agent CLI:
-
-```bash
-papi install-prompts
-```
-
-Usage:
-- Claude Code: `/ground-with-paper`, `/compare-papers`, `/curate-paper-note`
-- Codex CLI: `/prompts:ground-with-paper`, `/prompts:compare-papers`, `/prompts:curate-paper-note`
+Rules:
+- For “does this match the paper?”, use `papi show <paper> -l eq` / `-l tex` and compare symbols step-by-step.
+- For “which paper mentions X?”:
+  - Exact string hits (fast): `papi search --grep --fixed-strings "X"`
+  - Ranked search (BM25): `papi search-index --rebuild` then `papi search --fts "X"`
+  - Hybrid (ranked + exact boost): `papi search --hybrid "X"`
+- If the agent can’t read `~/.paperpipe/`, export context into the repo: `papi export <papers...> --level equations --to ./paper-context/`.
+- Use `papi ask "..."` only when you explicitly want RAG synthesis (PaperQA2 default if installed; optional `--backend leann`).
+  - For cheaper/deterministic queries: `papi ask "..." --pqa-agent-type fake`
+  - For machine-readable evidence: `papi ask "..." --format evidence-blocks`
+  - For debugging PaperQA2 output: `papi ask "..." --pqa-raw`
