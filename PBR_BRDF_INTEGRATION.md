@@ -10,13 +10,24 @@ Goal: Get usable **metal–roughness PBR materials** (basecolor, normal, roughne
 - `enable_pred_roughness` produces a **proxy roughness** used to mix view vs reflection encodings; it can be a useful texture for downstream look-dev, but it is not guaranteed to match GGX roughness under unknown illumination.
 - Color space: current `SDFField` outputs (`rgb`, `diffuse`, `specular`, `tint`) are produced via `linear_to_srgb(...).clamp(0,1)` (already sRGB-ish), while `roughness` is in `[0,1]` and should be treated as linear. This matters for glTF wiring and for any refinement step.
 
-If the target is “true PBR from real video under unknown lighting”, this plan should be viewed as:
+If the target is "true PBR from real video under unknown lighting", this plan should be viewed as:
 1) a strong *initialization / proxy-PBR export*, and
 2) an on-ramp to Stage 3 (inverse rendering) when needed.
 
+### Technical Gaps vs Literature
+
+| Aspect | SDFStudio (current) | Literature reference |
+|--------|---------------------|---------------------|
+| **Roughness model** | Linear blend of view/reflection encodings | Ref-NeRF: vMF distribution + IDE with frequency-dependent SH attenuation (`A_ℓ(κ) ≈ exp(-ℓ(ℓ+1)/(2κ))`) |
+| **Fresnel term** | Appended as MLP input feature | Microfacet BRDF: multiplicative `F·G·D / (4·cos(θ_i)·cos(θ_o))` |
+| **Physical constraints** | None enforced | "On Neural BRDFs" (Hofherr 2025): reciprocity input mapping, energy conservation regularization |
+| **Lighting** | Baked into learned radiance | NeRFactor/NeRD: explicit SH/env decomposition enables relighting |
+
+These gaps explain why Stage 1 outputs are "proxies" — the MLP learns to minimize reconstruction loss without physical structure. Stages 1.5 (explicit lighting + forward shader) and 2.5 (UV-space fitting) address these by adding physical constraints.
+
 ---
 
-## Practical “Minimal Real PBR” Target (Metal–Rough)
+## Practical "Minimal Real PBR" Target (Metal–Rough)
 
 Minimum maps (typical glTF/Unreal pipelines):
 - **Basecolor / Albedo** (sRGB)
