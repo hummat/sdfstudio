@@ -5,11 +5,44 @@
     <img src="media/overview.png" center width="95%"/>
 </p>
 
+> **Active Fork Notice:** This is an actively maintained fork of [autonomousvision/sdfstudio](https://github.com/autonomousvision/sdfstudio) with ongoing improvements. See [Updates](#updates) below for enhancements over upstream.
+
 # About
 
 SDFStudio is a unified and modular framework for neural implicit surface reconstruction, built on top of the awesome nerfstudio project. We provide a unified implementation of three major implicit surface reconstruction methods: UniSurf, VolSDF, and NeuS. SDFStudio also supports various scene representions, such as MLPs, Tri-plane, and Multi-res. feature grids, and multiple point sampling strategies such as surface-guided sampling as in UniSurf, and Voxel-surface guided sampling from NeuralReconW. It further integrates recent advances in the area such as the utillization of monocular cues (MonoSDF), geometry regularization (UniSurf) and multi-view consistency (Geo-NeuS). Thanks to the unified and modular implementation, SDFStudio makes it easy to transfer ideas from one method to another. For example, Mono-NeuS applies the idea from MonoSDF to NeuS, and Geo-VolSDF applies the idea from Geo-NeuS to VolSDF.
 
 # Updates
+
+## Fork Improvements (2024-2026)
+
+This fork includes significant enhancements over upstream:
+
+**Infrastructure & Compatibility:**
+- ✅ **TCNN fallback**: Automatic torch-only fallback when tiny-cuda-nn unavailable ([#290](https://github.com/autonomousvision/sdfstudio/issues/290))
+- ✅ **Modern CI/CD**: Migrated to `uv` for faster dependency management, updated workflows
+- ✅ **Python 3.9-3.11 support**: Updated dependencies and test coverage
+- ✅ **Lazy loading**: Optional dependencies loaded only when needed, reducing startup time
+
+**Bug Fixes (from upstream/fix branch):**
+- ✅ Test pose normalization with proper index filtering
+- ✅ Full resolution image loading for DTU high-res datasets
+- ✅ High-res foreground mask support
+- ✅ Default `auto_scale_poses` and `auto_orient` to False
+
+**Features:**
+- ✅ **PBR texture export**: Roughness, metallic, ORM maps for glTF workflows
+- ✅ Tangent-space normal maps in texture export
+- ✅ sRGB-linear basecolor handling
+- ✅ Average appearance embedding option for exports
+
+**Documentation:**
+- ✅ Comprehensive agent/development guides (`docs/agent/`)
+- ✅ PaperPipe integration for paper reference management
+- ✅ Updated testing patterns and code conventions
+
+See [Issues](https://github.com/hummat/sdfstudio/issues) for planned improvements (BRDF integration, upstream feature backports).
+
+## Upstream Updates
 
 **2023.06.16**: Add `bakedangelo` which combines `BakedSDF` with numerical gridents and progressive training of `Neuralangelo`.
 
