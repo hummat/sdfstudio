@@ -50,9 +50,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: astral-sh/setup-uv@v7
 
       - name: Sync dependencies (app + dev)
         # Use the PyTorch CPU wheel index on CI to avoid downloading CUDA runtime wheels,
@@ -89,9 +87,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: astral-sh/setup-uv@v7
 
       - name: Sync dependencies (app + dev)
         run: uv sync --frozen --group dev 
@@ -118,9 +114,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: astral-sh/setup-uv@v7
 
       - name: Sync dependencies (app + dev + docs)
         run: uv sync --frozen --group dev --extra docs 
@@ -152,9 +146,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: astral-sh/setup-uv@v7
 
       - name: Sync dependencies (app + dev)
         run: uv sync --frozen --group dev 
