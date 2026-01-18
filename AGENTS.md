@@ -62,7 +62,11 @@ sdf-train neus-facto sdfstudio-data --data <path>
 ## Code Workflow
 
 1. **Before editing**: read files first; understand existing code
-2. **After code changes**: `uv run ruff format .` → `uv run ruff check .` → `uv run pyright sdfstudio` → `uv run pytest` (order matters)
+2. **After code changes**: run the CI validation pipeline:
+   ```bash
+   uv run ruff format --check . && uv run ruff check . && uv run pyright sdfstudio && uv run pytest -m "not integration and not slow"
+   ```
+   If format check fails, run `uv run ruff format .` to fix, then re-run the pipeline.
 3. **Doc check**: verify if docs need updating
 
 If `uv run` fails (sandbox/offline): fall back to `.venv/bin/*` or set `UV_CACHE_DIR=$PWD/.uv-cache`.

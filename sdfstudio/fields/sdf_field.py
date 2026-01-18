@@ -266,7 +266,7 @@ class SDFField(Field):
         num_images: int,
         use_average_appearance_embedding: bool = False,
         spatial_distortion: Optional[SpatialDistortion] = None,
-        device: Optional[str] = None,
+        device: Optional[torch.device | str] = None,
     ) -> None:
         super().__init__()
         self.config = config
@@ -306,8 +306,9 @@ class SDFField(Field):
 
         if self.config.encoding_type == "hash":
             # feature encoding
-            use_tcnn = tcnn is not None and device is not None and device.startswith("cuda")
-            if device is not None and device.startswith("cuda") and tcnn is None:
+            device_str = str(device) if device is not None else None
+            use_tcnn = tcnn is not None and device_str is not None and device_str.startswith("cuda")
+            if device_str is not None and device_str.startswith("cuda") and tcnn is None:
                 warnings.warn(
                     "CUDA device requested but tinycudann is unavailable; using PyTorch hash encoding fallback.",
                     RuntimeWarning,
