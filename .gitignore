@@ -203,3 +203,5 @@ CLAUDE.md
 GEMINI.md
 QWEN.md
 .leann/
+.gemini/
+.mcp.json
