@@ -10,6 +10,8 @@ Read relevant `docs/agent/` files before proceeding:
 - `architecture.md` — read before adding modules/restructuring
 - `testing_patterns.md` — read before writing tests
 
+**REQUIRED: Read `docs/agent/workflow.md` before implementing, updating, fixing, or changing anything.**
+
 ---
 
 ## Project Overview
