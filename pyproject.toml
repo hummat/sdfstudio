@@ -38,8 +38,7 @@ dependencies = [
     #"rich",
     "scikit-image",
     "tensorboard",
-    "torch>=2.0,<2.6",
-    "torchvision>=0.15,<=0.20.1",
+    # torch/torchvision moved to extras (cpu/cuda) for variant selection
     "torchmetrics[image]",
     #"torchtyping>=0.1.4",
     #"u-msgpack-python",
@@ -87,7 +86,8 @@ docs = [
 ]
 
 # Heavy optional dependencies (export / mesh / raw image processing)
-# Note: For GPU texture export, install nvdiffrast manually (requires --no-build-isolation):
+# Note: For GPU texture export, nvdiffrast requires --extra cuda and --no-build-isolation:
+#   uv sync --extra cuda --extra export
 #   uv pip install --no-build-isolation git+https://github.com/NVlabs/nvdiffrast.git
 open3d = [
     "open3d>=0.19.0,<0.20.0",
@@ -98,6 +98,18 @@ export = [
 ]
 raw = [
     "rawpy",
+]
+
+# PyTorch variant selection (must choose one):
+#   CI: uv sync --extra cpu
+#   Local GPU: uv sync --extra cuda
+cpu = [
+    "torch>=2.0,<2.6",
+    "torchvision>=0.15,<=0.20.1",
+]
+cuda = [
+    "torch>=2.0,<2.6",
+    "torchvision>=0.15,<=0.20.1",
 ]
 
 [dependency-groups]
@@ -241,3 +253,30 @@ reportUndefinedVariable = false
 
 pythonVersion = "3.9"
 pythonPlatform = "Linux"
+
+# PyTorch indexes for cpu/cuda variant selection
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv]
+# cpu and cuda extras are mutually exclusive
+conflicts = [
+    [{ extra = "cpu" }, { extra = "cuda" }],
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cuda", extra = "cuda" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cuda", extra = "cuda" },
+]

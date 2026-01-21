@@ -17,8 +17,11 @@ Thanks for your interest in contributing! This document covers development setup
 git clone https://github.com/autonomousvision/sdfstudio.git
 cd sdfstudio
 
-# Install development dependencies (includes CUDA PyTorch)
-uv sync
+# Install development dependencies with CUDA PyTorch
+uv sync --extra cuda
+
+# Or for CPU-only (CI, no GPU):
+# uv sync --extra cpu
 
 # Run all checks
 sdf-dev-test
