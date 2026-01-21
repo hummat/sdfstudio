@@ -133,8 +133,9 @@ def eval_setup(
         config.pipeline.model.eval_num_rays_per_chunk = eval_num_rays_per_chunk
 
     # load checkpoints from wherever they were saved
-    # TODO: expose the ability to choose an arbitrary checkpoint
-    config.trainer.load_dir = config.get_checkpoint_dir()
+    # Derive checkpoint dir from config file location (not stored output_dir) for portability
+    # Config file lives at {base_dir}/config.yml, checkpoints at {base_dir}/{relative_model_dir}
+    config.trainer.load_dir = config_dir / config.trainer.relative_model_dir
     config.pipeline.datamanager.eval_image_indices = None
 
     # setup pipeline (which includes the DataManager)
