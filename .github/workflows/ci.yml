@@ -39,6 +39,8 @@ jobs:
     env:
       # Force uv to use the interpreter provided by `actions/setup-python`.
       UV_PYTHON: python
+      # Allow uv to resolve tinycudann metadata without CUDA hardware
+      TCNN_CUDA_ARCHITECTURES: "80"
 
     steps:
       - name: Checkout
@@ -75,6 +77,7 @@ jobs:
         python-version: ["3.9", "3.10", "3.11"]
     env:
       UV_PYTHON: python
+      TCNN_CUDA_ARCHITECTURES: "80"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,6 +105,7 @@ jobs:
         python-version: ["3.11"]
     env:
       UV_PYTHON: python
+      TCNN_CUDA_ARCHITECTURES: "80"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -129,6 +133,7 @@ jobs:
         python-version: ["3.9"]
     env:
       UV_PYTHON: python
+      TCNN_CUDA_ARCHITECTURES: "80"
     steps:
       - name: Free disk space
         run: |
