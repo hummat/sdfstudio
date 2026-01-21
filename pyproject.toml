@@ -87,19 +87,24 @@ docs = [
 ]
 
 # Heavy optional dependencies (export / mesh / raw image processing)
+# Note: For GPU texture export, install nvdiffrast manually (requires --no-build-isolation):
+#   uv pip install --no-build-isolation git+https://github.com/NVlabs/nvdiffrast.git
 open3d = [
     "open3d>=0.19.0,<0.20.0",
 ]
 export = [
     "open3d>=0.19.0,<0.20.0",
-    "pymeshlab",
+    "pymeshlab>=2023.12",
 ]
 raw = [
     "rawpy",
 ]
 
 [dependency-groups]
-# `uv sync --group dev` support (kept in sync with `[project.optional-dependencies].dev`).
+# Why both dependency-groups.dev AND optional-dependencies.dev?
+# - dependency-groups.dev: auto-installed by `uv sync` (no flags needed)
+# - optional-dependencies.dev: pip-compatible via `pip install -e .[dev]`
+# uv cannot reference optional-deps from dependency-groups, so we duplicate.
 dev = [
     "pylint",
     "pytest",
@@ -236,13 +241,3 @@ reportUndefinedVariable = false
 
 pythonVersion = "3.9"
 pythonPlatform = "Linux"
-
-# uv - use CPU-only PyTorch by default (saves ~3GB vs CUDA wheels)
-# For CUDA, after `uv sync`, run: uv pip install torch torchvision --index https://download.pytorch.org/whl/cu121
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-
-[tool.uv.sources]
-torch = { index = "pytorch-cpu" }
-torchvision = { index = "pytorch-cpu" }

@@ -17,11 +17,8 @@ Thanks for your interest in contributing! This document covers development setup
 git clone https://github.com/autonomousvision/sdfstudio.git
 cd sdfstudio
 
-# Install development dependencies
-uv sync --group dev
-
-# For GPU support (after uv sync)
-uv pip install torch torchvision --index https://download.pytorch.org/whl/cu121
+# Install development dependencies (includes CUDA PyTorch)
+uv sync
 
 # Run all checks
 sdf-dev-test

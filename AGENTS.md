@@ -24,7 +24,7 @@ Read relevant `docs/agent/` files before proceeding:
 
 ```bash
 # Dev
-uv sync --group dev              # Install deps from lock
+uv sync                          # Install deps (incl. dev) from lock
 uv run pytest                    # Run tests
 uv run pyright sdfstudio         # Type check
 uv run ruff check . && uv run ruff format .  # Lint + format

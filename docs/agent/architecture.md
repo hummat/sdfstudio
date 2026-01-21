@@ -40,9 +40,9 @@ sdfstudio/
 ## Package Manager
 
 ```bash
-uv sync --group dev           # Install deps from lock
+uv sync                       # Install deps (incl. dev) from lock
 uv add <pkg>                  # Add dependency
-uv add --group dev <pkg>      # Add dev dependency
+uv add --optional dev <pkg>   # Add dev dependency
 uv run <cmd>                  # Run command in venv
 
 # Alternative: pip

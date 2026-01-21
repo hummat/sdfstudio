@@ -1,0 +1,10 @@
+# CI-specific uv configuration: use CPU-only PyTorch to save disk space (~3GB).
+# Used via: uv sync --config-file .github/uv-ci.toml
+
+[[index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+
+[sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
