@@ -88,6 +88,8 @@ docs = [
 # Note: For GPU texture export, nvdiffrast requires --extra cuda and --no-build-isolation:
 #   uv sync --extra cuda --extra export
 #   uv pip install --no-build-isolation git+https://github.com/NVlabs/nvdiffrast.git
+# Note: For accelerated hash encoding, tinycudann requires CUDA and manual install:
+#   uv pip install --no-build-isolation git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
 open3d = [
     "open3d>=0.19.0,<0.20.0",
 ]

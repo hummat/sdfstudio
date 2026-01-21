@@ -15,32 +15,45 @@ SDFStudio is a unified and modular framework for neural implicit surface reconst
 
 ## Fork Improvements (2024-2026)
 
-This fork includes significant enhancements over upstream:
+This fork ([hummat/sdfstudio](https://github.com/hummat/sdfstudio)) includes significant enhancements over [upstream](https://github.com/autonomousvision/sdfstudio):
 
 **Infrastructure & Compatibility:**
-- ✅ **TCNN fallback**: Automatic torch-only fallback when tiny-cuda-nn unavailable ([#290](https://github.com/autonomousvision/sdfstudio/issues/290))
-- ✅ **Modern CI/CD**: Migrated to `uv` for faster dependency management, updated workflows
-- ✅ **Python 3.9-3.11 support**: Updated dependencies and test coverage
-- ✅ **Lazy loading**: Optional dependencies loaded only when needed, reducing startup time
+- ✅ **TCNN fallback**: Automatic torch-only fallback when tiny-cuda-nn unavailable—no CUDA compilation required for basic usage
+- ✅ **Modern tooling**: Migrated from pip/conda to `uv` for faster, reproducible dependency management
+- ✅ **PyTorch 2.x support**: Updated to torch>=2.0 with CPU/CUDA extras for variant selection
+- ✅ **Python 3.9–3.11 support**: Updated dependencies and full test coverage across versions
+- ✅ **Lazy loading**: Optional dependencies (Open3D, nvdiffrast) loaded only when needed
+- ✅ **Renamed CLI**: All commands now use `sdf-` prefix (e.g., `sdf-train`, `sdf-export`)
 
 **Bug Fixes (from upstream/fix branch):**
 - ✅ Test pose normalization with proper index filtering
 - ✅ Full resolution image loading for DTU high-res datasets
 - ✅ High-res foreground mask support
 - ✅ Default `auto_scale_poses` and `auto_orient` to False
+- ✅ Crop factor pixel rounding fix
 
-**Features:**
-- ✅ **PBR texture export**: Roughness, metallic, ORM maps for glTF workflows
-- ✅ Tangent-space normal maps in texture export
-- ✅ sRGB-linear basecolor handling
-- ✅ Average appearance embedding option for exports
+**Texture Export Improvements:**
+- ✅ **PBR texture export**: Roughness, metallic, ORM maps for glTF/Blender workflows
+- ✅ **Tangent-space normal maps** for proper GLB/OBJ compatibility
+- ✅ **sRGB-linear basecolor handling** for color-accurate exports
+- ✅ **GPU rasterization** with multi-direction sampling (v2 pipeline)
+- ✅ **Seam padding** to prevent texture bleeding
+- ✅ Average appearance embedding option for consistent exports
+
+**CI/CD:**
+- ✅ GitHub Actions with uv-based workflows
+- ✅ Automated linting (ruff), type checking (pyright), and testing (pytest)
+- ✅ Claude Code review integration for PRs
 
 **Documentation:**
-- ✅ Comprehensive agent/development guides (`docs/agent/`)
-- ✅ PaperPipe integration for paper reference management
-- ✅ Updated testing patterns and code conventions
+- ✅ Agent/development guides in `docs/agent/` (workflow, conventions, architecture)
+- ✅ Updated method documentation with arXiv links
 
-See [Issues](https://github.com/hummat/sdfstudio/issues) for planned improvements (BRDF integration, upstream feature backports).
+**Planned (see [Issues](https://github.com/hummat/sdfstudio/issues)):**
+- 🔲 BRDF/PBR integration into training pipeline ([#10](https://github.com/hummat/sdfstudio/issues/10))
+- 🔲 Beta annealing for base surface model ([#11](https://github.com/hummat/sdfstudio/issues/11))
+- 🔲 "Focus" centering method for object-centric datasets ([#12](https://github.com/hummat/sdfstudio/issues/12))
+- 🔲 Depth/normal prior support for BakedSDF ([#13](https://github.com/hummat/sdfstudio/issues/13))
 
 ## Upstream Updates
 
@@ -60,36 +73,42 @@ See [Issues](https://github.com/hummat/sdfstudio/issues) for planned improvement
 
 ### Prerequisites
 
-CUDA must be installed on the system. This library has been tested with version 11.3. You can find more information about installing CUDA [here](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html).
+- **Python 3.9–3.11** (required)
+- **CUDA** (recommended for GPU acceleration; tested with CUDA 11.8 and 12.4)
+- **[uv](https://docs.astral.sh/uv/)** package manager (recommended) or pip
 
-### Create environment
-
-SDFStudio requires `python >= 3.7`. We recommend using conda to manage dependencies. Make sure to install [Conda](https://docs.conda.io/en/latest/miniconda.html) before proceeding.
-
-```bash
-conda create --name sdfstudio -y python=3.8
-conda activate sdfstudio
-python -m pip install --upgrade pip
-```
-
-### Dependencies
-
-Install pytorch with CUDA (this repo has been tested with CUDA 11.3) and [tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn)
+### Quick Install (with uv)
 
 ```bash
-pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html
-pip install git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
-```
-
-### Installing SDFStudio
-
-```bash
-git clone https://github.com/autonomousvision/sdfstudio.git
+# Clone the repository
+git clone https://github.com/hummat/sdfstudio.git
 cd sdfstudio
-pip install --upgrade pip setuptools
-pip install -e .
-# install tab completion
-ns-install-cli
+
+# Install with GPU support (recommended)
+uv sync --extra cuda
+
+# Or for CPU-only (slower, but no CUDA required)
+uv sync --extra cpu
+
+# Install tab completion (optional)
+uv run sdf-install-cli
+```
+
+### Alternative: pip install
+
+```bash
+git clone https://github.com/hummat/sdfstudio.git
+cd sdfstudio
+pip install -e ".[cuda]"  # or .[cpu] for CPU-only
+```
+
+### Optional: tiny-cuda-nn (for faster hash encoding)
+
+[tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn) provides ~2x faster hash grid encoding but requires CUDA compilation. **SDFStudio works without it** (automatic PyTorch fallback).
+
+```bash
+# Only if you want maximum performance
+uv pip install --no-build-isolation git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
 ```
 
 ## 2. Train your first model
@@ -97,14 +116,14 @@ ns-install-cli
 The following will train a _NeuS-facto_ model,
 
 ```bash
-# Download some test data: you might need to install curl if your system don't have that
-ns-download-data sdfstudio
+# Download some test data
+sdf-download-data sdfstudio
 
-# Train model on the dtu dataset scan65
-ns-train neus-facto --pipeline.model.sdf-field.inside-outside False --vis viewer --experiment-name neus-facto-dtu65 sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
+# Train model on the DTU dataset scan65
+sdf-train neus-facto --pipeline.model.sdf-field.inside-outside False --vis viewer --experiment-name neus-facto-dtu65 sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
 
-# Or you could also train model on the Replica dataset room0 with monocular priors
-ns-train neus-facto --pipeline.model.sdf-field.inside-outside True --pipeline.model.mono-depth-loss-mult 0.1 --pipeline.model.mono-normal-loss-mult 0.05 --vis viewer --experiment-name neus-facto-replica1 sdfstudio-data --data data/sdfstudio-demo-data/replica-room0 --include_mono_prior True
+# Or train on the Replica dataset room0 with monocular priors
+sdf-train neus-facto --pipeline.model.sdf-field.inside-outside True --pipeline.model.mono-depth-loss-mult 0.1 --pipeline.model.mono-normal-loss-mult 0.05 --vis viewer --experiment-name neus-facto-replica1 sdfstudio-data --data data/sdfstudio-demo-data/replica-room0 --include_mono_prior True
 ```
 
 If everything works, you should see the following training progress:
@@ -124,7 +143,7 @@ Navigating to the link at the end of the terminal will load the webviewer (devel
 It is also possible to load a pretrained model by running
 
 ```bash
-ns-train neus-facto --trainer.load-dir {outputs/neus-facto-dtu65/neus-facto/XXX/sdfstudio_models} sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65 
+sdf-train neus-facto --trainer.load-dir {outputs/neus-facto-dtu65/neus-facto/XXX/sdfstudio_models} sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
 ```
 
 This will automatically resume training. If you do not want to resume training, add `--viewer.start-train False` to your training command. **Note that the order of command matters, dataparser subcommand needs to come after the model subcommand.**
@@ -136,13 +155,13 @@ Once you have a trained model you can export mesh and render the mesh.
 ### Extract Mesh
 
 ```bash
-ns-extract-mesh --load-config outputs/neus-facto-dtu65/neus-facto/XXX/config.yml --output-path meshes/neus-facto-dtu65.ply
+sdf-extract-mesh --load-config outputs/neus-facto-dtu65/neus-facto/XXX/config.yml --output-path meshes/neus-facto-dtu65.ply
 ```
 
 ### Render Mesh
 
-```
-ns-render-mesh --meshfile meshes/neus-facto-dtu65.ply --traj interpolate  --output-path renders/neus-facto-dtu65.mp4 sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
+```bash
+sdf-render-mesh --meshfile meshes/neus-facto-dtu65.ply --traj interpolate --output-path renders/neus-facto-dtu65.mp4 sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
 ```
 
 You will get the following video if everything works properly.
@@ -156,7 +175,7 @@ First we must create a path for the camera to follow. This can be done in the vi
 To view all video export options run:
 
 ```bash
-ns-render --help
+sdf-render --help
 ```
 
 ## 4. Advanced Options
@@ -166,10 +185,10 @@ ns-render --help
 We provide many other models than NeuS-facto, see [the documentation](docs/sdfstudio-methods.md). For example, if you want to train the original NeuS model, use the following command:
 
 ```bash
-ns-train neus --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
+sdf-train neus --pipeline.model.sdf-field.inside-outside False sdfstudio-data --data data/sdfstudio-demo-data/dtu-scan65
 ```
 
-For a full list of included models run `ns-train --help`. Please refer to the [documentation](docs/sdfstudio-methods.md) for a more detailed explanation for each method.
+For a full list of included models run `sdf-train --help`. Please refer to the [documentation](docs/sdfstudio-methods.md) for a more detailed explanation for each method.
 
 ### Modify Configuration
 
@@ -178,7 +197,7 @@ Each model contains many parameters that can be changed, too many to list here. 
 **Note, that order of parameters matters! For example, you cannot set `--machine.num-gpus` after the `--data` parameter**
 
 ```bash
-ns-train neus-facto --help
+sdf-train neus-facto --help
 ```
 
 <details>
@@ -194,7 +213,7 @@ Nerfstudio supports three different methods to track training progress, using th
 
 ## 5. Using Custom Data
 
-Please refer to the [datasets](docs/sdfstudio-data.md) and [data format](https://github.com/autonomousvision/sdfstudio/blob/main/docs/sdfstudio-data.md#Dataset-format) documentation if you like to use custom datasets.
+Please refer to the [datasets](docs/sdfstudio-data.md) and [data format](docs/sdfstudio-data.md#Dataset-format) documentation if you like to use custom datasets.
 
 # Built On
 
