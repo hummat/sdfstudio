@@ -38,8 +38,7 @@ dependencies = [
     #"rich",
     "scikit-image",
     "tensorboard",
-    # torch/torchvision moved to extras (cpu/cuda) for variant selection
-    "torchmetrics[image]",
+    # torch/torchvision/torchmetrics moved to extras (cpu/cuda) for variant selection
     #"torchtyping>=0.1.4",
     #"u-msgpack-python",
     #"nuscenes-devkit>=1.1.1",
@@ -106,10 +105,12 @@ raw = [
 cpu = [
     "torch>=2.0,<2.6",
     "torchvision>=0.15,<=0.20.1",
+    "torchmetrics[image]",
 ]
 cuda = [
     "torch>=2.0,<2.6",
     "torchvision>=0.15,<=0.20.1",
+    "torchmetrics[image]",
 ]
 
 [dependency-groups]
