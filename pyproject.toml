@@ -28,7 +28,7 @@ dependencies = [
     "mediapy",
     #"msgpack",
     #"msgpack_numpy",
-    "nerfacc==0.5.2",
+    # nerfacc moved to extras (cpu/cuda) - it depends on torch
     "opencv-python-headless",
     #"plotly",
     #"protobuf",
@@ -106,11 +106,13 @@ cpu = [
     "torch>=2.0,<2.6",
     "torchvision>=0.15,<=0.20.1",
     "torchmetrics[image]",
+    "nerfacc==0.5.2",
 ]
 cuda = [
     "torch>=2.0,<2.6",
     "torchvision>=0.15,<=0.20.1",
     "torchmetrics[image]",
+    "nerfacc==0.5.2",
 ]
 
 [dependency-groups]
