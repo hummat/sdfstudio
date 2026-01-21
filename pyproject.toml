@@ -85,11 +85,6 @@ docs = [
 ]
 
 # Heavy optional dependencies (export / mesh / raw image processing)
-# Note: For GPU texture export, nvdiffrast requires --extra cuda and --no-build-isolation:
-#   uv sync --extra cuda --extra export
-#   uv pip install --no-build-isolation git+https://github.com/NVlabs/nvdiffrast.git
-# Note: For accelerated hash encoding, tinycudann requires CUDA and manual install:
-#   uv pip install --no-build-isolation git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
 open3d = [
     "open3d>=0.19.0,<0.20.0",
 ]
@@ -115,6 +110,14 @@ cuda = [
     "torchvision>=0.15,<=0.20.1",
     "torchmetrics[image]",
     "nerfacc==0.5.2",
+]
+
+# CUDA-only build-from-source dependencies (hash encoding, GPU rasterization)
+# Requires CUDA toolkit. Use: uv sync --extra cuda --extra cuda-build
+cuda-build = [
+    "torch>=2.0,<2.6",  # Must be installed before tcnn/nvdiffrast build
+    "tinycudann",
+    "nvdiffrast",
 ]
 
 [dependency-groups]
@@ -271,17 +274,24 @@ url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [tool.uv]
-# cpu and cuda extras are mutually exclusive
+# cpu and cuda/cuda-build extras are mutually exclusive
 conflicts = [
     [{ extra = "cpu" }, { extra = "cuda" }],
+    [{ extra = "cpu" }, { extra = "cuda-build" }],
 ]
+
+# These packages require --no-build-isolation (they need torch during build)
+no-build-isolation-package = ["tinycudann", "nvdiffrast"]
 
 [tool.uv.sources]
 torch = [
     { index = "pytorch-cpu", extra = "cpu" },
     { index = "pytorch-cuda", extra = "cuda" },
+    { index = "pytorch-cuda", extra = "cuda-build" },
 ]
 torchvision = [
     { index = "pytorch-cpu", extra = "cpu" },
     { index = "pytorch-cuda", extra = "cuda" },
 ]
+tinycudann = { git = "https://github.com/NVlabs/tiny-cuda-nn", subdirectory = "bindings/torch" }
+nvdiffrast = { git = "https://github.com/NVlabs/nvdiffrast" }

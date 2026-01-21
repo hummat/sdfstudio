@@ -102,13 +102,15 @@ cd sdfstudio
 pip install -e ".[cuda]"  # or .[cpu] for CPU-only
 ```
 
-### Optional: tiny-cuda-nn (for faster hash encoding)
+### Optional: CUDA build dependencies (faster hash encoding & GPU rasterization)
 
-[tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn) provides ~2x faster hash grid encoding but requires CUDA compilation. **SDFStudio works without it** (automatic PyTorch fallback).
+[tiny-cuda-nn](https://github.com/NVlabs/tiny-cuda-nn) provides ~2x faster hash grid encoding and [nvdiffrast](https://github.com/NVlabs/nvdiffrast) enables GPU-accelerated texture export. Both require CUDA compilation. **SDFStudio works without them** (automatic PyTorch fallback for tcnn).
 
 ```bash
-# Only if you want maximum performance
-uv pip install --no-build-isolation git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
+# Install with CUDA build dependencies (requires CUDA toolkit)
+uv sync --extra cuda --extra cuda-build
+
+# This replaces the old manual install workflow and won't be removed by subsequent uv sync calls
 ```
 
 ## 2. Train your first model
