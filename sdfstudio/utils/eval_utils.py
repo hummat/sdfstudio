@@ -79,10 +79,23 @@ def eval_load_checkpoint(config: TrainerConfig, pipeline: Pipeline) -> Path:
     return load_path
 
 
+CONFIG_DIR_PLACEHOLDER = "__CONFIG_DIR__"
+
+
+def _resolve_config_relative_path(path: Path, config_dir: Path) -> Path:
+    """Resolve a path that may contain the CONFIG_DIR_PLACEHOLDER."""
+    path_str = str(path)
+    if path_str.startswith(CONFIG_DIR_PLACEHOLDER):
+        relative_part = path_str[len(CONFIG_DIR_PLACEHOLDER) :].lstrip("/\\")
+        return (config_dir / relative_part).resolve()
+    return path
+
+
 def eval_setup(
     config_path: Path,
     eval_num_rays_per_chunk: Optional[int] = None,
     test_mode: Literal["test", "val", "inference"] = "test",
+    data_path: Optional[Path] = None,
 ) -> tuple[Config, Pipeline, Path]:
     """Shared setup for loading a saved pipeline for evaluation.
 
@@ -93,6 +106,8 @@ def eval_setup(
             'val': loads train/val datasets into memory
             'test': loads train/test datset into memory
             'inference': does not load any dataset into memory
+        data_path: Override the data path stored in config. Useful when loading
+            configs created in Docker or on different machines.
 
 
     Returns:
@@ -103,6 +118,16 @@ def eval_setup(
     # load save config
     config = yaml.load(config_path.read_text(), Loader=yaml.Loader)
     assert isinstance(config, Config)
+
+    config_dir = config_path.parent.resolve()
+
+    # Handle data path: explicit override > placeholder resolution > original
+    if data_path is not None:
+        config.pipeline.datamanager.dataparser.data = data_path
+    else:
+        stored_path = config.pipeline.datamanager.dataparser.data
+        if stored_path is not None:
+            config.pipeline.datamanager.dataparser.data = _resolve_config_relative_path(stored_path, config_dir)
 
     if eval_num_rays_per_chunk:
         config.pipeline.model.eval_num_rays_per_chunk = eval_num_rays_per_chunk

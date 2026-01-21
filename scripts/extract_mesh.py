@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import torch
 import tyro
@@ -59,6 +59,8 @@ class ExtractMesh:
     sub_sample_factor: int = 8
     """torch precision"""
     torch_precision: Literal["highest", "high"] = "high"
+    """Override the data path stored in config. Useful for loading configs from Docker or different machines."""
+    data: Optional[Path] = None
 
     def main(self) -> None:
         """Main function."""
@@ -66,7 +68,7 @@ class ExtractMesh:
         assert str(self.output_path)[-4:] == ".ply"
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        _, pipeline, _ = eval_setup(self.load_config)
+        _, pipeline, _ = eval_setup(self.load_config, data_path=self.data)
 
         CONSOLE.print("Extract mesh with marching cubes and may take a while")
 

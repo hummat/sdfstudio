@@ -248,10 +248,32 @@ class Config(PrintableConfig):
         CONSOLE.rule("")
 
     def save_config(self) -> None:
-        """Save config to base directory"""
+        """Save config to base directory.
+
+        Data paths are stored relative to the config file using a __CONFIG_DIR__
+        placeholder, making configs portable between Docker and local environments.
+        """
+        import os
+
+        from sdfstudio.utils.eval_utils import CONFIG_DIR_PLACEHOLDER
+
         base_dir = self.get_base_dir()
         assert base_dir is not None
         base_dir.mkdir(parents=True, exist_ok=True)
         config_yaml_path = base_dir / "config.yml"
+
+        # Convert absolute data path to config-relative path for portability
+        original_data_path = self.pipeline.datamanager.dataparser.data
+        if original_data_path is not None:
+            abs_data_path = Path(original_data_path).resolve()
+            abs_config_dir = base_dir.resolve()
+            relative_path = os.path.relpath(abs_data_path, abs_config_dir)
+            portable_path = Path(f"{CONFIG_DIR_PLACEHOLDER}/{relative_path}")
+            self.pipeline.datamanager.dataparser.data = portable_path
+
         CONSOLE.log(f"Saving config to: {config_yaml_path}")
         config_yaml_path.write_text(yaml.dump(self), "utf8")
+
+        # Restore original path so running config isn't affected
+        if original_data_path is not None:
+            self.pipeline.datamanager.dataparser.data = original_data_path

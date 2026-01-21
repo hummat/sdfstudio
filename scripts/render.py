@@ -128,6 +128,8 @@ class RenderTrajectory:
     output_format: Literal["images", "video"] = "video"
     # Specifies number of rays per chunk during eval.
     eval_num_rays_per_chunk: Optional[int] = None
+    # Override the data path stored in config. Useful for loading configs from Docker or different machines.
+    data: Optional[Path] = None
 
     def main(self) -> None:
         """Main function."""
@@ -135,6 +137,7 @@ class RenderTrajectory:
             self.load_config,
             eval_num_rays_per_chunk=self.eval_num_rays_per_chunk,
             test_mode="test" if self.traj == "spiral" else "inference",
+            data_path=self.data,
         )
 
         install_checks.check_ffmpeg_installed()

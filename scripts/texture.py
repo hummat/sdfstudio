@@ -90,6 +90,8 @@ class TextureMesh:
     - "opengl": +Y (glTF default, Blender-friendly)
     - "directx": -Y (flip green channel)
     """
+    data: Optional[Path] = None
+    """Override the data path stored in config. Useful for loading configs from Docker or different machines."""
 
     def main(self) -> None:
         """Export textured mesh"""
@@ -101,7 +103,10 @@ class TextureMesh:
 
         # Load the pipeline
         _, pipeline, _ = eval_setup(
-            self.load_config, test_mode="inference", eval_num_rays_per_chunk=self.eval_num_rays_per_chunk
+            self.load_config,
+            test_mode="inference",
+            eval_num_rays_per_chunk=self.eval_num_rays_per_chunk,
+            data_path=self.data,
         )
         if self.use_average_appearance_embedding is not None:
             # `eval_setup(..., test_mode="inference")` puts the pipeline in eval mode, and our fields choose

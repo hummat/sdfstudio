@@ -46,6 +46,8 @@ class Exporter:
     """Path to the config YAML file."""
     output_dir: Path
     """Path to the output directory."""
+    data: Optional[Path] = None
+    """Override the data path stored in config. Useful for loading configs from Docker or different machines."""
 
 
 @dataclass
@@ -80,7 +82,7 @@ class ExportPointCloud(Exporter):
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
 
-        _, pipeline, _ = eval_setup(self.load_config)
+        _, pipeline, _ = eval_setup(self.load_config, data_path=self.data)
 
         # Increase the batchsize to speed up the evaluation.
         pipeline.datamanager.train_pixel_sampler.num_rays_per_batch = self.num_rays_per_batch
@@ -146,7 +148,7 @@ class ExportTSDFMesh(Exporter):
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
 
-        _, pipeline, _ = eval_setup(self.load_config)
+        _, pipeline, _ = eval_setup(self.load_config, data_path=self.data)
 
         tsdf_utils.export_tsdf_mesh(
             pipeline,
@@ -257,7 +259,7 @@ class ExportPoissonMesh(Exporter):
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
 
-        _, pipeline, _ = eval_setup(self.load_config)
+        _, pipeline, _ = eval_setup(self.load_config, data_path=self.data)
         self.validate_pipeline(pipeline)
 
         # Increase the batchsize to speed up the evaluation.

@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -34,10 +35,12 @@ class ComputePSNR:
     output_path: Path = Path("output.json")
     # Name of the output images dir.
     output_images_path: Path = Path("output_images/")
+    # Override the data path stored in config. Useful for loading configs from Docker or different machines.
+    data: Optional[Path] = None
 
     def main(self) -> None:
         """Main function."""
-        config, pipeline, checkpoint_path = eval_setup(self.load_config)
+        config, pipeline, checkpoint_path = eval_setup(self.load_config, data_path=self.data)
         assert self.output_path.suffix == ".json"
         metrics_dict, images_dict_list = pipeline.get_average_eval_image_metrics()
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
