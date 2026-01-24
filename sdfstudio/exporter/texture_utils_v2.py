@@ -856,6 +856,14 @@ def write_textured_mesh_fast(
         except Exception:  # pylint: disable=broad-exception-caught
             material = None
 
+    # Set dielectric defaults when no ORM texture is provided. PBRMaterial defaults
+    # metallicFactor to 1.0 which makes non-PBR exports look wrong in viewers.
+    if material is not None and orm_image is None:
+        if hasattr(material, "metallicFactor"):
+            material.metallicFactor = 0.0
+        if hasattr(material, "roughnessFactor"):
+            material.roughnessFactor = 1.0
+
     if material is None:
         material = trimesh.visual.material.SimpleMaterial(  # type: ignore
             image=texture_pil,
