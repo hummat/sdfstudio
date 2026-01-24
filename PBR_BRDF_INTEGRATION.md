@@ -96,16 +96,19 @@ SDFField already has Ref-NeRF-style factorization. Enable it:
 
 ### Already implemented in `sdfstudio/fields/sdf_field.py`
 
-| Config flag | Effect |
-|-------------|--------|
-| `use_diffuse_color` | View-independent diffuse head → better albedo proxy |
-| `use_specular_tint` | Learned RGB specular tint (metals) |
-| `use_reflections` | Reflection-direction encoding for specular |
-| `use_n_dot_v` | Explicit incidence angle to color MLP |
-| `enable_pred_roughness` | Roughness proxy ∈ [0,1] mixing view/reflection dirs |
-| `roughness_blend_space` | Where roughness mixes view vs reflection (“encoding” vs “direction”) |
-| `use_roughness_in_color_mlp` | Append roughness scalar to the color MLP input (requires `enable_pred_roughness`) |
-| `use_fresnel_term` | Append a Schlick-style Fresnel scalar to the color MLP input |
+| Config flag | Effect | Requires |
+|-------------|--------|----------|
+| `use_diffuse_color` | View-independent diffuse head → better albedo proxy | — |
+| `use_reflections` | Reflection-direction encoding for specular | — |
+| `use_n_dot_v` | Explicit incidence angle (n·v) to color MLP | — |
+| `use_fresnel_term` | Schlick-style Fresnel scalar to color MLP | — |
+| `enable_pred_roughness` | Roughness proxy ∈ [0,1] mixing view/reflection dirs | `use_reflections` |
+| `use_specular_tint` | Learned RGB specular tint (**metals only**) | — |
+| `specular_exclude_geo_features` | Exclude geo features from specular MLP (uniform plastic) | `use_diffuse_color` |
+| `use_roughness_gated_specular` | Gate specular by (1 - roughness) | `enable_pred_roughness` + `use_diffuse_color` |
+| `use_roughness_in_color_mlp` | Append roughness scalar to color MLP input | `enable_pred_roughness` |
+| `learned_specular_scale` | Per-point specular intensity (replaces fixed 0.5) | `use_diffuse_color` |
+| `roughness_blend_space` | Where roughness mixes view vs reflection ("encoding" vs "direction") | `enable_pred_roughness` + `use_reflections` |
 
 Notes:
 - In `SDFField`, ray `directions` are camera→point; view vector is point→camera = `-directions`. `use_n_dot_v` and `use_fresnel_term` use `n·v` with that sign convention.
@@ -142,17 +145,57 @@ Notes:
 
 ### Suggested starting recipes (Stage 1 only)
 
-Dielectric indoor smartphone object scan (e.g., LEGO/plastic):
-- Start with: `use_diffuse_color`, `use_reflections`, `use_n_dot_v` (or `use_fresnel_term`), keep `use_specular_tint` off.
-- If highlights look unstable / too sharp / “wrong”: add `enable_pred_roughness`.
-- If roughness doesn’t seem to control appearance enough: add `use_roughness_in_color_mlp`.
-- Only then try `roughness_blend_space=direction` (often a smaller effect than adding scalar conditioning).
+#### Dielectric / plastic (lego, toys, ceramics)
 
-Metallic / colored specular (jewelry, coins, brass):
-- Add `use_specular_tint` (and consider `use_fresnel_term`).
+Dielectrics have **white/neutral specular** (F₀ ≈ 0.04). Do NOT use `use_specular_tint` (that's for metals).
 
-Quick ablation (to see what mattered):
-- With `enable_pred_roughness` on, test `use_roughness_in_color_mlp` alone first, then `use_fresnel_term`, then switch `roughness_blend_space`.
+```bash
+# Core flags
+--pipeline.model.sdf-field.use-diffuse-color True
+--pipeline.model.sdf-field.use-reflections True
+--pipeline.model.sdf-field.use-n-dot-v True
+--pipeline.model.sdf-field.enable-pred-roughness True
+# Plastic-specific (uniform specular behavior)
+--pipeline.model.sdf-field.specular-exclude-geo-features True
+--pipeline.model.sdf-field.use-roughness-gated-specular True
+```
+
+- `specular-exclude-geo-features` forces spatial color into diffuse only (recommended for uniform plastic)
+- `use-roughness-gated-specular` gates specular by (1 - roughness) so rough areas have no specular
+
+Optional enhancements:
+```bash
+--pipeline.model.sdf-field.use-fresnel-term True         # Schlick Fresnel for edge brightening
+--pipeline.model.sdf-field.use-roughness-in-color-mlp True   # Feed roughness to color MLP
+```
+
+#### Metallic / colored specular (jewelry, coins, brass)
+
+Metals have **colored specular** that matches or tints the base color.
+
+```bash
+--pipeline.model.sdf-field.use-diffuse-color True
+--pipeline.model.sdf-field.use-specular-tint True
+--pipeline.model.sdf-field.use-reflections True
+--pipeline.model.sdf-field.use-n-dot-v True
+--pipeline.model.sdf-field.enable-pred-roughness True
+# Do NOT use specular-exclude-geo-features for multi-material scenes
+```
+
+#### Multi-material scenes
+
+If the scene has mixed materials (metal + plastic, glossy + matte), do NOT use `specular-exclude-geo-features` — you need spatially-varying specular.
+
+#### Quick ablation (to see what mattered)
+
+1. Start with `use-diffuse-color` + `use-n-dot-v` (minimal view dependence)
+2. Add `use-reflections` for glossy scenes
+3. Add `enable-pred-roughness` for roughness variation
+4. For plastic: add `specular-exclude-geo-features` + `use-roughness-gated-specular`
+5. For metals: add `use-specular-tint` instead
+6. Optional: `use-fresnel-term`, `learned-specular-scale`
+
+Check that geometry does not regress at each step.
 
 ---
 
