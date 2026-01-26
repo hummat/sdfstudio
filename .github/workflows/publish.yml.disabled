@@ -1,0 +1,60 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Sync dependencies
+        run: uv sync --group dev
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Type check (pyright)
+        run: uv run pyright sdfstudio
+
+      - name: Test (pytest)
+        run: uv run pytest -m "not integration and not slow"
+
+      - name: Build (sdist + wheel)
+        run: uv build --sdist --wheel --out-dir dist --clear
+
+      - name: Check dist metadata (twine)
+        run: uv run twine check dist/*
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
