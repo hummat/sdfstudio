@@ -16,6 +16,7 @@ Read relevant `docs/agent/` files before proceeding:
 
 ## Project Overview
 
+- **Repository**: `hummat/sdfstudio` (fork) — use for issues, PRs, releases
 - **Type:** Python library + CLI for neural implicit surface reconstruction
 - **CLI entry points:** `sdf-train`, `sdf-eval`, `sdf-export` (defined in `pyproject.toml`)
 - **Goal:** Unified framework for SDF-based methods (NeuS, VolSDF, MonoSDF, etc.) built on nerfstudio

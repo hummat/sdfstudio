@@ -2,6 +2,11 @@
 
 **Read this file before starting any feature or non-trivial change.**
 
+## Repository
+
+- **Origin**: `hummat/sdfstudio` (this fork) — use for issues, PRs, releases
+- **Upstream**: `autonomousvision/sdfstudio` — reference only
+
 ## New Features
 
 1. **Discuss/plan** — clarify requirements, identify affected files
