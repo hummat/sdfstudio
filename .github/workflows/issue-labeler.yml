@@ -1,0 +1,66 @@
+name: Auto-label issues
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Add labels based on issue form
+        uses: actions/github-script@v7
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        with:
+          script: |
+            const body = process.env.ISSUE_BODY || '';
+            const labels = [];
+
+            // Feature Request: Area dropdown
+            const areaMatch = body.match(/### Area\s+(.+)/);
+            if (areaMatch) {
+              const area = areaMatch[1].trim();
+              const areaMap = {
+                'New method / model': 'neural-surf-recon',
+                'Training pipeline': 'training',
+                'Export / mesh extraction': 'export',
+                'Data processing': 'pipeline',
+                'Documentation': 'documentation',
+              };
+              if (areaMap[area]) labels.push(areaMap[area]);
+            }
+
+            // Bug Report: Feature Area dropdown
+            const featureAreaMatch = body.match(/### Feature Area\s+(.+)/);
+            if (featureAreaMatch) {
+              const area = featureAreaMatch[1].trim();
+              const featureAreaMap = {
+                'Training (sdf-train)': 'training',
+                'Evaluation (sdf-eval)': 'training',
+                'Export (sdf-export, sdf-extract-mesh)': 'export',
+                'Data processing (sdf-process-data)': 'pipeline',
+              };
+              if (featureAreaMap[area]) labels.push(featureAreaMap[area]);
+            }
+
+            if (labels.length === 0) return;
+
+            // Validate labels exist before applying
+            const existingLabels = await github.paginate(
+              github.rest.issues.listLabelsForRepo,
+              { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 }
+            );
+            const existingNames = new Set(existingLabels.map(l => l.name));
+            const validLabels = labels.filter(l => existingNames.has(l));
+
+            if (validLabels.length === 0) return;
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: validLabels,
+            });

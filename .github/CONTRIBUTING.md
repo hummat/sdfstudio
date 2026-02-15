@@ -71,6 +71,12 @@ Before making changes, read the architecture docs:
 3. Add smoke test in `tests/`
 4. Update `docs/sdfstudio-methods.md` if user-facing
 
+## Issues & Project Board
+
+- **Issue templates**: Use the [bug report](https://github.com/hummat/sdfstudio/issues/new?template=bug_report.yml) or [feature request](https://github.com/hummat/sdfstudio/issues/new?template=feature_request.yml) form
+- **Labels**: Area and priority labels are defined in `.github/labels.yml`; area labels are auto-applied from issue form dropdowns
+- **Project board**: [3D Reconstruction Pipeline](https://github.com/users/hummat/projects/4) — cross-repo board covering mini-mesh, sdfstudio, and dependencies
+
 ## Pull Request Process
 
 1. **Create an issue first** for non-trivial changes
