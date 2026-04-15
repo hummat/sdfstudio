@@ -205,3 +205,5 @@ QWEN.md
 .leann/
 .gemini/
 .mcp.json
+
+.claude/settings.local.json
