@@ -479,7 +479,7 @@ def auto_orient_and_center_poses(
     poses: Tensor,
     method: Literal["pca", "up", "vertical", "none"] = "up",
     center_method: Literal["poses", "focus", "none"] = "poses",
-) -> Tensor:
+) -> tuple[Tensor, Tensor]:
     """Orients and centers the poses. We provide two methods for orientation: pca and up.
 
     pca: Orient the poses so that the principal directions of the camera centers are aligned
@@ -504,7 +504,7 @@ def auto_orient_and_center_poses(
         center_method: The method to use to center the poses.
 
     Returns:
-        The oriented poses.
+        The oriented poses and the transform applied to the poses.
     """
 
     origins = poses[..., :3, 3]
