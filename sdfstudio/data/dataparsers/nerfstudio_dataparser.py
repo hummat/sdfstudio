@@ -202,9 +202,10 @@ class Nerfstudio(DataParser):
         scale_factor *= self.config.scale_factor
         poses[:, :3, 3] *= scale_factor
 
-        CONSOLE.log(
-            f"Near plane: {torch.norm(poses[:, :3, 3], dim=1).min()}, Far plane: {torch.norm(poses[:, :3, 3], dim=1).max()}"
-        )
+        camera_distances = torch.norm(poses[:, :3, 3], dim=1)
+        near_plane = float(camera_distances.min())
+        far_plane = float(camera_distances.max())
+        CONSOLE.log(f"Near plane: {near_plane}, Far plane: {far_plane}")
 
         # Choose image_filenames and poses based on split, but after auto orient and scaling the poses.
         image_filenames = [image_filenames[i] for i in indices]
@@ -281,7 +282,14 @@ class Nerfstudio(DataParser):
             cameras=cameras,
             scene_box=scene_box,
             mask_filenames=mask_filenames if len(mask_filenames) > 0 else None,
-            metadata={"transform": transform_matrix, "scale_factor": scale_factor},
+            metadata={
+                "transform": transform_matrix,
+                "scale_factor": scale_factor,
+                "camera_distance_bounds": {
+                    "near_plane": near_plane,
+                    "far_plane": far_plane,
+                },
+            },
         )
         return dataparser_outputs
 

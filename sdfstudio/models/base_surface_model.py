@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import warnings
 from abc import abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -145,6 +146,14 @@ class SurfaceModelConfig(ModelConfig):
     Requires enable_pred_roughness=True in SDFFieldConfig."""
     overwrite_near_far_plane: bool = False
     """whether to use near and far collider from command line"""
+    auto_near_far_plane: bool = False
+    """Whether to derive near/far collider planes from dataparser camera-distance metadata."""
+    auto_near_plane_margin: float = 0.8
+    """Multiplier applied to the dataparser near camera-distance bound."""
+    auto_far_plane_margin: float = 1.2
+    """Multiplier applied to the dataparser far camera-distance bound."""
+    auto_near_plane_min: float = 0.01
+    """Lower clamp for automatically derived near planes."""
     scene_contraction_norm: Literal["inf", "l2"] = "inf"
     """Which norm to use for the scene contraction."""
 
@@ -190,6 +199,22 @@ class SurfaceModel(Model):
             self.collider = SphereCollider(radius=self.scene_box.radius, soft_intersection=True)
         else:
             raise NotImplementedError
+
+        if self.config.auto_near_far_plane:
+            metadata = self.kwargs.get("metadata", {})
+            camera_distance_bounds = metadata.get("camera_distance_bounds") if isinstance(metadata, Mapping) else None
+            if (
+                isinstance(camera_distance_bounds, Mapping)
+                and "near_plane" in camera_distance_bounds
+                and "far_plane" in camera_distance_bounds
+            ):
+                near_plane = max(
+                    self.config.auto_near_plane_min,
+                    float(camera_distance_bounds["near_plane"]) * self.config.auto_near_plane_margin,
+                )
+                far_plane = float(camera_distance_bounds["far_plane"]) * self.config.auto_far_plane_margin
+                far_plane = max(far_plane, near_plane + 1e-6)
+                self.collider = NearFarCollider(near_plane=near_plane, far_plane=far_plane)
 
         # command line near and far has highest priority
         if self.config.overwrite_near_far_plane:

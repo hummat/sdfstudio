@@ -488,6 +488,34 @@ around the surface is:
   something sensible?) rather than a target — a higher ``s_val`` is only better if the rendered images and geometry
   also improve.
 
+## Dataparser-Derived Near/Far Bounds
+
+The Nerfstudio dataparser logs camera-distance bounds after orientation, centering, pose auto-scaling, and
+``scale-factor`` have been applied. It also stores those values in ``DataparserOutputs.metadata`` as
+``camera_distance_bounds``:
+
+```text
+Near plane: <min camera distance>, Far plane: <max camera distance>
+```
+
+Surface models can opt into these bounds with:
+
+```bash
+--pipeline.model.auto-near-far-plane True
+```
+
+When enabled, SDFStudio uses a ``NearFarCollider`` with:
+
+```text
+near = max(auto_near_plane_min, metadata_near * auto_near_plane_margin)
+far  = max(metadata_far * auto_far_plane_margin, near + 1e-6)
+```
+
+The defaults are ``auto-near-plane-margin=0.8``, ``auto-far-plane-margin=1.2``, and
+``auto-near-plane-min=0.01``. Explicit near/far overrides still have highest priority: if
+``--pipeline.model.overwrite-near-far-plane True`` is set, ``near-plane`` and ``far-plane`` are used instead of
+auto bounds.
+
 # Metrics
 
 During training and evaluation, SDFStudio logs several scalar **metrics** alongside the losses. They are populated via
