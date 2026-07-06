@@ -82,7 +82,9 @@ class CacheDataloader(DataLoader):
             self.cached_collated_batch = self._get_collated_batch()
         elif self.num_times_to_repeat_images == -1:
             CONSOLE.print(
-                f"Caching {self.num_images_to_sample_from} out of {len(self.dataset)} images, without resampling."
+                f"[bold yellow]Warning: Caching {self.num_images_to_sample_from} out of {len(self.dataset)} images "
+                "without resampling (num_times_to_repeat_images=-1); the remaining images will never be seen during "
+                "training. Set num_times_to_repeat_images >= 0 to rotate through all images."
             )
         else:
             CONSOLE.print(

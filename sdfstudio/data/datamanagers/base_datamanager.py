@@ -485,7 +485,13 @@ class FlexibleDataManagerConfig(VanillaDataManagerConfig):
     _target: type = field(default_factory=lambda: FlexibleDataManager)
     """Target class to instantiate."""
     train_num_images_to_sample_from: int = 1
-    """Number of images to sample during training iteration."""
+    """Number of images to sample during training iteration. Forced to 1 because
+    ``FlexibleDataManager.next_train`` builds each batch from a single reference image
+    plus its source views."""
+    train_num_times_to_repeat_images: int = 0
+    """Resample a new training image every iteration. The inherited default of -1
+    (never resample) would cache the single sampled image once and overfit it, since
+    ``train_num_images_to_sample_from`` is 1."""
 
 
 class FlexibleDataManager(VanillaDataManager):
